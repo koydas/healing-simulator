@@ -1,0 +1,20 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: healing-simulator
+  labels:
+    app.kubernetes.io/name: healing-simulator
+spec:
+  # Adapter le nom de l'IngressClass au cluster cible (nginx, traefik, ...).
+  ingressClassName: nginx
+  rules:
+    - host: healing-simulator.local
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: healing-simulator
+                port:
+                  name: http

@@ -80,10 +80,16 @@ jobs:
             exit 0
           fi
           BRANCH="deploy/${{ steps.vars.outputs.sha }}"
-          git checkout -b "$BRANCH"
           git commit -m "chore: deploy ${{ steps.vars.outputs.sha }}"
-          git push origin "$BRANCH"
-          gh pr create --base main --head "$BRANCH" \
-            --title "chore: deploy ${{ steps.vars.outputs.sha }}" \
-            --body "Automated image tag bump to ghcr.io/koydas/healing-simulator:${{ steps.vars.outputs.sha }}."
+          # Force-push: BRANCH is deterministic per commit SHA, so a retry
+          # after a failed `gh pr create`/`gh pr merge` below must be able to
+          # overwrite a stale remote branch left over from the failed attempt
+          # instead of being rejected as non-fast-forward.
+          git push --force origin "HEAD:refs/heads/$BRANCH"
+          PR_NUMBER=$(gh pr list --head "$BRANCH" --base main --state open --json number --jq '.[0].number')
+          if [ -z "$PR_NUMBER" ]; then
+            gh pr create --base main --head "$BRANCH" \
+              --title "chore: deploy ${{ steps.vars.outputs.sha }}" \
+              --body "Automated image tag bump to ghcr.io/koydas/healing-simulator:${{ steps.vars.outputs.sha }}."
+          fi
           gh pr merge "$BRANCH" --squash --delete-branch

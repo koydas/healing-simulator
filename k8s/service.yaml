@@ -4,8 +4,16 @@ metadata:
   name: healing-simulator
   labels:
     app.kubernetes.io/name: healing-simulator
+  annotations:
+    # Pinned MetalLB address, same technique as gitops-homelab's
+    # ingress-nginx and ollama-chat's own Service. In addition to, not
+    # instead of, the Ingress: http://192.168.1.247 works with zero
+    # client-side config (no /etc/hosts, no LAN DNS -- there is none), and
+    # http://healing-simulator.home (via ingress-nginx's .243) still works
+    # once a hostname is set up. See ADR-0013.
+    metallb.io/loadBalancerIPs: "192.168.1.247"
 spec:
-  type: ClusterIP
+  type: LoadBalancer
   selector:
     app.kubernetes.io/name: healing-simulator
   ports:

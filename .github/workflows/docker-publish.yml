@@ -11,6 +11,7 @@ on:
 permissions:
   contents: write
   packages: write
+  pull-requests: write
 
 concurrency:
   group: docker-publish-main
@@ -34,7 +35,12 @@ jobs:
     needs: test
     runs-on: ubuntu-latest
     steps:
+      # Full history (not the default single-commit shallow clone) so the
+      # merge-base ancestry check below can actually compare this run's
+      # commit against whatever short SHA is currently deployed on main.
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Set image tag
         id: vars
@@ -59,14 +65,60 @@ jobs:
       # Bumping the tag here (rather than leaving the Deployment on :latest)
       # is what makes this a Git commit ArgoCD can actually sync on --
       # see docs/adr/0012.
-      - name: Update deployment image tag
-        run: |
-          sed -i "s|ghcr.io/koydas/healing-simulator:.*|ghcr.io/koydas/healing-simulator:${{ steps.vars.outputs.sha }}|" k8s/deployment.yaml
-
-      - name: Commit and push updated manifest
+      #
+      # main is ruleset-protected (PR required, no direct push, no bypass
+      # available for the GitHub Actions app on a personal-account repo --
+      # see docs/adr/0014). The edit is based on origin/main's tip *at this
+      # point in the job*, not on this job's triggering commit: the
+      # `docker-publish-main` concurrency group queues same-time pushes to
+      # run one after another rather than in parallel, and by the time a
+      # queued run reaches this step, an earlier run may already have merged
+      # its own tag-bump PR into main. Sedding the stale, trigger-commit copy
+      # of k8s/deployment.yaml would make this run's PR change the same line
+      # from an already-superseded old tag, which conflicts with (and can't
+      # be auto-merged against) the newer tag the earlier run just landed.
+      - name: Open and merge a deploy PR
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
+          git fetch origin main
+          BRANCH="deploy/${{ steps.vars.outputs.sha }}"
+          git checkout -B "$BRANCH" origin/main
+
+          # The concurrency group's FIFO is ordered by when each run started
+          # waiting, not by push time -- GitHub's docs explicitly say
+          # ordering isn't guaranteed. So an older commit's run can still
+          # execute after a newer commit's already merged. Guard against
+          # that regressing the deployed tag: if the tag already on main
+          # resolves to a commit that has this run's own commit as an
+          # ancestor (main is already at or ahead of us), skip instead of
+          # overwriting a newer deploy with an older one.
+          DEPLOYED_SHA=$(grep -oE 'healing-simulator:[0-9a-f]+' k8s/deployment.yaml | cut -d: -f2)
+          if [ -n "$DEPLOYED_SHA" ] && git cat-file -e "${DEPLOYED_SHA}^{commit}" 2>/dev/null; then
+            if git merge-base --is-ancestor "${{ github.sha }}" "$DEPLOYED_SHA"; then
+              echo "main is already deployed at $DEPLOYED_SHA (at or ahead of this run's commit ${{ github.sha }}). Skipping to avoid deploying a stale image."
+              exit 0
+            fi
+          fi
+
+          sed -i "s|ghcr.io/koydas/healing-simulator:.*|ghcr.io/koydas/healing-simulator:${{ steps.vars.outputs.sha }}|" k8s/deployment.yaml
           git add k8s/deployment.yaml
-          git diff --cached --quiet || git commit -m "chore: deploy ${{ steps.vars.outputs.sha }}"
-          git push
+          if git diff --cached --quiet; then
+            echo "No manifest change, skipping deploy PR."
+            exit 0
+          fi
+          git commit -m "chore: deploy ${{ steps.vars.outputs.sha }}"
+          # Force-push: BRANCH is deterministic per commit SHA, so a retry
+          # after a failed `gh pr create`/`gh pr merge` below must be able to
+          # overwrite a stale remote branch left over from the failed attempt
+          # instead of being rejected as non-fast-forward.
+          git push --force origin "HEAD:refs/heads/$BRANCH"
+          PR_NUMBER=$(gh pr list --head "$BRANCH" --base main --state open --json number --jq '.[0].number')
+          if [ -z "$PR_NUMBER" ]; then
+            gh pr create --base main --head "$BRANCH" \
+              --title "chore: deploy ${{ steps.vars.outputs.sha }}" \
+              --body "Automated image tag bump to ghcr.io/koydas/healing-simulator:${{ steps.vars.outputs.sha }}."
+          fi
+          gh pr merge "$BRANCH" --squash --delete-branch

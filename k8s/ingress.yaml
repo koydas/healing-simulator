@@ -1,0 +1,34 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: healing-simulator
+  labels:
+    app.kubernetes.io/name: healing-simulator
+spec:
+  # Adjust the IngressClass name to the target cluster (nginx, traefik, ...).
+  ingressClassName: nginx
+  rules:
+    - host: healing-simulator.local
+      http:
+        paths:
+          # Requests must reach the container at `/`. Serving under a sub-path
+          # requires BOTH an image built with `--build-arg BASE_PATH=/sim/` and
+          # an Ingress that strips the prefix while keeping the suffix:
+          #
+          #   annotations:
+          #     nginx.ingress.kubernetes.io/rewrite-target: /$2
+          #   paths:
+          #     - path: /sim(/|$)(.*)
+          #       pathType: ImplementationSpecific
+          #
+          # `rewrite-target: /` without the `$2` reference sends every request
+          # to `/`, assets included, and the app never boots. Either half alone
+          # leaves the browser asking for files the container does not serve.
+          # See docs/deployment.md and docs/adr/0011-root-relative-asset-base.md.
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: healing-simulator
+                port:
+                  name: http

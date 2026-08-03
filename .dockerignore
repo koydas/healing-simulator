@@ -1,0 +1,26 @@
+# Dependencies and local artefacts
+node_modules
+dist
+coverage
+.vite
+
+# Git and CI
+.git
+.github
+.gitignore
+
+# Docs and manifests not needed to build the image
+docs
+k8s
+README.md
+CHANGELOG.md
+LICENSE
+
+# Misc
+*.log
+npm-debug.log*
+.DS_Store
+.env
+.env.*
+Dockerfile
+.dockerignore

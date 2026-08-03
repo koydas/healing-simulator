@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <!--
+      No `maximum-scale` or `user-scalable=no`: pinch-to-zoom stays available,
+      because the smallest text in the interface is 9px and someone with low
+      vision has no other way to read it. The reason a tapping game usually
+      locks zoom — accidental double-tap zoom during fast casting — is already
+      handled by `touch-action: manipulation` on `body` and `button`.
+    -->
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, viewport-fit=cover"
+    />
+    <meta name="theme-color" content="#0d1017" />
+    <meta name="description" content="Party healer simulator — keep the group alive as long as you can." />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ctext y='26' font-size='26'%3E%F0%9F%92%9A%3C/text%3E%3C/svg%3E" />
+    <title>Healing Simulator</title>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

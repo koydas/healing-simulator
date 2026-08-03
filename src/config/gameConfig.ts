@@ -310,6 +310,19 @@ export const RAMP = {
   factor: 1.15,
 } as const;
 
+/**
+ * Outgoing damage from the party to the boss — game design (ADR-0017): no
+ * per-class attack is simulated, the tank and the three DPS are abstracted
+ * into one throughput, split evenly and reduced when a contributor dies.
+ * The healer never contributes: healing is the whole point of the game.
+ */
+export const PARTY_DAMAGE = {
+  /** Per contributing (non-healer) member, per tick. */
+  perMemberAmount: 3,
+  intervalMs: 1000,
+  firstAtMs: 1000,
+} as const;
+
 export const DEFAULT_ENEMY_ID: EnemyId = 'gorvath';
 
 /** The three selectable enemies, in the order shown on the selection screen. */
@@ -319,6 +332,7 @@ export const ENEMIES: Record<EnemyId, EncounterProfile> = {
     name: 'Gorvath the Cavebreaker',
     subtitle: 'Balanced pressure — steady melee, an occasional spike',
     level: PLAYER_LEVEL,
+    hpMax: 600,
     tankDamage: TANK_DAMAGE,
     aoeDamage: AOE_DAMAGE,
     spikeDamage: SPIKE_DAMAGE,
@@ -328,6 +342,7 @@ export const ENEMIES: Record<EnemyId, EncounterProfile> = {
     name: 'Skarn the Swarmcaller',
     subtitle: 'AoE-heavy — the whole party bleeds together',
     level: PLAYER_LEVEL,
+    hpMax: 550,
     tankDamage: SKARN_TANK_DAMAGE,
     aoeDamage: SKARN_AOE_DAMAGE,
     spikeDamage: SKARN_SPIKE_DAMAGE,
@@ -337,6 +352,7 @@ export const ENEMIES: Record<EnemyId, EncounterProfile> = {
     name: 'Threx the Impaler',
     subtitle: 'Burst — rare AoE, a spike that can drop a DPS in one hit',
     level: PLAYER_LEVEL,
+    hpMax: 460,
     tankDamage: THREX_TANK_DAMAGE,
     aoeDamage: THREX_AOE_DAMAGE,
     spikeDamage: THREX_SPIKE_DAMAGE,

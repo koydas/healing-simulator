@@ -14,6 +14,9 @@ export type SpellId = 'lesserHeal' | 'renew' | 'heal' | 'flashHeal' | 'prayerOfH
 
 export type GameStatus = 'active' | 'paused' | 'over';
 
+/** How a finished fight ended — `null` while `status !== 'over'`. */
+export type GameOutcome = 'wipe' | 'victory' | null;
+
 export type EnemyId = 'gorvath' | 'skarn' | 'threx';
 
 export interface DamageEvent {
@@ -39,6 +42,8 @@ export interface EncounterProfile {
   name: string;
   subtitle: string;
   level: number;
+  /** Designed health pool: no level 1 creature is a real boss, so nothing here is sourced. */
+  hpMax: number;
   tankDamage: DamageEvent;
   aoeDamage: DamageEvent;
   spikeDamage: SpikeEvent;
@@ -107,10 +112,13 @@ export interface GameTimers {
   aoeMs: number;
   /** Time left before the next spike. */
   spikeMs: number;
+  /** Time left before the party's next chunk of damage lands on the boss. */
+  partyDamageMs: number;
 }
 
 export interface GameState {
   status: GameStatus;
+  outcome: GameOutcome;
   /**
    * Healer level: gates which spells are available.
    * The stat tables currently only cover level 1.
@@ -124,6 +132,8 @@ export interface GameState {
   initialSeed: number;
   /** Damage profile of the enemy picked on the selection screen. */
   encounter: EncounterProfile;
+  /** Current boss health; starts at `encounter.hpMax`. */
+  bossHp: number;
   party: PartyMember[];
   selectedTargetId: string | null;
   mana: number;

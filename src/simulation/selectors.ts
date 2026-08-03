@@ -4,7 +4,7 @@
  */
 
 import { GCD_MS, SPELLS, SPELL_ORDER } from '../config/gameConfig';
-import type { FeedbackEvent, GameState, PartyMember, SpellId } from './types';
+import type { FeedbackEvent, GameOutcome, GameState, PartyMember, SpellId } from './types';
 
 export function getMember(state: GameState, id: string | null): PartyMember | undefined {
   if (!id) return undefined;
@@ -18,6 +18,11 @@ export function getAliveMembers(state: GameState): PartyMember[] {
 export function getHpRatio(member: PartyMember): number {
   if (member.hpMax <= 0) return 0;
   return Math.max(0, Math.min(1, member.hp / member.hpMax));
+}
+
+export function getBossHpRatio(state: GameState): number {
+  if (state.encounter.hpMax <= 0) return 0;
+  return Math.max(0, Math.min(1, state.bossHp / state.encounter.hpMax));
 }
 
 export function getManaRatio(state: GameState): number {
@@ -65,6 +70,7 @@ export interface SpellCastSummary {
 }
 
 export interface StatsSummary {
+  outcome: GameOutcome;
   durationMs: number;
   durationLabel: string;
   /** Effective healing per second. */
@@ -100,6 +106,7 @@ export function computeStatsSummary(state: GameState): StatsSummary {
   const nameById = new Map(state.party.map((member) => [member.id, member.name]));
 
   return {
+    outcome: state.outcome,
     durationMs,
     durationLabel: formatDuration(durationMs),
     hps: durationSeconds > 0 ? stats.effectiveHealing / durationSeconds : 0,

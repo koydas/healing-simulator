@@ -7,6 +7,14 @@ All notable changes to this project are recorded here, following
 
 ### Added
 
+- **The boss now has a health bar, and the fight can be won.** The tank and
+  the three DPS chip away at the boss automatically over the fight; a dead
+  contributor's share is not picked up by the survivors. The health bar sits
+  under the boss name in the header, and the end screen now shows "Victory"
+  (green) or "Wipe" (red) depending on which happened first. Calibrated per
+  enemy for a real mix of outcomes under naive play (Gorvath 7W/5L, Skarn
+  7W/5L, Threx 6W/6L across twelve seeds). See ADR-0017.
+
 - **Opening the app now offers a choice of three enemies, each showing its
   level.** Gorvath the Cavebreaker (balanced), Skarn the Swarmcaller
   (AoE-heavy) and Threx the Impaler (burst) are selectable encounters carried

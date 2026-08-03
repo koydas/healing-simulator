@@ -29,9 +29,15 @@ part of the contract that makes the game predictable:
 5. AoE damage;
 6. spike;
 7. death resolution;
-8. wipe check.
+8. wipe check;
+9. party damage on the boss;
+10. victory check.
 
-Expired feedback is pruned after step 8.
+Step 10 is a no-op once step 8 has already ended the fight this tick: a
+mutual kill (the boss and the tank dying on the same step) resolves as a
+wipe, not a victory. See [ADR-0017](./adr/0017-boss-health-and-victory.md).
+
+Expired feedback is pruned after step 10.
 
 Before step 1 the step updates `elapsedMs`, `damageMultiplier`,
 `gcdRemainingMs` and `msSinceLastCastStart` (the five-second rule counter).
@@ -87,6 +93,22 @@ multiplier = 1.15 ^ floor(elapsedMs / 30000)
 The final amount is rounded to the nearest integer (`Math.round`) before being
 applied. A spike that finds no valid target deals nothing but still reschedules
 the next one.
+
+## Boss health and outcome
+
+The tank and the three DPS deal `PARTY_DAMAGE.perMemberAmount` (3, designed)
+each, once per second (`timers.partyDamageMs`), to `state.bossHp` — the healer
+never contributes. A dead contributor's share is simply not dealt; the
+survivors do not pick up the slack. `state.bossHp` starts at
+`state.encounter.hpMax` and is clamped at 0.
+
+When it reaches 0 while the fight is still active, `status` becomes `'over'`
+and `state.outcome` becomes `'victory'` (step 10). The existing wipe check
+(step 8, tank death or `WIPE.maxDeaths`) sets `outcome` to `'wipe'` the same
+way; `outcome` is `null` for the whole fight until one of the two fires. See
+[ADR-0017](./adr/0017-boss-health-and-victory.md) for the calibration and the
+death-spiral dynamic this creates (fewer DPS alive → slower kill → more time
+for the ramp to finish the party).
 
 ## Cast rules
 
@@ -155,9 +177,14 @@ only Lesser Heal is available; the other buttons are visible but locked. See
 
 ## End of fight
 
-A wipe happens when the tank dies **or** when three members are dead. At that
-point the engine sets `status` to `over` and cancels the running cast. Nothing
-can happen afterwards: `stepSimulation` returns the state untouched.
+The fight ends in one of two ways, and `state.outcome` records which:
+
+- **Wipe** (`outcome: 'wipe'`) — the tank dies, **or** three members are dead.
+- **Victory** (`outcome: 'victory'`) — the boss's health reaches 0 while the
+  fight is still active (see "Boss health and outcome" above).
+
+Either way the engine sets `status` to `'over'` and cancels the running cast.
+Nothing can happen afterwards: `stepSimulation` returns the state untouched.
 
 ## Guaranteed invariants
 
@@ -174,7 +201,8 @@ can happen afterwards: `stepSimulation` returns the state untouched.
 | no progress while paused | `stepSimulation` guard clause |
 | same seed + same actions = same fight | seed inside the state |
 | no real timer in the business logic | no time API under `simulation/` |
-| no event after the wipe | `stepSimulation` guard clause |
+| no event after the fight ends (wipe or victory) | `stepSimulation` guard clause |
+| `bossHp` never negative | `applyPartyDamage` (clamp) |
 | no feedback memory leak | `pruneFeedback` + the `maxEntries` cap |
 
 ## Statistics
@@ -191,4 +219,5 @@ Overheal %  = overhealing / raw healing × 100
 Efficiency  = effective healing / mana spent
 ```
 
-All three are 0 when their denominator is zero.
+All three are 0 when their denominator is zero. `StatsSummary.outcome` mirrors
+`state.outcome`, so the end screen can title itself "Victory" or "Wipe".

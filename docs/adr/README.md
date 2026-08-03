@@ -20,6 +20,7 @@ Architecture Decision Records for the Healing Simulator.
 - [ADR-0014: `main` ruleset activated — deploy pipeline switches to an auto-merged PR](./0014-branch-protection-deploy-pr.md)
 - [ADR-0015: Spell buttons drop to 64 px and pack into one row on mobile](./0015-spell-buttons-64px-single-row-mobile.md)
 - [ADR-0016: A selection screen and three enemy encounters, carried in `GameState`](./0016-selectable-enemy-encounters.md)
+- [ADR-0017: The boss has a health bar, and the fight can now be won](./0017-boss-health-and-victory.md)
 
 ## Format
 

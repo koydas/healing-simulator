@@ -65,9 +65,11 @@ const GameOverDialog = memo(function GameOverDialog({
     };
   }, []);
 
+  const victory = summary.outcome === 'victory';
+
   return (
     <div
-      className="gameover"
+      className={`gameover${victory ? ' gameover--victory' : ''}`}
       role="dialog"
       aria-modal="true"
       aria-labelledby="gameover-title"
@@ -76,10 +78,10 @@ const GameOverDialog = memo(function GameOverDialog({
     >
       <div className="gameover__panel">
         <h2 className="gameover__title" id="gameover-title">
-          Wipe
+          {victory ? 'Victory' : 'Wipe'}
         </h2>
         <p className="gameover__duration">
-          Survived: <strong>{summary.durationLabel}</strong>
+          {victory ? 'Boss defeated in' : 'Survived'}: <strong>{summary.durationLabel}</strong>
         </p>
 
         <dl className="gameover__grid">

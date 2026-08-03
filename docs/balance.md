@@ -68,20 +68,29 @@ The melee cadence (2000 ms) is sourced — every level 1 creature swings at that
 rate — and identical across all three; every amount is designed. The ramp
 (`RAMP`, ×1.15 every 30 000 ms) is a single shared constant, not per-enemy.
 
-| Enemy | Tank melee | AoE | Spike |
-| --- | --- | --- | --- |
-| Gorvath the Cavebreaker (`TANK_DAMAGE` / `AOE_DAMAGE` / `SPIKE_DAMAGE`) | 8 every 2000 ms | 6 per member every 12 000 ms | 18, uniform [6000, 10 000) ms |
-| Skarn the Swarmcaller (`SKARN_*`) | 6 every 2000 ms | 8 per member every 9000 ms | 14, uniform [8000, 12 000) ms |
-| Threx the Impaler (`THREX_*`) | 9 every 2000 ms | 4 per member every 16 000 ms | 26, uniform [5000, 8000) ms |
+| Enemy | Health | Tank melee | AoE | Spike |
+| --- | --- | --- | --- | --- |
+| Gorvath the Cavebreaker (`TANK_DAMAGE` / `AOE_DAMAGE` / `SPIKE_DAMAGE`) | 600 | 8 every 2000 ms | 6 per member every 12 000 ms | 18, uniform [6000, 10 000) ms |
+| Skarn the Swarmcaller (`SKARN_*`) | 550 | 6 every 2000 ms | 8 per member every 9000 ms | 14, uniform [8000, 12 000) ms |
+| Threx the Impaler (`THREX_*`) | 460 | 9 every 2000 ms | 4 per member every 16 000 ms | 26, uniform [5000, 8000) ms |
 
 | Constant | Value | Nature |
 | --- | --- | --- |
 | `WIPE.maxDeaths` | 3 | designed |
+| `PARTY_DAMAGE.perMemberAmount` | 3, per contributing (non-healer) member, every 1000 ms | designed |
 
 Where the amounts come from: [classic-stats.md](./classic-stats.md#the-enemies)
 and [ADR-0010](./adr/0010-level-1-boss-profile.md) (Gorvath),
 [ADR-0016](./adr/0016-selectable-enemy-encounters.md) (Skarn, Threx, and the
-selection screen itself).
+selection screen itself), [ADR-0017](./adr/0017-boss-health-and-victory.md)
+(boss health, party damage output, and the victory condition).
+
+The tank and the three DPS deal `PARTY_DAMAGE` damage to the boss automatically,
+once a second; the healer never contributes, and a dead contributor's share is
+not picked up by the survivors. With all four alive that is 12 HP/s on the
+boss — enough to kill a 600 HP Gorvath in 50 s at full uptime, but losing even
+one DPS stretches that considerably (a death spiral: less boss damage → a
+longer fight → more time for the ramp to kill someone else).
 
 ## Orders of magnitude
 
@@ -105,7 +114,15 @@ Measured survival, all three enemies, eight fixed seeds (ADR-0016):
 | Threx | 20 s | 34 – 56 s |
 
 The ramp pushes pressure above sustainable healing after a few tiers, for
-every enemy: defeat is inevitable, only its timing changes.
+every enemy. Since ADR-0017 that is no longer automatically a loss: if the
+boss dies first, it is a win. Measured outcome distribution for the same
+naive healer, twelve fixed seeds (ADR-0017):
+
+| Enemy | Wins | Wipes |
+| --- | --- | --- |
+| Gorvath | 7 | 5 |
+| Skarn | 7 | 5 |
+| Threx | 6 | 6 |
 
 ## Feedback
 
@@ -129,11 +146,17 @@ the one you mean to retune.
 - **Change scale**: raise `PLAYER_LEVEL` — that unlocks spells, but the stat
   tables currently only cover level 1 (see
   [classic-stats.md](./classic-stats.md#levelling-up-later)).
-- **Add a fourth enemy**: give it an `EnemyId`, an `EncounterProfile` entry in
-  `ENEMIES`, and a slot in `ENEMY_ORDER`. Calibrate it the way ADR-0016 did —
-  the no-heal and naive-healer survival windows — before committing the
-  numbers.
+- **Easier to win**: lower an enemy's `hpMax`, or raise
+  `PARTY_DAMAGE.perMemberAmount`.
+- **Harder to win**: raise `hpMax`, but re-run the win/wipe sweep (ADR-0017) —
+  past a point the death spiral makes victory unreachable under naive play,
+  which is what happened at the first values tried (780/780/660: 0 wins in 12
+  seeds, on every enemy).
+- **Add a fourth enemy**: give it an `EnemyId`, an `EncounterProfile` entry
+  (including `hpMax`) in `ENEMIES`, and a slot in `ENEMY_ORDER`. Calibrate it
+  the way ADR-0016 and ADR-0017 did — the no-heal/naive-healer survival
+  windows, then the win/wipe distribution — before committing the numbers.
 
 After any change, run `npm test`: several tests rely on the nominal values
 (90 / 51 / 55 / 50 / 46 health, 8 / 6 / 18 damage for Gorvath — see
-`tests/encounter.test.ts` for the other two).
+`tests/encounter.test.ts` and `tests/bossHealth.test.ts` for the rest).

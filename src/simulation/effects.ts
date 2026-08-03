@@ -19,14 +19,22 @@ export function findMember(state: GameState, id: string | null): PartyMember | u
 /**
  * Rolls a healing amount inside the spell's range, like in Classic
  * ("Heals your target for 46 to 56").
+ *
+ * The draw is uniform over the `max - min + 1` inclusive integers: rounding a
+ * continuous sample instead would give each endpoint half the weight of an
+ * interior value (46 and 56 at ~5% against ~10% for 47-55).
+ *
  * Consumes the pseudo-random generator state as soon as the range holds more
  * than one value.
  */
 export function rollHealAmount(draft: GameState, healMin: number, healMax: number): number {
-  if (healMax <= healMin) return Math.round(healMin);
+  const min = Math.round(healMin);
+  const max = Math.round(healMax);
+  if (max <= min) return min;
+
   const { value, seed } = nextRandom(draft.seed);
   draft.seed = seed;
-  return Math.round(healMin + value * (healMax - healMin));
+  return Math.min(max, min + Math.floor(value * (max - min + 1)));
 }
 
 /**

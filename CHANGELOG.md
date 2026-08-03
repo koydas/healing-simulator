@@ -14,6 +14,10 @@ All notable changes to this project are recorded here, following
   fight statistics. `checkCast` now refuses with `You are dead`, and the
   healer's own death interrupts the running cast. HoTs applied while she was
   alive keep ticking, as in game.
+- **Healing rolls are uniform over the inclusive integer range.** Rounding a
+  continuous sample gave each endpoint half the weight of an interior value
+  (Lesser Heal landed on 46 or 56 about 5% of the time against 10% for 47-55).
+  The draw now picks uniformly among the `max - min + 1` outcomes.
 - **`engines.node` matches the locked toolchain.** The range advertised
   `>=20`, which accepts Node 20.0-20.18 and 22.0-22.11, while Vite 7.3.6
   requires `^20.19.0 || >=22.12.0`: installing on those versions succeeded with
@@ -57,7 +61,8 @@ All notable changes to this project are recorded here, following
   between **sourced**, **derived**, **approximated** and **designed** values.
 - ADR-0007 through ADR-0010 documenting those four decisions.
 - `tests/classicStats.test.ts`: 14 tests over the vanilla formulas, the derived
-  party health and the spell values (96 tests in total).
+  party health, the spell values and the healing roll distribution (99 tests
+  in total).
 
 ## [1.0.0] — 2026-08-02
 

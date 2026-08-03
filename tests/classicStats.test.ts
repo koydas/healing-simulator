@@ -15,6 +15,7 @@ import {
   maxManaAtLevel1,
 } from '../src/config/classicData';
 import { MANA, PARTY_TEMPLATE, PLAYER_LEVEL, SPELLS } from '../src/config/gameConfig';
+import { rollHealAmount } from '../src/simulation/effects';
 import { createInitialState } from '../src/simulation/initialState';
 import { memberOf } from './helpers';
 
@@ -133,5 +134,44 @@ describe('priest healing spells (rank 1)', () => {
 
   it('makes Prayer of Healing castable only with a pool far above level 1', () => {
     expect(SPELLS.prayerOfHealing.manaCost).toBeGreaterThan(MANA.max);
+  });
+});
+
+describe('healing rolls', () => {
+  /** Draws `count` Lesser Heal amounts through the engine's own roll. */
+  function rollMany(count: number): Map<number, number> {
+    const draft = createInitialState(4242);
+    const counts = new Map<number, number>();
+    for (let index = 0; index < count; index += 1) {
+      const amount = rollHealAmount(draft, SPELLS.lesserHeal.healMin, SPELLS.lesserHeal.healMax);
+      counts.set(amount, (counts.get(amount) ?? 0) + 1);
+    }
+    return counts;
+  }
+
+  it('covers every integer of the inclusive range, endpoints included', () => {
+    const counts = rollMany(2200);
+    for (let value = SPELLS.lesserHeal.healMin; value <= SPELLS.lesserHeal.healMax; value += 1) {
+      expect(counts.get(value) ?? 0).toBeGreaterThan(0);
+    }
+    expect(counts.size).toBe(SPELLS.lesserHeal.healMax - SPELLS.lesserHeal.healMin + 1);
+  });
+
+  it('gives the endpoints the same weight as the interior values', () => {
+    const counts = rollMany(2200);
+    const frequencies = [...counts.values()];
+    const min = Math.min(...frequencies);
+    const max = Math.max(...frequencies);
+
+    // Uniform over 11 values: ~200 draws each. Rounding a continuous sample
+    // would leave the two endpoints at roughly half that.
+    expect(min / max).toBeGreaterThan(0.7);
+  });
+
+  it('returns the single value of a zero-width range without consuming the seed', () => {
+    const draft = createInitialState(7);
+    const seedBefore = draft.seed;
+    expect(rollHealAmount(draft, 42, 42)).toBe(42);
+    expect(draft.seed).toBe(seedBefore);
   });
 });

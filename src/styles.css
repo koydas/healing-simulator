@@ -463,10 +463,11 @@ button {
 }
 
 .controls__spells {
-  /* Five spells: three per row on a phone, more on a wide screen. */
+  /* Five spells on a single row on a phone (see ADR-0015 for the 64 px
+     touch-target trade-off this relies on), more room on a wide screen. */
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(96px, 1fr));
-  gap: var(--gap);
+  grid-template-columns: repeat(auto-fit, minmax(64px, 1fr));
+  gap: 6px;
 }
 
 .spell {
@@ -476,9 +477,9 @@ button {
   align-items: center;
   justify-content: center;
   gap: 2px;
-  min-width: 72px;
-  min-height: 72px;
-  padding: 6px 4px;
+  min-width: 64px;
+  min-height: 64px;
+  padding: 4px;
   border: 1px solid var(--border-soft);
   border-radius: var(--radius);
   background: var(--bg-panel-alt);
@@ -670,6 +671,11 @@ button {
 
   .controls__spells {
     grid-template-columns: repeat(5, minmax(96px, 1fr));
+  }
+
+  .spell {
+    min-width: 96px;
+    min-height: 72px;
   }
 }
 

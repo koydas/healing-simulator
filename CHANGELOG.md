@@ -5,6 +5,13 @@ All notable changes to this project are recorded here, following
 
 ## [Unreleased]
 
+### Fixed
+
+- **All five party members now fit on an iPhone 13 mini without scrolling.**
+  Spell buttons drop from 72 × 72 px to 64 × 64 px and pack into a single row
+  instead of two on a phone, freeing ~88 px for the party. Desktop/landscape
+  keeps the original 72 px size. See ADR-0015.
+
 ### Added
 
 - **`main` is now branch-protected.** The repo's ruleset (PR required, no

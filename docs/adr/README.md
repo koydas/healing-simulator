@@ -18,6 +18,7 @@ Architecture Decision Records for the Healing Simulator.
 - [ADR-0012: GitOps deployment via GHCR image + ArgoCD git-source Application](./0012-gitops-deployment-via-ghcr.md)
 - [ADR-0013: Dedicated MetalLB IP alongside the Ingress](./0013-dedicated-metallb-ip.md)
 - [ADR-0014: `main` ruleset activated — deploy pipeline switches to an auto-merged PR](./0014-branch-protection-deploy-pr.md)
+- [ADR-0015: Spell buttons drop to 64 px and pack into one row on mobile](./0015-spell-buttons-64px-single-row-mobile.md)
 
 ## Format
 

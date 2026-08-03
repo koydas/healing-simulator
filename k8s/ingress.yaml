@@ -11,6 +11,9 @@ spec:
     - host: healing-simulator.local
       http:
         paths:
+          # Requests must reach the container at `/`. Serving under a sub-path
+          # requires either an Ingress that strips the prefix, or a build made
+          # with `vite build --base=/<prefix>/` — see docs/deployment.md.
           - path: /
             pathType: Prefix
             backend:

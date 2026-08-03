@@ -90,7 +90,13 @@ button {
   flex-direction: column;
   gap: var(--gap);
   padding: 0 var(--gap);
-  overflow: hidden;
+  /* Short viewports — small phones, landscape — leave less room than the five
+     64 px frames need. The party scrolls rather than being clipped: with
+     `hidden` the lower members were drawn outside the visible area and could
+     not be tapped to be healed. */
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
 }
 
 /* --------------------------------------------------------------- Header -- */

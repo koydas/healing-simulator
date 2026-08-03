@@ -18,6 +18,17 @@ All notable changes to this project are recorded here, following
   continuous sample gave each endpoint half the weight of an interior value
   (Lesser Heal landed on 46 or 56 about 5% of the time against 10% for 47-55).
   The draw now picks uniformly among the `max - min + 1` outcomes.
+- **The party list scrolls on short viewports.** `.app__main` used
+  `overflow: hidden`, and the page itself cannot scroll: on a 320 × 568 phone
+  204 px of the party were clipped (279 px in landscape), leaving the lower
+  members drawn outside the visible area and impossible to tap — so they could
+  not be selected for healing. The region is now `overflow-y: auto`.
+- **Sub-path deployment is documented accurately.** `base: './'` was described
+  as working "behind a path prefix" without qualification. It only does when
+  the Ingress strips the prefix; an Ingress forwarding `/sim/` makes the
+  browser fetch `/sim/assets/…`, which the SPA catch-all answers with
+  `index.html`. `docs/deployment.md` now lists the three setups and the two
+  supported fixes.
 - **`engines.node` matches the locked toolchain.** The range advertised
   `>=20`, which accepts Node 20.0-20.18 and 22.0-22.11, while Vite 7.3.6
   requires `^20.19.0 || >=22.12.0`: installing on those versions succeeded with

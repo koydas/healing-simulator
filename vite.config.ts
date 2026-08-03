@@ -3,8 +3,11 @@ import { defineConfig } from 'vitest/config';
 
 export default defineConfig({
   plugins: [react()],
-  // Relative paths: the app works both at the domain root and under an
-  // Ingress sub-path.
+  // Relative asset paths. They work at the domain root and behind an Ingress
+  // that strips its prefix before forwarding (the common `rewrite-target: /`
+  // setup). An Ingress that forwards `/sim/` intact would make the browser
+  // request `/sim/assets/...`, which the container does not serve — build with
+  // `vite build --base=/sim/` for that case. See docs/deployment.md.
   base: './',
   build: {
     outDir: 'dist',

@@ -57,7 +57,7 @@ paths, provided as `emptyDir` volumes:
 | --- | --- |
 | `k8s/deployment.yaml` | 2 replicas, non-root context (uid/gid 101), `drop: ALL` capabilities, `allowPrivilegeEscalation: false`, `seccompProfile: RuntimeDefault`, startup / readiness / liveness probes on `/health`, requests & limits |
 | `k8s/service.yaml` | `ClusterIP`, port 80 → the named `http` port (8080) |
-| `k8s/ingress.yaml` | host `healing-simulator.local`, `pathType: Prefix`, `ingressClassName: nginx` |
+| `k8s/ingress.yaml` | host `healing-simulator.home`, `pathType: Prefix`, `ingressClassName: nginx` |
 
 ```bash
 kubectl apply -f k8s/
@@ -65,9 +65,18 @@ kubectl rollout status deployment/healing-simulator
 kubectl port-forward svc/healing-simulator 8080:80
 ```
 
-### What to adjust before applying
+### Automated build and deploy (this cluster)
 
-1. `k8s/deployment.yaml` → `image:` (your real registry and tag);
+`image:` in `k8s/deployment.yaml` tracks `ghcr.io/koydas/healing-simulator`,
+rewritten to the built commit SHA by `.github/workflows/docker-publish.yml` on
+every push to `main` (see ADR-0012). An ArgoCD git-source Application in
+`gitops-homelab` (`apps/healing-simulator/application.yaml`) syncs that commit
+onto the cluster automatically — no manual `kubectl apply` needed for this
+deployment.
+
+### What to adjust before applying elsewhere
+
+1. `k8s/deployment.yaml` → `image:` (your own registry and tag);
 2. `k8s/ingress.yaml` → the cluster's `host:` and `ingressClassName:`;
 3. the namespace, if you are not using `default`
    (`kubectl apply -n <ns> -f k8s/`).

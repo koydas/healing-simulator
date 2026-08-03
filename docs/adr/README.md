@@ -15,6 +15,7 @@ Architecture Decision Records for the Healing Simulator.
 - [ADR-0009: Vanilla mana regeneration — 2 s ticks and the five-second rule](./0009-vanilla-mana-regen-five-second-rule.md)
 - [ADR-0010: Level 1 boss profile — what is sourced, what is designed](./0010-level-1-boss-profile.md)
 - [ADR-0011: Root-relative asset base](./0011-root-relative-asset-base.md)
+- [ADR-0012: GitOps deployment via GHCR image + ArgoCD git-source Application](./0012-gitops-deployment-via-ghcr.md)
 
 ## Format
 

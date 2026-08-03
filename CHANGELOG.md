@@ -5,6 +5,14 @@ All notable changes to this project are recorded here, following
 
 ## [Unreleased]
 
+### Added
+
+- **Automated GHCR publishing and cluster deployment.** `.github/workflows/docker-publish.yml`
+  builds and pushes the image to `ghcr.io/koydas/healing-simulator` on every
+  push to `main` and commits the built tag into `k8s/deployment.yaml`, which an
+  ArgoCD git-source Application in `gitops-homelab` syncs onto the cluster at
+  `healing-simulator.home`. See ADR-0012.
+
 ### Fixed
 
 - **The wipe screen now takes keyboard focus.** It carried `role="dialog"` and

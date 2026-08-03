@@ -8,7 +8,7 @@ spec:
   # Adjust the IngressClass name to the target cluster (nginx, traefik, ...).
   ingressClassName: nginx
   rules:
-    - host: healing-simulator.local
+    - host: healing-simulator.home
       http:
         paths:
           # Requests must reach the container at `/`. Serving under a sub-path

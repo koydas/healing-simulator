@@ -64,6 +64,13 @@ against roughly 15 HP/s sustainable — holdable at first, doomed in the long ru
 - **Raising the party's health to compensate** — rejected: that would throw away
   the stat fidelity gained in ADR-0007.
 
+> Update (ADR-0017): the boss now has a health pool too, and the party (tank +
+> DPS) chips away at it over the fight. "Doomed in the long run" and "holdable
+> at first" described a fight that could only ever end in a wipe — that is no
+> longer true, a fast enough kill now ends it in a win instead. The profile
+> and its measurements above are unchanged; only the possible outcomes are not
+> the ones described here anymore.
+
 ## Consequences
 
 - ✅ The fight remains a fight, at a credible level 1 scale.

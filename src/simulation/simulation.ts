@@ -15,12 +15,19 @@
  *   6. spike
  *   7. death resolution
  *   8. wipe check
+ *   9. party damage on the boss
+ *   10. victory check
+ *
+ * Wipe is checked before victory: a mutual kill (the boss dies the same tick
+ * the tank does) resolves as a wipe, and step 10 is a no-op once step 8 has
+ * already ended the fight.
  */
 
 import {
   CANCEL_MESSAGE,
   CAST_IDLE_CAP_MS,
   MANA,
+  PARTY_DAMAGE,
   PLAYER_MEMBER_ID,
   RAMP,
   SPELLS,
@@ -184,6 +191,31 @@ function checkWipe(draft: GameState): void {
   if (!tankDead && deathCount < WIPE.maxDeaths) return;
 
   draft.status = 'over';
+  draft.outcome = 'wipe';
+  cancelActiveCast(draft);
+}
+
+/**
+ * The tank and the three DPS chip away at the boss; the healer never
+ * contributes. A dead contributor's share is simply not dealt — no
+ * make-up damage from the survivors.
+ */
+function applyPartyDamage(draft: GameState, dtMs: number): void {
+  draft.timers.partyDamageMs -= dtMs;
+  while (draft.timers.partyDamageMs <= 0) {
+    const contributors = draft.party.filter(
+      (member) => member.alive && member.role !== 'healer',
+    ).length;
+    draft.bossHp = Math.max(0, draft.bossHp - PARTY_DAMAGE.perMemberAmount * contributors);
+    draft.timers.partyDamageMs += PARTY_DAMAGE.intervalMs;
+  }
+}
+
+function checkVictory(draft: GameState): void {
+  if (draft.status !== 'active' || draft.bossHp > 0) return;
+
+  draft.status = 'over';
+  draft.outcome = 'victory';
   cancelActiveCast(draft);
 }
 
@@ -213,6 +245,8 @@ export function stepSimulation(state: GameState, dtMs: number): GameState {
   applySpikeDamage(draft, dtMs);
   resolveDeaths(draft);
   checkWipe(draft);
+  applyPartyDamage(draft, dtMs);
+  checkVictory(draft);
   pruneFeedback(draft);
 
   return draft;

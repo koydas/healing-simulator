@@ -102,13 +102,19 @@ button {
 /* --------------------------------------------------------------- Header -- */
 
 .header {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px var(--gap);
+  background: var(--bg-panel);
+  border-bottom: 1px solid var(--border-soft);
+}
+
+.header__top {
   display: grid;
   grid-template-columns: 1fr auto auto;
   align-items: center;
   gap: var(--gap);
-  padding: 10px var(--gap);
-  background: var(--bg-panel);
-  border-bottom: 1px solid var(--border-soft);
 }
 
 .header__name {
@@ -168,6 +174,43 @@ button {
 .header__pause:disabled {
   opacity: 0.4;
   cursor: default;
+}
+
+.header__bossbar {
+  position: relative;
+  height: 16px;
+  border-radius: 6px;
+  background: #0a0d13;
+  overflow: hidden;
+}
+
+.header__bossbar-fill {
+  /* Red while the boss is strong: the opposite reading of a party HP bar,
+     where red means danger. Here red fading out is good news. */
+  height: 100%;
+  background: var(--danger);
+  transition: width 200ms linear;
+}
+
+.header__bossbar-fill--half {
+  background: var(--hp-warning);
+}
+
+.header__bossbar-fill--near-death {
+  background: var(--hp-full);
+}
+
+.header__bossbar-label {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--text);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.6);
 }
 
 /* ---------------------------------------------------------------- Party -- */
@@ -661,6 +704,10 @@ button {
   font-size: 24px;
   color: var(--danger);
   letter-spacing: 0.08em;
+}
+
+.gameover--victory .gameover__title {
+  color: var(--hp-full);
 }
 
 .gameover__duration {

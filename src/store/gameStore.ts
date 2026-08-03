@@ -32,6 +32,7 @@ import {
 import { createInitialState } from '../simulation/initialState';
 import {
   computeStatsSummary,
+  getBossHpRatio,
   getGlobalMessages,
   getHpRatio,
   getMemberFeedback,
@@ -62,6 +63,10 @@ export interface HeaderSnapshot {
   bossName: string;
   bossSubtitle: string;
   bossLevel: number;
+  bossHp: number;
+  bossHpMax: number;
+  bossHpRatio: number;
+  bossHpPercent: number;
   playerLevel: number;
   status: GameStatus;
   timeLabel: string;
@@ -181,10 +186,15 @@ export function createGameStore(initialSeed: number, enemyId: EnemyId): GameStor
     const totalSeconds = Math.floor(state.elapsedMs / 1000);
     const minutes = Math.floor(totalSeconds / 60);
     const seconds = totalSeconds % 60;
+    const bossHpRatio = getBossHpRatio(state);
     return {
       bossName: state.encounter.name,
       bossSubtitle: state.encounter.subtitle,
       bossLevel: state.encounter.level,
+      bossHp: Math.round(state.bossHp),
+      bossHpMax: state.encounter.hpMax,
+      bossHpRatio,
+      bossHpPercent: Math.round(bossHpRatio * 100),
       playerLevel: state.playerLevel,
       status: state.status,
       timeLabel: `${minutes}:${String(seconds).padStart(2, '0')}`,

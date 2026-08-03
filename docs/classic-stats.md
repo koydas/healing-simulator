@@ -141,6 +141,15 @@ three share the sourced 2000 ms melee cadence; only the amounts differ, and
 all three stay inside the [6, 12] bracket those measurements define for a
 single swing.
 
+Since ADR-0017 every enemy also has a health pool, and the fight can end in a
+victory: the tank and the three DPS deal a designed amount of damage to it
+automatically over the fight (the healer never contributes). No level 1
+creature's health is usable here either — the "Health, median 64" measurement
+above describes an ordinary level 1 creature being killed by a full group in
+seconds, not a fight balanced around a single healer — so, like the damage
+amounts, every enemy's `hpMax` is Designed and calibrated by simulation
+rather than sourced.
+
 ## Sourced, derived, or designed
 
 This is the section to read before quoting any number from this project.
@@ -183,6 +192,13 @@ This is the section to read before quoting any number from this project.
     a DPS's health in one hit.
 - **Ramp ×1.15 every 30 s.** A mechanic of the game mode, shared by every
   enemy rather than a property of one.
+- **Boss health per enemy: Gorvath 600, Skarn 550, Threx 460.** No level 1
+  creature's health applies to a boss balanced around a single healer; each
+  value was found by simulating the naive-healer win/wipe distribution
+  (ADR-0017), not measured from a source.
+- **Outgoing party damage: 3 per contributing member, every second.** No
+  per-class attack is simulated; the tank and three DPS are abstracted into
+  one throughput.
 - **Wipe conditions** (tank death or three deaths).
 - **Party composition**, character names, and the three enemies' names and
   selection-screen descriptions.
@@ -209,6 +225,14 @@ targets the single lowest-HP ally than steady single-target pressure is. See
 With a single spell available, the difficulty comes mostly from **triage** —
 one Lesser Heal every 1.5 s cannot follow two low targets at once.
 
+Since [ADR-0017](./adr/0017-boss-health-and-victory.md), "survival" is no
+longer the only measure: if the boss's health reaches 0 before a wipe
+condition does, the fight is won. The same naive healer, twelve seeds,
+produces a real mix rather than a guaranteed outcome either way — Gorvath 7
+wins / 5 wipes, Skarn 7/5, Threx 6/6 — because a dead DPS both slows the boss
+kill down and does not slow the incoming damage down, a death spiral that
+punishes losing party members twice over.
+
 ## Levelling up later
 
 The level is a `GameState` field (`playerLevel`) and a configuration constant
@@ -231,4 +255,5 @@ health, mana and amounts.
 - [ADR-0009](./adr/0009-vanilla-mana-regen-five-second-rule.md) — vanilla regeneration
 - [ADR-0010](./adr/0010-level-1-boss-profile.md) — level 1 boss profile
 - [ADR-0016](./adr/0016-selectable-enemy-encounters.md) — the selection screen and the other two enemies
+- [ADR-0017](./adr/0017-boss-health-and-victory.md) — boss health, party damage output, and the victory condition
 - [balance.md](./balance.md) — constant reference

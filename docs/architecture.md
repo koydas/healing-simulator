@@ -73,7 +73,10 @@ handle it:
    is kept**. Components subscribe through `useSyncExternalStore`: React
    compares the reference and only re-renders what actually changed. A party
    frame therefore re-renders only when its health, alive state, Renew,
-   selection or feedback changes.
+   selection or feedback changes. The boss health bar (ADR-0017) rides
+   `HeaderSnapshot` rather than a `useFrame` CSS-variable channel: it only
+   changes once a second (`PARTY_DAMAGE.intervalMs`), the same cadence the
+   header's timer label already re-renders on.
 3. **Continuous values outside React.** Mana, cast progress and GCD progress
    change on every step: they are written straight into **CSS variables**
    (`--mana-fill`, `--cast-progress`, `--gcd-progress`) and a `textContent`

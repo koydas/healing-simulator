@@ -29,10 +29,13 @@ Activate the ruleset (`enforcement: active`, no bypass actors) and change the
 direct push to a same-repo branch + PR + immediate squash-merge:
 
 ```bash
-git checkout -b "deploy/${sha}"
+git fetch origin main
+git checkout -B "deploy/${sha}" origin/main   # live main tip, not this job's trigger commit
+sed -i "s|...:.*|...:${sha}|" k8s/deployment.yaml
 git commit -m "chore: deploy ${sha}"
-git push origin "deploy/${sha}"
-gh pr create --base main --head "deploy/${sha}" ...
+git push --force origin "HEAD:refs/heads/deploy/${sha}"   # retry-safe: branch name is deterministic
+PR_NUMBER=$(gh pr list --head "deploy/${sha}" --base main --state open --json number --jq '.[0].number')
+[ -z "$PR_NUMBER" ] && gh pr create --base main --head "deploy/${sha}" ...
 gh pr merge "deploy/${sha}" --squash --delete-branch
 ```
 
@@ -42,6 +45,14 @@ workflow is still fully automated, it just goes through the PR API instead of
 a raw `git push`. `main` stays genuinely protected against a direct push or
 force-push from anywhere else (a human's laptop, a leaked token, a different
 workflow), which is what the ruleset in place from repo creation was for.
+
+Branching from `origin/main`'s live tip (not the job's triggering commit) and
+force-pushing by deterministic branch name are both retry/concurrency
+correctness fixes found in review after this ADR was first written — see the
+PR #2 review thread for the two failure modes (a stale trigger-commit base
+conflicting with an already-merged tag bump; a non-fast-forward rejection on
+retry after a failed `gh pr create`/`gh pr merge`) — folded into this recipe
+rather than given their own ADR, since they don't change the decision itself.
 
 ## Alternatives Considered
 

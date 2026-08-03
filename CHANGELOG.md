@@ -24,15 +24,17 @@ All notable changes to this project are recorded here, following
 
 ### Fixed
 
-- **A shared `?seed=` URL now replays against the right enemy, and stays
-  accurate through a rematch.** The enemy selection screen ignored `?enemy=`
-  entirely, so a link to a Skarn or Threx fight still landed on the picker and
-  could replay against a different encounter — breaking the exact-replay
-  contract from ADR-0005. `App` now reads `?enemy=` on load
-  (`readInitialEnemyId`) and writes both `seed` and `enemy` back into the URL
-  once a fight starts, and again on every "New fight" (a rematch rolls a fresh
-  seed, which was still left stale in the address bar after the first fix).
-  Caught by Codex review on #6, in two rounds.
+- **A shared `?seed=` URL now replays against the right enemy, stays accurate
+  through a rematch, and stops recycling randomness across "Choose another
+  enemy."** The enemy selection screen ignored `?enemy=` entirely, so a link
+  to a Skarn or Threx fight still landed on the picker and could replay
+  against a different encounter — breaking the exact-replay contract from
+  ADR-0005. `App` now reads `?enemy=` on load (`readInitialEnemyId`) and
+  writes both `seed` and `enemy` back into the URL once a fight starts, again
+  on every "New fight" (a rematch rolls a fresh seed), and clears both when
+  returning to the picker (otherwise the completed fight's seed silently got
+  reused for the next enemy). Caught by Codex review on #6, across three
+  rounds.
 
 - **All five party members now fit on an iPhone 13 mini without scrolling.**
   Spell buttons drop from 72 × 72 px to 64 × 64 px and pack into a single row

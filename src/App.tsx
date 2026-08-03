@@ -61,6 +61,21 @@ function syncFightUrl(seed: number, enemyId: EnemyId): void {
   window.history.replaceState(null, '', url);
 }
 
+/**
+ * Clears `seed` and `enemy` from the URL when returning to the selection
+ * screen. Without this, the completed fight's `seed` stayed in the URL and
+ * `readInitialSeed()` silently reused it for whichever enemy was picked
+ * next — every "Choose another enemy" replayed the same randomness instead
+ * of rolling a fresh one.
+ */
+function clearFightUrl(): void {
+  if (typeof window === 'undefined') return;
+  const url = new URL(window.location.href);
+  url.searchParams.delete('seed');
+  url.searchParams.delete('enemy');
+  window.history.replaceState(null, '', url);
+}
+
 interface FightProps {
   enemyId: EnemyId;
   /** Back to the enemy selection screen — tears the store down entirely. */
@@ -121,5 +136,10 @@ export default function App() {
     return <EnemySelect onSelect={setEnemyId} />;
   }
 
-  return <Fight key={enemyId} enemyId={enemyId} onChangeEnemy={() => setEnemyId(null)} />;
+  const handleChangeEnemy = () => {
+    clearFightUrl();
+    setEnemyId(null);
+  };
+
+  return <Fight key={enemyId} enemyId={enemyId} onChangeEnemy={handleChangeEnemy} />;
 }

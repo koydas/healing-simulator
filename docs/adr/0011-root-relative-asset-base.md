@@ -44,8 +44,17 @@ Build with `base: '/'`. `index.html` emits `/assets/index-<hash>.js`, which
 resolves identically whatever URL served the document, so the SPA fallback
 boots the application instead of a blank page.
 
-Sub-path deployments build for their prefix — `npm run build -- --base=/sim/`
-— **and** pair it with an Ingress that strips the prefix.
+Sub-path deployments build for their prefix **and** pair it with an Ingress
+that strips the prefix while preserving the suffix. Both halves have a shape
+that is easy to get subtly wrong, so they are spelled out in
+`docs/deployment.md`:
+
+- the prefix reaches the image through `--build-arg BASE_PATH=/sim/`, not
+  through a host-side `npm run build -- --base=/sim/` — `dist/` is in
+  `.dockerignore`, so a host build never enters the image;
+- the Ingress needs `rewrite-target: /$2` against `path: /sim(/|$)(.*)`.
+  `rewrite-target: /` rewrites every request to `/`, assets included, which
+  reproduces exactly the blank page this ADR is about.
 
 ## Alternatives Considered
 

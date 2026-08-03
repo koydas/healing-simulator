@@ -110,9 +110,47 @@ a JavaScript request with `index.html`, and the browser refuses it with a
 MIME-type complaint in the console. Nothing else is logged.
 
 So, to serve under a sub-path: **build for the prefix and strip it at the
-Ingress** — `npm run build -- --base=/sim/`, plus
-`nginx.ingress.kubernetes.io/rewrite-target: /` with a capture group in the
-path. Both halves are required; either one alone lands on a ❌ row above.
+Ingress.** Both halves are required; either one alone lands on a ❌ row above.
+
+**1. Build the image for the prefix.** `dist/` is in `.dockerignore` and the
+image builds its own, so running `npm run build -- --base=/sim/` on the host
+before `docker build` changes nothing — the image would still ask for
+`/assets/…`. Pass the prefix into the build instead:
+
+```bash
+docker build --build-arg BASE_PATH=/sim/ -t healing-simulator:sim .
+```
+
+`BASE_PATH` defaults to `/`, so an ordinary `docker build` keeps the root
+behaviour.
+
+**2. Strip the prefix at the Ingress**, preserving the suffix. The capture group
+has to be *referenced* in the rewrite target: `rewrite-target: /` alone sends
+every request to `/`, including `/sim/assets/index-*.js`, which then gets
+`index.html` back — the same blank page this section is about.
+
+```yaml
+metadata:
+  annotations:
+    # /$2 is the capture group from the path below. Not just `/`.
+    nginx.ingress.kubernetes.io/rewrite-target: /$2
+spec:
+  rules:
+    - host: healing-simulator.example.com
+      http:
+        paths:
+          # (/|$)(.*) makes $2 the remainder after the prefix.
+          - path: /sim(/|$)(.*)
+            pathType: ImplementationSpecific   # regex paths need this
+            backend:
+              service:
+                name: healing-simulator
+                port:
+                  name: http
+```
+
+`/sim/assets/index-abc.js` then reaches the container as `/assets/index-abc.js`,
+which `location /assets/` serves, and `/sim/` reaches it as `/`.
 
 An Ingress that forwards the prefix intact is not supported by this container.
 Teaching Nginx to map `/<prefix>/assets/…` back onto `/assets/…` with a regex

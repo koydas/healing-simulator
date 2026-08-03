@@ -7,6 +7,17 @@ All notable changes to this project are recorded here, following
 
 ### Fixed
 
+- **The sub-path deployment recipe now works end to end.** Both halves
+  documented alongside ADR-0011 were wrong in practice. The image ignored a
+  host-side `npm run build -- --base=/sim/`, because `dist/` is in
+  `.dockerignore` and the build stage rebuilt with the default base — the
+  Dockerfile now takes a `BASE_PATH` build argument (`docker build --build-arg
+  BASE_PATH=/sim/ .`), defaulting to `/`. And the Ingress annotation
+  `rewrite-target: /` rewrote *every* request to `/`, assets included, so the
+  documented setup served `index.html` for `/sim/assets/index-*.js` and the app
+  never booted; the capture group has to be referenced, `rewrite-target: /$2`
+  against `path: /sim(/|$)(.*)` with `pathType: ImplementationSpecific`.
+
 - **Pinch-to-zoom works again.** The viewport meta carried `maximum-scale=1.0`
   and `user-scalable=no`, which disables pinch zoom on browsers that honour it
   (Android Chrome; iOS Safari has ignored it since iOS 10). The smallest text in

@@ -11,11 +11,18 @@ WORKDIR /app
 COPY package.json package-lock.json ./
 RUN npm ci
 
+# Asset prefix baked into index.html. The default `/` suits a deployment at the
+# domain root. Serving under a sub-path needs the image itself rebuilt —
+# `docker build --build-arg BASE_PATH=/sim/ .` — because the build happens here:
+# `dist/` is in .dockerignore, so a `dist` produced on the host never reaches
+# the image. See docs/deployment.md.
+ARG BASE_PATH=/
+
 # Sources, then build (typecheck is part of `npm run build`).
 COPY tsconfig.json vite.config.ts index.html ./
 COPY src ./src
 COPY tests ./tests
-RUN npm test && npm run build
+RUN npm test && npm run build -- --base="${BASE_PATH}"
 
 # ---------------------------------------------------------------------------
 # Stage 2 — serve the static files with Nginx, non-root on port 8080

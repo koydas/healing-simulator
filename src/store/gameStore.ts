@@ -13,7 +13,6 @@
  */
 
 import {
-  BOSS,
   CLASS_LABELS,
   RACE_LABELS,
   ROLE_LABELS,
@@ -33,6 +32,7 @@ import {
 import { createInitialState } from '../simulation/initialState';
 import {
   computeStatsSummary,
+  getBossHpRatio,
   getGlobalMessages,
   getHpRatio,
   getMemberFeedback,
@@ -40,7 +40,7 @@ import {
   type StatsSummary,
 } from '../simulation/selectors';
 import { stepSimulation } from '../simulation/simulation';
-import type { FeedbackEvent, GameState, GameStatus, Role, SpellId } from '../simulation/types';
+import type { EnemyId, FeedbackEvent, GameState, GameStatus, Role, SpellId } from '../simulation/types';
 
 export interface MemberSnapshot {
   id: string;
@@ -61,7 +61,12 @@ export interface MemberSnapshot {
 
 export interface HeaderSnapshot {
   bossName: string;
+  bossSubtitle: string;
   bossLevel: number;
+  bossHp: number;
+  bossHpMax: number;
+  bossHpRatio: number;
+  bossHpPercent: number;
   playerLevel: number;
   status: GameStatus;
   timeLabel: string;
@@ -102,7 +107,7 @@ export interface GameStore {
   cast(spellId: SpellId): void;
   cancel(): void;
   toggle(): void;
-  restart(seed: number): void;
+  restart(seed: number, enemyId: EnemyId): void;
   getMemberIds(): string[];
   getMemberSnapshot(memberId: string): MemberSnapshot;
   getHeaderSnapshot(): HeaderSnapshot;
@@ -143,8 +148,8 @@ function castLabel(castTimeMs: number): string {
   return castTimeMs <= 0 ? 'Instant' : `${(castTimeMs / 1000).toFixed(1)} s`;
 }
 
-export function createGameStore(initialSeed: number): GameStore {
-  let state: GameState = createInitialState(initialSeed);
+export function createGameStore(initialSeed: number, enemyId: EnemyId): GameStore {
+  let state: GameState = createInitialState(initialSeed, undefined, enemyId);
 
   const listeners = new Set<() => void>();
   const frameListeners = new Set<(state: GameState) => void>();
@@ -181,9 +186,15 @@ export function createGameStore(initialSeed: number): GameStore {
     const totalSeconds = Math.floor(state.elapsedMs / 1000);
     const minutes = Math.floor(totalSeconds / 60);
     const seconds = totalSeconds % 60;
+    const bossHpRatio = getBossHpRatio(state);
     return {
-      bossName: BOSS.name,
-      bossLevel: BOSS.level,
+      bossName: state.encounter.name,
+      bossSubtitle: state.encounter.subtitle,
+      bossLevel: state.encounter.level,
+      bossHp: Math.round(state.bossHp),
+      bossHpMax: state.encounter.hpMax,
+      bossHpRatio,
+      bossHpPercent: Math.round(bossHpRatio * 100),
       playerLevel: state.playerLevel,
       status: state.status,
       timeLabel: `${minutes}:${String(seconds).padStart(2, '0')}`,
@@ -323,8 +334,8 @@ export function createGameStore(initialSeed: number): GameStore {
       setState(togglePause(state));
     },
 
-    restart(seed) {
-      const next = restartGame(seed);
+    restart(seed, enemyId) {
+      const next = restartGame(seed, enemyId);
       memberIds = next.party.map((member) => member.id);
       memberSnapshots = new Map();
       setState(next);

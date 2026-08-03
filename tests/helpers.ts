@@ -37,7 +37,7 @@ export function patchMember(
 /** Pushes every timeline event far away, to isolate one behaviour. */
 export function isolateTimers(state: GameState, ms = 10_000_000): GameState {
   const draft = cloneState(state);
-  draft.timers = { manaTickMs: ms, tankDamageMs: ms, aoeMs: ms, spikeMs: ms };
+  draft.timers = { manaTickMs: ms, tankDamageMs: ms, aoeMs: ms, spikeMs: ms, partyDamageMs: ms };
   return draft;
 }
 

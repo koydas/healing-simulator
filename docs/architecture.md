@@ -19,6 +19,17 @@ Dependencies point **strictly downwards**: `simulation/` never imports
 `store/`, `hooks/` or `components/`. The engine is therefore usable — and
 tested — without React or a DOM.
 
+## Before the fight
+
+`App` renders `EnemySelect` — three cards (name, level, one-line profile)
+built from `ENEMIES` / `ENEMY_ORDER` in `gameConfig.ts` — until the player
+picks an enemy. No `GameStoreContext` exists yet at that point; `App` only
+mounts `Fight` (the former `App` body: the store, the game loop, the layout)
+once a choice is made, passing the chosen `EnemyId` into
+`createGameStore(seed, enemyId)`. The game-over screen's "Choose another
+enemy" button unmounts `Fight`, tearing the store down, and returns to
+`EnemySelect`. See [ADR-0016](./adr/0016-selectable-enemy-encounters.md).
+
 `classicData.ts` is the bottom layer: it depends on nothing and holds only
 sourced values plus the game's official formulas. `gameConfig.ts` derives every
 balance constant from it (see [classic-stats.md](./classic-stats.md)).
@@ -62,7 +73,10 @@ handle it:
    is kept**. Components subscribe through `useSyncExternalStore`: React
    compares the reference and only re-renders what actually changed. A party
    frame therefore re-renders only when its health, alive state, Renew,
-   selection or feedback changes.
+   selection or feedback changes. The boss health bar (ADR-0017) rides
+   `HeaderSnapshot` rather than a `useFrame` CSS-variable channel: it only
+   changes once a second (`PARTY_DAMAGE.intervalMs`), the same cadence the
+   header's timer label already re-renders on.
 3. **Continuous values outside React.** Mana, cast progress and GCD progress
    change on every step: they are written straight into **CSS variables**
    (`--mana-fill`, `--cast-progress`, `--gcd-progress`) and a `textContent`

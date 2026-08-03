@@ -6,6 +6,7 @@ import type { StatsSummary } from '../simulation/selectors';
 
 interface GameOverProps {
   onRestart: () => void;
+  onChangeEnemy: () => void;
 }
 
 const integer = new Intl.NumberFormat('en-US', { maximumFractionDigits: 0 });
@@ -16,16 +17,17 @@ const decimal = new Intl.NumberFormat('en-US', { maximumFractionDigits: 2 });
  * focus effect runs on mount — which is exactly when the wipe happens — instead
  * of being skipped by an early `return null`.
  */
-export const GameOver = memo(function GameOver({ onRestart }: GameOverProps) {
+export const GameOver = memo(function GameOver({ onRestart, onChangeEnemy }: GameOverProps) {
   const summary = useSummarySnapshot();
 
   if (!summary) return null;
-  return <GameOverDialog summary={summary} onRestart={onRestart} />;
+  return <GameOverDialog summary={summary} onRestart={onRestart} onChangeEnemy={onChangeEnemy} />;
 });
 
 const GameOverDialog = memo(function GameOverDialog({
   summary,
   onRestart,
+  onChangeEnemy,
 }: GameOverProps & { summary: StatsSummary }) {
   const header = useHeaderSnapshot();
   const dialogRef = useRef<HTMLDivElement>(null);
@@ -63,9 +65,11 @@ const GameOverDialog = memo(function GameOverDialog({
     };
   }, []);
 
+  const victory = summary.outcome === 'victory';
+
   return (
     <div
-      className="gameover"
+      className={`gameover${victory ? ' gameover--victory' : ''}`}
       role="dialog"
       aria-modal="true"
       aria-labelledby="gameover-title"
@@ -74,10 +78,10 @@ const GameOverDialog = memo(function GameOverDialog({
     >
       <div className="gameover__panel">
         <h2 className="gameover__title" id="gameover-title">
-          Wipe
+          {victory ? 'Victory' : 'Wipe'}
         </h2>
         <p className="gameover__duration">
-          Survived: <strong>{summary.durationLabel}</strong>
+          {victory ? 'Boss defeated in' : 'Survived'}: <strong>{summary.durationLabel}</strong>
         </p>
 
         <dl className="gameover__grid">
@@ -147,7 +151,10 @@ const GameOverDialog = memo(function GameOverDialog({
         <p className="gameover__seed">Seed: {header.seed}</p>
 
         <button type="button" className="gameover__restart" onClick={onRestart}>
-          New fight
+          New fight — {header.bossName}
+        </button>
+        <button type="button" className="gameover__change-enemy" onClick={onChangeEnemy}>
+          Choose another enemy
         </button>
       </div>
     </div>

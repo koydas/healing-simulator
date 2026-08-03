@@ -5,7 +5,36 @@ All notable changes to this project are recorded here, following
 
 ## [Unreleased]
 
+### Added
+
+- **The boss now has a health bar, and the fight can be won.** The tank and
+  the three DPS chip away at the boss automatically over the fight; a dead
+  contributor's share is not picked up by the survivors. The health bar sits
+  under the boss name in the header, and the end screen now shows "Victory"
+  (green) or "Wipe" (red) depending on which happened first. Calibrated per
+  enemy for a real mix of outcomes under naive play (Gorvath 7W/5L, Skarn
+  7W/5L, Threx 6W/6L across twelve seeds). See ADR-0017.
+
+- **Opening the app now offers a choice of three enemies, each showing its
+  level.** Gorvath the Cavebreaker (balanced), Skarn the Swarmcaller
+  (AoE-heavy) and Threx the Impaler (burst) are selectable encounters carried
+  in `GameState`, calibrated to a comparable difficulty band. The game-over
+  screen can return to the selection screen ("Choose another enemy") as well
+  as start a same-enemy rematch. See ADR-0016.
+
 ### Fixed
+
+- **A shared `?seed=` URL now replays against the right enemy, stays accurate
+  through a rematch, and stops recycling randomness across "Choose another
+  enemy."** The enemy selection screen ignored `?enemy=` entirely, so a link
+  to a Skarn or Threx fight still landed on the picker and could replay
+  against a different encounter — breaking the exact-replay contract from
+  ADR-0005. `App` now reads `?enemy=` on load (`readInitialEnemyId`) and
+  writes both `seed` and `enemy` back into the URL once a fight starts, again
+  on every "New fight" (a rematch rolls a fresh seed), and clears both when
+  returning to the picker (otherwise the completed fight's seed silently got
+  reused for the next enemy). Caught by Codex review on #6, across three
+  rounds.
 
 - **All five party members now fit on an iPhone 13 mini without scrolling.**
   Spell buttons drop from 72 × 72 px to 64 × 64 px and pack into a single row

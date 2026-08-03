@@ -19,8 +19,11 @@ Without the parameter the seed comes from `Date.now()` — **the only use of the
 real clock outside the game loop**, and it happens on mount, never inside the
 engine. The current seed is displayed on the end screen.
 
-`readInitialSeed()` in `App.tsx` is the only function that reads the URL; the
-engine only ever sees the number it is handed.
+`readInitialSeed()` in `App.tsx` reads the URL; the engine only ever sees the
+number it is handed. Since the enemy selection screen (ADR-0016),
+`readInitialEnemyId()` reads `?enemy=` the same way, and `Fight` writes both
+`seed` and `enemy` back into the URL on mount — the seed alone stopped
+identifying a fight uniquely once more than one enemy existed to pick from.
 
 ## Alternatives Considered
 

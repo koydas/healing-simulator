@@ -8,6 +8,7 @@
 import {
   CANCEL_MESSAGE,
   GCD_MS,
+  PLAYER_LEVEL,
   PLAYER_MEMBER_ID,
   REFUSAL_MESSAGES,
   SPELLS,
@@ -18,7 +19,7 @@ import { applySpellEffect, findMember } from './effects';
 import { pushFeedback } from './feedback';
 import { cloneState, createInitialState } from './initialState';
 import { cancelActiveCast } from './simulation';
-import type { GameState, SpellId } from './types';
+import type { EnemyId, GameState, SpellId } from './types';
 
 export interface CastCheck {
   allowed: boolean;
@@ -144,7 +145,7 @@ export function togglePause(state: GameState): GameState {
   return state;
 }
 
-/** Starts a new fight with the given seed. */
-export function restartGame(seed: number): GameState {
-  return createInitialState(seed);
+/** Starts a new fight with the given seed and enemy. */
+export function restartGame(seed: number, enemyId: EnemyId): GameState {
+  return createInitialState(seed, PLAYER_LEVEL, enemyId);
 }

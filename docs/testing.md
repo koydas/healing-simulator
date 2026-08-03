@@ -17,7 +17,9 @@ time mocking is needed — `stepSimulation` takes the delta as a parameter.
 | `tests/classicStats.test.ts` | vanilla formulas, party health and mana, rank 1 spell values |
 | `tests/random.test.ts` | PRNG purity, `nextRange` / `nextInt` bounds, seed normalisation |
 | `tests/determinism.test.ts` | seed + action replayability, non-mutation, time slicing |
-| `tests/damage.test.ts` | tank damage, AoE, spike selection and rescheduling, ramp |
+| `tests/damage.test.ts` | tank damage, AoE, spike selection and rescheduling, ramp (Gorvath, the default enemy) |
+| `tests/encounter.test.ts` | enemy selection: `ENEMY_ORDER`/`ENEMIES` shape, `state.encounter` per enemy, per-enemy damage applied, `restartGame` with an explicit enemy, determinism per enemy |
+| `tests/bossHealth.test.ts` | boss health per enemy, party damage per tick (scaled by alive contributors, healer excluded), clamped at 0, victory sets `outcome`/cancels the cast, a simultaneous tank+boss death resolves as a wipe, no event after the fight ends, both outcomes reachable through the real cast/select/step path |
 | `tests/spells.test.ts` | level gating, cost, GCD, refusals, cast resolution, Renew, cancellation, five-second rule |
 | `tests/healing.test.ts` | effective healing vs overhealing, `hpMax` clamp, dead targets, HPS / efficiency |
 | `tests/wipe.test.ts` | wipe conditions, freeze after a wipe, pause, invariants over a full fight |
@@ -67,6 +69,14 @@ The React layer has no automated tests. To verify it:
 npm run build && npm run preview
 ```
 
-Things to check: selecting a frame, the refusal message shown when tapping an
-unavailable spell, the cast bar and `Cancel` button, GCD progress across the
-five buttons, the end screen and then "New fight".
+Things to check: the enemy selection screen on load (three cards, each with a
+level), `?seed=1&enemy=skarn` skipping straight to that fight, picking an
+enemy from the screen rewriting the URL to `?seed=…&enemy=…` afterwards,
+selecting a frame, the refusal message shown when tapping an unavailable
+spell, the cast bar and `Cancel` button, GCD progress across the five
+buttons, the boss health bar draining over the fight, the end screen titled
+"Victory" or "Wipe" depending on which happened, "New fight" (same enemy, new
+seed — and the URL's `seed` updating to match), and "Choose another enemy"
+(back to the selection screen, with `seed` and `enemy` cleared from the URL —
+picking a new enemy afterwards must roll a fresh seed, not reuse the
+completed fight's).

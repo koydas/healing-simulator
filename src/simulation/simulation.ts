@@ -15,18 +15,22 @@
  *   6. spike
  *   7. death resolution
  *   8. wipe check
+ *   9. party damage on the boss
+ *   10. victory check
+ *
+ * Wipe is checked before victory: a mutual kill (the boss dies the same tick
+ * the tank does) resolves as a wipe, and step 10 is a no-op once step 8 has
+ * already ended the fight.
  */
 
 import {
-  AOE_DAMAGE,
   CANCEL_MESSAGE,
   CAST_IDLE_CAP_MS,
   MANA,
+  PARTY_DAMAGE,
   PLAYER_MEMBER_ID,
   RAMP,
   SPELLS,
-  SPIKE_DAMAGE,
-  TANK_DAMAGE,
   WIPE,
 } from '../config/gameConfig';
 import { applyDamageTo, applyHealTo, applySpellEffect, findMember } from './effects';
@@ -113,29 +117,32 @@ function regenerateMana(draft: GameState, dtMs: number): void {
 }
 
 function applyTankDamage(draft: GameState, dtMs: number): void {
+  const { tankDamage } = draft.encounter;
   draft.timers.tankDamageMs -= dtMs;
   while (draft.timers.tankDamageMs <= 0) {
     const tank = draft.party.find((member) => member.role === 'tank');
     if (tank) {
-      applyDamageTo(draft, tank, TANK_DAMAGE.amount);
+      applyDamageTo(draft, tank, tankDamage.amount);
     }
-    draft.timers.tankDamageMs += TANK_DAMAGE.intervalMs;
+    draft.timers.tankDamageMs += tankDamage.intervalMs;
   }
 }
 
 function applyAoeDamage(draft: GameState, dtMs: number): void {
+  const { aoeDamage } = draft.encounter;
   draft.timers.aoeMs -= dtMs;
   while (draft.timers.aoeMs <= 0) {
     for (const member of draft.party) {
       if (member.alive) {
-        applyDamageTo(draft, member, AOE_DAMAGE.amount);
+        applyDamageTo(draft, member, aoeDamage.amount);
       }
     }
-    draft.timers.aoeMs += AOE_DAMAGE.intervalMs;
+    draft.timers.aoeMs += aoeDamage.intervalMs;
   }
 }
 
 function applySpikeDamage(draft: GameState, dtMs: number): void {
+  const { spikeDamage } = draft.encounter;
   draft.timers.spikeMs -= dtMs;
   while (draft.timers.spikeMs <= 0) {
     const candidates = draft.party.filter((member) => member.alive && member.role !== 'tank');
@@ -143,10 +150,10 @@ function applySpikeDamage(draft: GameState, dtMs: number): void {
     if (candidates.length > 0) {
       const pick = nextInt(draft.seed, candidates.length);
       draft.seed = pick.seed;
-      applyDamageTo(draft, candidates[pick.value], SPIKE_DAMAGE.amount);
+      applyDamageTo(draft, candidates[pick.value], spikeDamage.amount);
     }
 
-    const interval = nextRange(draft.seed, SPIKE_DAMAGE.minIntervalMs, SPIKE_DAMAGE.maxIntervalMs);
+    const interval = nextRange(draft.seed, spikeDamage.minIntervalMs, spikeDamage.maxIntervalMs);
     draft.seed = interval.seed;
     draft.timers.spikeMs += interval.value;
   }
@@ -184,6 +191,31 @@ function checkWipe(draft: GameState): void {
   if (!tankDead && deathCount < WIPE.maxDeaths) return;
 
   draft.status = 'over';
+  draft.outcome = 'wipe';
+  cancelActiveCast(draft);
+}
+
+/**
+ * The tank and the three DPS chip away at the boss; the healer never
+ * contributes. A dead contributor's share is simply not dealt — no
+ * make-up damage from the survivors.
+ */
+function applyPartyDamage(draft: GameState, dtMs: number): void {
+  draft.timers.partyDamageMs -= dtMs;
+  while (draft.timers.partyDamageMs <= 0) {
+    const contributors = draft.party.filter(
+      (member) => member.alive && member.role !== 'healer',
+    ).length;
+    draft.bossHp = Math.max(0, draft.bossHp - PARTY_DAMAGE.perMemberAmount * contributors);
+    draft.timers.partyDamageMs += PARTY_DAMAGE.intervalMs;
+  }
+}
+
+function checkVictory(draft: GameState): void {
+  if (draft.status !== 'active' || draft.bossHp > 0) return;
+
+  draft.status = 'over';
+  draft.outcome = 'victory';
   cancelActiveCast(draft);
 }
 
@@ -213,6 +245,8 @@ export function stepSimulation(state: GameState, dtMs: number): GameState {
   applySpikeDamage(draft, dtMs);
   resolveDeaths(draft);
   checkWipe(draft);
+  applyPartyDamage(draft, dtMs);
+  checkVictory(draft);
   pruneFeedback(draft);
 
   return draft;

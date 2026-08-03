@@ -10,13 +10,19 @@
 │ store/gameStore.ts — source de vérité mutable + snapshots     │  Pont
 ├───────────────────────────────────────────────────────────────┤
 │ simulation/  — moteur pur : stepSimulation, actions, effets   │  Moteur
-│ config/      — constantes de balance                          │
+│ config/gameConfig    — constantes de balance (dérivées)       │
+│ config/classicData   — données WoW Classic 1.12 + formules    │  Données
 └───────────────────────────────────────────────────────────────┘
 ```
 
 La dépendance est **strictement descendante** : `simulation/` n'importe jamais
 `store/`, `hooks/` ou `components/`. Le moteur est donc utilisable — et testé —
 sans React ni DOM.
+
+`classicData.ts` est la couche la plus basse : elle ne dépend de rien et ne
+contient que des valeurs sourcées et les formules officielles du jeu.
+`gameConfig.ts` en dérive toutes les constantes de balance
+(voir [classic-stats.md](./classic-stats.md)).
 
 ## Modules du moteur
 

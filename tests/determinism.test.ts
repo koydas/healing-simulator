@@ -8,17 +8,18 @@ import { advance } from './helpers';
 
 /** Rejoue une partie scriptée : mêmes actions, aux mêmes pas de simulation. */
 function playScriptedGame(seed: number, steps = 600): GameState {
-  let state = createInitialState(seed);
+  // Niveau 20 : le script peut enchaîner plusieurs familles de sorts.
+  let state = createInitialState(seed, 20);
 
   for (let step = 0; step < steps; step += 1) {
     if (step === 3) state = selectTarget(state, 'tank');
-    if (step === 4) state = castSpell(state, 'greater');
+    if (step === 4) state = castSpell(state, 'heal');
     if (step === 40) state = castSpell(state, 'renew');
     if (step === 60) state = selectTarget(state, 'dps2');
-    if (step === 61) state = castSpell(state, 'flash');
-    if (step === 120) state = castSpell(state, 'group');
+    if (step === 61) state = castSpell(state, 'flashHeal');
+    if (step === 120) state = castSpell(state, 'lesserHeal');
     if (step === 200) state = selectTarget(state, 'healer');
-    if (step === 201) state = castSpell(state, 'greater');
+    if (step === 201) state = castSpell(state, 'lesserHeal');
     state = stepSimulation(state, TICK_MS);
   }
 

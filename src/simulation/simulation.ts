@@ -97,12 +97,19 @@ function tickHots(draft: GameState, dtMs: number): void {
   }
 }
 
+/**
+ * Régénération de mana à la vanilla : un palier toutes les 2 secondes, et la
+ * règle des cinq secondes qui suspend totalement la part liée à l'esprit
+ * pendant 5 s après chaque dépense de mana.
+ */
 function regenerateMana(draft: GameState, dtMs: number): void {
-  const enhanced =
-    draft.activeCast === null && draft.msSinceLastCastStart >= MANA.enhancedRegenDelayMs;
-  const perSecond = enhanced ? MANA.enhancedRegenPerSecond : MANA.regenPerSecond;
-  const gain = (perSecond * dtMs) / 1000;
-  draft.mana = Math.min(draft.manaMax, Math.max(0, draft.mana + gain));
+  draft.timers.manaTickMs -= dtMs;
+  while (draft.timers.manaTickMs <= 0) {
+    if (draft.msSinceLastCastStart >= MANA.fiveSecondRuleMs) {
+      draft.mana = Math.min(draft.manaMax, Math.max(0, draft.mana + MANA.perTick));
+    }
+    draft.timers.manaTickMs += MANA.tickMs;
+  }
 }
 
 function applyTankDamage(draft: GameState, dtMs: number): void {

@@ -10,6 +10,10 @@ Architecture Decision Records du Healing Simulator.
 - [ADR-0004: Store externe et snapshots mémoïsés pour isoler les rendus React](./0004-external-store-memoized-snapshots.md)
 - [ADR-0005: Aucune persistance — seed rejouable par paramètre d'URL](./0005-no-persistence-url-seed.md)
 - [ADR-0006: Conteneur Nginx non-root sur le port 8080 avec fallback SPA](./0006-nonroot-nginx-container.md)
+- [ADR-0007: Stats dérivées des tables et formules de WoW Classic (niveau 1)](./0007-classic-derived-stats.md)
+- [ADR-0008: Sorts réels du prêtre et verrouillage par niveau d'apprentissage](./0008-classic-spellbook-level-gating.md)
+- [ADR-0009: Régénération de mana vanilla — paliers de 2 s et règle des cinq secondes](./0009-vanilla-mana-regen-five-second-rule.md)
+- [ADR-0010: Profil du boss de niveau 1 — part sourcée, part conçue](./0010-level-1-boss-profile.md)
 
 ## Format
 

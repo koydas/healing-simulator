@@ -18,7 +18,9 @@ export const Header = memo(function Header() {
   return (
     <header className="header">
       <div className="header__boss">
-        <h1 className="header__name">{header.bossName}</h1>
+        <h1 className="header__name">
+          {header.bossName} <span className="header__level">niv. {header.bossLevel}</span>
+        </h1>
         <p className="header__subtitle">{BOSS.subtitle}</p>
       </div>
 

@@ -1,6 +1,6 @@
 /** Utilitaires partagés par les tests du moteur (aucun DOM requis). */
 
-import { TICK_MS } from '../src/config/gameConfig';
+import { MANA, TICK_MS } from '../src/config/gameConfig';
 import { cloneState } from '../src/simulation/initialState';
 import { stepSimulation } from '../src/simulation/simulation';
 import type { GameState, PartyMember } from '../src/simulation/types';
@@ -37,13 +37,22 @@ export function patchMember(
 /** Repousse tous les événements de la timeline pour isoler un comportement. */
 export function isolateTimers(state: GameState, ms = 10_000_000): GameState {
   const draft = cloneState(state);
-  draft.timers = { tankDamageMs: ms, aoeMs: ms, spikeMs: ms };
+  draft.timers = { manaTickMs: ms, tankDamageMs: ms, aoeMs: ms, spikeMs: ms };
   return draft;
 }
 
-/** Force les compteurs de temps de la simulation. */
+/** Force n'importe quel champ du state. */
 export function patchState(state: GameState, patch: Partial<GameState>): GameState {
   return { ...cloneState(state), ...patch };
+}
+
+/**
+ * Débloque les sorts de haut niveau et donne assez de mana pour les lancer.
+ * Les tables de stats ne couvrant que le niveau 1, seul le gating des sorts
+ * change : les PV et la régénération restent ceux du niveau 1.
+ */
+export function unlockAllSpells(state: GameState, mana = 1000): GameState {
+  return patchState(state, { playerLevel: 60, mana, manaMax: Math.max(mana, MANA.max) });
 }
 
 /** Somme des HP du groupe (utile pour détecter un événement de dégâts). */

@@ -10,6 +10,7 @@ import {
   GCD_MS,
   REFUSAL_MESSAGES,
   SPELLS,
+  isSpellUnlocked,
   type CastRefusalReason,
 } from '../config/gameConfig';
 import { applySpellEffect, findMember } from './effects';
@@ -34,6 +35,8 @@ export function checkCast(state: GameState, spellId: SpellId): CastCheck {
   if (state.status !== 'active') return { allowed: false, reason: 'paused' };
   if (state.activeCast) return { allowed: false, reason: 'casting' };
   if (state.gcdRemainingMs > 0) return { allowed: false, reason: 'gcd' };
+  // Le sort doit être appris : au niveau 1, seul Lesser Heal l'est.
+  if (!isSpellUnlocked(spell, state.playerLevel)) return { allowed: false, reason: 'level' };
 
   if (spell.requiresTarget) {
     const target = findMember(state, state.selectedTargetId);

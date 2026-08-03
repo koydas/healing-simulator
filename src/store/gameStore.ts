@@ -14,9 +14,12 @@
 
 import {
   BOSS,
+  CLASS_LABELS,
+  RACE_LABELS,
   ROLE_LABELS,
   SPELLS,
   SPELL_ORDER,
+  isSpellUnlocked,
   type CastRefusalReason,
 } from '../config/gameConfig';
 import {
@@ -44,6 +47,8 @@ export interface MemberSnapshot {
   name: string;
   role: Role;
   roleLabel: string;
+  /** « Nain · Guerrier » — race et classe Classic du personnage. */
+  classLabel: string;
   hp: number;
   hpMax: number;
   hpRatio: number;
@@ -56,6 +61,8 @@ export interface MemberSnapshot {
 
 export interface HeaderSnapshot {
   bossName: string;
+  bossLevel: number;
+  playerLevel: number;
   status: GameStatus;
   timeLabel: string;
   damageMultiplier: number;
@@ -66,6 +73,11 @@ export interface HeaderSnapshot {
 export interface SpellSnapshot {
   id: SpellId;
   name: string;
+  rank: number;
+  /** Niveau d'apprentissage du sort en Classic. */
+  requiredLevel: number;
+  /** Vrai tant que le soigneur n'a pas le niveau requis. */
+  locked: boolean;
   manaCost: number;
   castLabel: string;
   description: string;
@@ -153,6 +165,7 @@ export function createGameStore(initialSeed: number): GameStore {
       name: member.name,
       role: member.role,
       roleLabel: ROLE_LABELS[member.role],
+      classLabel: `${RACE_LABELS[member.race]} · ${CLASS_LABELS[member.classId]}`,
       hp: Math.round(member.hp),
       hpMax: member.hpMax,
       hpRatio: ratio,
@@ -170,6 +183,8 @@ export function createGameStore(initialSeed: number): GameStore {
     const seconds = totalSeconds % 60;
     return {
       bossName: BOSS.name,
+      bossLevel: BOSS.level,
+      playerLevel: state.playerLevel,
       status: state.status,
       timeLabel: `${minutes}:${String(seconds).padStart(2, '0')}`,
       damageMultiplier: Math.round(state.damageMultiplier * 100) / 100,
@@ -185,6 +200,9 @@ export function createGameStore(initialSeed: number): GameStore {
       return {
         id: spell.id,
         name: spell.name,
+        rank: spell.rank,
+        requiredLevel: spell.requiredLevel,
+        locked: !isSpellUnlocked(spell, state.playerLevel),
         manaCost: spell.manaCost,
         castLabel: castLabel(spell.castTimeMs),
         description: spell.description,

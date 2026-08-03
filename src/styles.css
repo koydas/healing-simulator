@@ -112,6 +112,13 @@ button {
   line-height: 1.2;
 }
 
+.header__level {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-dim);
+  white-space: nowrap;
+}
+
 .header__subtitle {
   margin: 2px 0 0;
   font-size: 11px;
@@ -218,6 +225,14 @@ button {
   font-size: 11px;
   text-transform: uppercase;
   letter-spacing: 0.04em;
+}
+
+.frame__class {
+  font-size: 10px;
+  color: var(--text-dim);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .frame__renew {
@@ -438,8 +453,9 @@ button {
 }
 
 .controls__spells {
+  /* Cinq sorts : trois par ligne sur téléphone, davantage sur grand écran. */
   display: grid;
-  grid-template-columns: repeat(4, minmax(72px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(96px, 1fr));
   gap: var(--gap);
 }
 
@@ -465,6 +481,18 @@ button {
 
 .spell--disabled {
   opacity: 0.45;
+}
+
+.spell--locked {
+  border-style: dashed;
+  opacity: 0.35;
+}
+
+.spell__lock {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-dim);
+  letter-spacing: 0.04em;
 }
 
 .spell__gcd {
@@ -631,7 +659,7 @@ button {
   }
 
   .controls__spells {
-    grid-template-columns: repeat(4, minmax(96px, 1fr));
+    grid-template-columns: repeat(5, minmax(96px, 1fr));
   }
 }
 

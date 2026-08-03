@@ -13,7 +13,7 @@ import {
   getMemberFeedback,
   getRenewEffect,
 } from '../src/simulation/selectors';
-import { advance, isolateTimers, memberOf, patchMember } from './helpers';
+import { advance, isolateTimers, memberOf, patchMember, unlockAllSpells } from './helpers';
 
 describe('sélecteurs', () => {
   it('formate une durée', () => {
@@ -43,10 +43,10 @@ describe('sélecteurs', () => {
     expect(getHpRatio(memberOf(state, 'tank'))).toBe(1);
     expect(getManaRatio(state)).toBe(1);
 
-    state = patchMember(state, 'tank', { hp: 2000 });
+    state = patchMember(state, 'tank', { hp: memberOf(state, 'tank').hpMax / 4 });
     expect(getHpRatio(memberOf(state, 'tank'))).toBe(0.25);
 
-    state = { ...state, mana: 2500 };
+    state = { ...state, mana: state.manaMax / 4 };
     expect(getManaRatio(state)).toBe(0.25);
   });
 
@@ -54,10 +54,10 @@ describe('sélecteurs', () => {
     let state = isolateTimers(createInitialState(1));
     expect(getCastProgress(state)).toBe(0);
 
-    state = castSpell(state, 'greater');
+    state = castSpell(state, 'lesserHeal');
     expect(getCastProgress(state)).toBe(0);
 
-    state = advance(state, 1000);
+    state = advance(state, 600);
     expect(getCastProgress(state)).toBeCloseTo(0.4, 6);
   });
 
@@ -65,7 +65,7 @@ describe('sélecteurs', () => {
     let state = isolateTimers(createInitialState(1));
     expect(getGcdProgress(state)).toBe(1);
 
-    state = castSpell(state, 'renew');
+    state = castSpell(unlockAllSpells(state), 'renew');
     expect(getGcdProgress(state)).toBe(0);
 
     state = advance(state, 600);
@@ -76,9 +76,9 @@ describe('sélecteurs', () => {
   });
 
   it('expose le Renew actif', () => {
-    let state = isolateTimers(createInitialState(1));
+    let state = unlockAllSpells(isolateTimers(createInitialState(1)));
     state = selectTarget(state, 'dps3');
-    state = patchMember(state, 'dps3', { hp: 100 });
+    state = patchMember(state, 'dps3', { hp: 10 });
     state = castSpell(state, 'renew');
 
     expect(getRenewEffect(memberOf(state, 'dps3'))?.ticksRemaining).toBe(5);
@@ -87,27 +87,27 @@ describe('sélecteurs', () => {
 
   it('sépare les feedbacks par cible et les messages globaux', () => {
     let state = isolateTimers(createInitialState(1));
-    state = patchMember(state, 'tank', { hp: 1000 });
-    state = castSpell(state, 'greater');
-    state = advance(state, 2500);
+    state = patchMember(state, 'tank', { hp: 10 });
+    state = castSpell(state, 'lesserHeal');
+    state = advance(state, 1500);
 
     expect(getMemberFeedback(state, 'tank').length).toBeGreaterThan(0);
     expect(getMemberFeedback(state, 'dps1')).toHaveLength(0);
 
     // Sort instantané puis second lancement : refusé pour cause de GCD.
-    const refused = castSpell(castSpell(state, 'renew'), 'flash');
+    const refused = castSpell(castSpell(unlockAllSpells(state), 'renew'), 'lesserHeal');
     expect(getGlobalMessages(refused).at(-1)?.text).toBe('GCD actif');
   });
 
   it('purge les feedbacks expirés', () => {
-    let state = isolateTimers(createInitialState(1));
-    state = patchMember(state, 'healer', { hp: 1000 });
+    let state = unlockAllSpells(isolateTimers(createInitialState(1)));
+    state = patchMember(state, 'healer', { hp: 10 });
     state = selectTarget(state, 'healer');
     state = castSpell(state, 'renew');
-    state = advance(state, 2000);
+    state = advance(state, 3000);
     expect(getMemberFeedback(state, 'healer').length).toBeGreaterThan(0);
 
-    state = advance(state, 2000);
+    state = advance(state, 3000);
     // Le tick suivant a produit un nouveau feedback, mais l'ancien a expiré.
     expect(state.feedback.every((event) => event.expiresAtMs > state.elapsedMs)).toBe(true);
   });

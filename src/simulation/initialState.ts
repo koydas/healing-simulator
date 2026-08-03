@@ -7,31 +7,33 @@
 
 import {
   AOE_DAMAGE,
-  BASE_HP,
   DEFAULT_SEED,
   MANA,
   PARTY_TEMPLATE,
+  PLAYER_LEVEL,
   SPELL_ORDER,
   SPIKE_DAMAGE,
   TANK_DAMAGE,
-  TANK_HP_MULTIPLIER,
 } from '../config/gameConfig';
 import { nextRange, normalizeSeed } from './random';
 import type { GameStats, GameState, PartyMember } from './types';
 
+/**
+ * Groupe de départ : PV issus des formules vanilla (voir `classicData.ts`),
+ * jamais écrits en dur.
+ */
 function createParty(): PartyMember[] {
-  return PARTY_TEMPLATE.map((template) => {
-    const hpMax = template.role === 'tank' ? BASE_HP * TANK_HP_MULTIPLIER : BASE_HP;
-    return {
-      id: template.id,
-      name: template.name,
-      role: template.role,
-      hpMax,
-      hp: hpMax,
-      alive: true,
-      hots: [],
-    };
-  });
+  return PARTY_TEMPLATE.map((template) => ({
+    id: template.id,
+    name: template.name,
+    role: template.role,
+    race: template.race,
+    classId: template.classId,
+    hpMax: template.hpMax,
+    hp: template.hpMax,
+    alive: true,
+    hots: [],
+  }));
 }
 
 export function createEmptyStats(): GameStats {
@@ -60,12 +62,16 @@ export function createEmptyStats(): GameStats {
  * Le premier spike est planifié immédiatement à partir de la seed : c'est le
  * seul tirage aléatoire effectué avant le premier pas de simulation.
  */
-export function createInitialState(seed: number = DEFAULT_SEED): GameState {
+export function createInitialState(
+  seed: number = DEFAULT_SEED,
+  playerLevel: number = PLAYER_LEVEL,
+): GameState {
   const initialSeed = normalizeSeed(seed);
   const firstSpike = nextRange(initialSeed, SPIKE_DAMAGE.minIntervalMs, SPIKE_DAMAGE.maxIntervalMs);
 
   return {
     status: 'active',
+    playerLevel,
     elapsedMs: 0,
     seed: firstSpike.seed,
     initialSeed,
@@ -74,10 +80,11 @@ export function createInitialState(seed: number = DEFAULT_SEED): GameState {
     mana: MANA.initial,
     manaMax: MANA.max,
     gcdRemainingMs: 0,
-    // Aucun sort n'a encore été lancé : la régénération améliorée est active.
-    msSinceLastCastStart: MANA.enhancedRegenDelayMs,
+    // Aucune mana dépensée : la règle des cinq secondes ne s'applique pas.
+    msSinceLastCastStart: MANA.fiveSecondRuleMs,
     activeCast: null,
     timers: {
+      manaTickMs: MANA.tickMs,
       tankDamageMs: TANK_DAMAGE.firstAtMs,
       aoeMs: AOE_DAMAGE.firstAtMs,
       spikeMs: firstSpike.value,

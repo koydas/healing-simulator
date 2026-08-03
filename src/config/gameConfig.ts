@@ -1,11 +1,31 @@
 /**
- * Toutes les constantes de balance et de configuration du jeu.
+ * Constantes de balance du jeu.
  *
- * Aucune autre couche du projet ne doit contenir de nombre magique : la
- * simulation, les composants et les tests importent tous depuis ce fichier.
+ * Deux natures de valeurs cohabitent ici, et la distinction est volontaire :
+ *   - celles **dérivées de WoW Classic** (PV, mana, sorts, régénération) sont
+ *     calculées à partir de `classicData.ts` — on ne les écrit jamais à la main ;
+ *   - celles de **game design** (profil du boss, cadence des événements, rampe)
+ *     sont posées ici, et documentées comme telles dans `docs/classic-stats.md`.
+ *
+ * Aucune autre couche du projet ne contient de nombre magique.
  */
 
+import {
+  CREATURE_LEVEL_1,
+  GLOBAL_COOLDOWN_MS,
+  MANA_REGEN_VANILLA,
+  PRIEST_HEALS_RANK_1,
+  getAttributes,
+  manaPerTickFromSpirit,
+  maxHealthAtLevel1,
+  maxManaAtLevel1,
+  type ClassId,
+  type RaceId,
+} from './classicData';
 import type { Role, SpellId } from '../simulation/types';
+
+/** Niveau de tous les personnages et du boss. Tout le reste en découle. */
+export const PLAYER_LEVEL = 1;
 
 /** Pas de simulation fixe, en millisecondes. */
 export const TICK_MS = 100;
@@ -23,28 +43,54 @@ export const LONG_STALL_MS = 1000;
 export const DEFAULT_SEED = 1337;
 
 /* -------------------------------------------------------------------------- */
-/* Groupe                                                                      */
+/* Groupe — cinq personnages Alliance de niveau 1                              */
 /* -------------------------------------------------------------------------- */
 
 export interface PartyMemberTemplate {
   id: string;
   name: string;
+  race: RaceId;
+  classId: ClassId;
+  role: Role;
+  hpMax: number;
+  manaMax: number;
+}
+
+interface PartySlot {
+  id: string;
+  name: string;
+  race: RaceId;
+  classId: ClassId;
   role: Role;
 }
 
-/** HP de base d'un membre non-tank. */
-export const BASE_HP = 4000;
-
-/** Le tank possède deux fois les HP des autres membres. */
-export const TANK_HP_MULTIPLIER = 2;
-
-export const PARTY_TEMPLATE: readonly PartyMemberTemplate[] = [
-  { id: 'tank', name: 'Thorgrim', role: 'tank' },
-  { id: 'healer', name: 'Elowen', role: 'healer' },
-  { id: 'dps1', name: 'Kaelan', role: 'dps' },
-  { id: 'dps2', name: 'Ysolde', role: 'dps' },
-  { id: 'dps3', name: 'Brann', role: 'dps' },
+const PARTY_SLOTS: readonly PartySlot[] = [
+  { id: 'tank', name: 'Thorgrim', race: 'dwarf', classId: 'warrior', role: 'tank' },
+  { id: 'healer', name: 'Elowen', race: 'human', classId: 'priest', role: 'healer' },
+  { id: 'dps1', name: 'Kaelan', race: 'human', classId: 'rogue', role: 'dps' },
+  { id: 'dps2', name: 'Fizzwick', race: 'gnome', classId: 'mage', role: 'dps' },
+  { id: 'dps3', name: 'Sylandra', race: 'nightElf', classId: 'hunter', role: 'dps' },
 ] as const;
+
+/**
+ * Groupe complet, PV et mana calculés par les formules vanilla.
+ * Au niveau 1 : Thorgrim 90 PV, Elowen 51 PV / 160 mana, Kaelan 55 PV,
+ * Fizzwick 50 PV, Sylandra 46 PV.
+ */
+export const PARTY_TEMPLATE: readonly PartyMemberTemplate[] = PARTY_SLOTS.map((slot) => {
+  const attributes = getAttributes(slot.race, slot.classId);
+  return {
+    ...slot,
+    hpMax: maxHealthAtLevel1(slot.classId, attributes),
+    manaMax: maxManaAtLevel1(slot.classId, attributes),
+  };
+});
+
+/** Le joueur incarne ce membre du groupe. */
+export const PLAYER_MEMBER_ID = 'healer';
+
+const PLAYER_SLOT = PARTY_SLOTS.find((slot) => slot.id === PLAYER_MEMBER_ID)!;
+const PLAYER_ATTRIBUTES = getAttributes(PLAYER_SLOT.race, PLAYER_SLOT.classId);
 
 export const ROLE_LABELS: Record<Role, string> = {
   tank: 'Tank',
@@ -52,133 +98,165 @@ export const ROLE_LABELS: Record<Role, string> = {
   dps: 'DPS',
 };
 
+export const CLASS_LABELS: Record<ClassId, string> = {
+  warrior: 'Guerrier',
+  paladin: 'Paladin',
+  hunter: 'Chasseur',
+  rogue: 'Voleur',
+  priest: 'Prêtre',
+  mage: 'Mage',
+};
+
+export const RACE_LABELS: Record<RaceId, string> = {
+  human: 'Humain',
+  dwarf: 'Nain',
+  nightElf: 'Elfe de la nuit',
+  gnome: 'Gnome',
+};
+
 /* -------------------------------------------------------------------------- */
-/* Mana                                                                        */
+/* Mana du soigneur                                                            */
 /* -------------------------------------------------------------------------- */
 
+/**
+ * Pool et régénération du prêtre, dérivés de ses attributs de niveau 1
+ * (intelligence 22 → 160 mana, esprit 24 → 18,5 mana par palier de 2 s).
+ *
+ * Le comportement est celui de vanilla : la régénération tombe par paliers de
+ * 2 secondes et la **règle des cinq secondes** la suspend totalement pendant
+ * 5 s après chaque dépense de mana.
+ */
 export const MANA = {
-  max: 10_000,
-  initial: 10_000,
-  /** Régénération normale, par seconde. */
-  regenPerSecond: 100,
-  /** Régénération améliorée, par seconde. */
-  enhancedRegenPerSecond: 200,
-  /** Délai sans lancement de sort avant activation de la régénération améliorée. */
-  enhancedRegenDelayMs: 2000,
+  max: maxManaAtLevel1(PLAYER_SLOT.classId, PLAYER_ATTRIBUTES),
+  initial: maxManaAtLevel1(PLAYER_SLOT.classId, PLAYER_ATTRIBUTES),
+  tickMs: MANA_REGEN_VANILLA.tickMs,
+  perTick: manaPerTickFromSpirit(PLAYER_ATTRIBUTES.spirit),
+  fiveSecondRuleMs: MANA_REGEN_VANILLA.fiveSecondRuleMs,
 } as const;
 
-/** Plafond du compteur « temps depuis le dernier sort lancé » (évite la dérive). */
+/** Plafond du compteur « temps depuis la dernière dépense de mana ». */
 export const CAST_IDLE_CAP_MS = 10_000;
 
 /* -------------------------------------------------------------------------- */
 /* Sorts                                                                       */
 /* -------------------------------------------------------------------------- */
 
-export const GCD_MS = 1500;
+export const GCD_MS = GLOBAL_COOLDOWN_MS;
 
 export type SpellKind = 'direct' | 'hot' | 'group';
 
 export interface SpellDefinition {
   id: SpellId;
+  /** Identifiant Blizzard du sort, pour retrouver la source. */
+  spellId: number;
   name: string;
+  rank: number;
+  /** Niveau d'apprentissage réel du sort en Classic. */
+  requiredLevel: number;
   kind: SpellKind;
   castTimeMs: number;
   manaCost: number;
   requiresTarget: boolean;
-  /** Soin direct, ou soin par tick pour un HoT. */
-  healAmount: number;
-  /** Variation appliquée au soin, en fraction (0.1 = ±10 %). */
-  variancePct: number;
-  /** Nombre de ticks pour un HoT. */
+  /** Soin direct : bornes min / max (le tirage est uniforme entre les deux). */
+  healMin: number;
+  healMax: number;
+  /** HoT : soin par tick, nombre de ticks, intervalle. */
+  healPerTick: number;
   hotTicks: number;
-  /** Intervalle entre deux ticks de HoT, en millisecondes. */
   hotIntervalMs: number;
   /** Description courte affichée sur le bouton. */
   description: string;
 }
 
+function defineSpell(id: SpellId, key: string, description: string): SpellDefinition {
+  const source = PRIEST_HEALS_RANK_1[key];
+  const kind: SpellKind = source.targetsParty
+    ? 'group'
+    : source.hotTicks > 0
+      ? 'hot'
+      : 'direct';
+
+  return {
+    id,
+    spellId: source.spellId,
+    name: source.name,
+    rank: source.rank,
+    requiredLevel: source.requiredLevel,
+    kind,
+    castTimeMs: source.castTimeMs,
+    manaCost: source.manaCost,
+    requiresTarget: !source.targetsParty,
+    healMin: source.healMin,
+    healMax: source.healMax,
+    healPerTick: source.hotTicks > 0 ? source.hotTotalHeal / source.hotTicks : 0,
+    hotTicks: source.hotTicks,
+    hotIntervalMs: source.hotIntervalMs,
+    description,
+  };
+}
+
+/** Les cinq familles de soin du prêtre, au rang 1. */
 export const SPELLS: Record<SpellId, SpellDefinition> = {
-  renew: {
-    id: 'renew',
-    name: 'Renew',
-    kind: 'hot',
-    castTimeMs: 0,
-    manaCost: 300,
-    requiresTarget: true,
-    healAmount: 150,
-    variancePct: 0,
-    hotTicks: 5,
-    hotIntervalMs: 2000,
-    description: '150 / tick × 5',
-  },
-  flash: {
-    id: 'flash',
-    name: 'Flash Heal',
-    kind: 'direct',
-    castTimeMs: 1500,
-    manaCost: 500,
-    requiresTarget: true,
-    healAmount: 800,
-    variancePct: 0.1,
-    hotTicks: 0,
-    hotIntervalMs: 0,
-    description: '800 ±10 %',
-  },
-  greater: {
-    id: 'greater',
-    name: 'Greater Heal',
-    kind: 'direct',
-    castTimeMs: 2500,
-    manaCost: 700,
-    requiresTarget: true,
-    healAmount: 2000,
-    variancePct: 0.1,
-    hotTicks: 0,
-    hotIntervalMs: 0,
-    description: '2000 ±10 %',
-  },
-  group: {
-    id: 'group',
-    name: 'Group Heal',
-    kind: 'group',
-    castTimeMs: 3000,
-    manaCost: 1200,
-    requiresTarget: false,
-    healAmount: 600,
-    variancePct: 0,
-    hotTicks: 0,
-    hotIntervalMs: 0,
-    description: '600 au groupe',
-  },
+  lesserHeal: defineSpell('lesserHeal', 'lesserHeal', '46 – 56'),
+  renew: defineSpell('renew', 'renew', '9 / tick × 5'),
+  heal: defineSpell('heal', 'heal', '295 – 341'),
+  flashHeal: defineSpell('flashHeal', 'flashHeal', '193 – 237'),
+  prayerOfHealing: defineSpell('prayerOfHealing', 'prayerOfHealing', '312 – 333 au groupe'),
 };
 
-/** Ordre d'affichage des sorts dans la barre d'action. */
-export const SPELL_ORDER: readonly SpellId[] = ['renew', 'flash', 'greater', 'group'] as const;
+/** Ordre d'affichage : celui dans lequel le prêtre apprend les sorts. */
+export const SPELL_ORDER: readonly SpellId[] = [
+  'lesserHeal',
+  'renew',
+  'heal',
+  'flashHeal',
+  'prayerOfHealing',
+] as const;
+
+/** Sorts réellement utilisables au niveau courant. */
+export function isSpellUnlocked(spell: SpellDefinition, level: number = PLAYER_LEVEL): boolean {
+  return spell.requiredLevel <= level;
+}
 
 /* -------------------------------------------------------------------------- */
-/* Timeline de dégâts                                                          */
+/* Boss — niveau 1, élite                                                      */
 /* -------------------------------------------------------------------------- */
 
 export const BOSS = {
   name: 'Gorvath, l’Effondreur',
-  subtitle: 'Pression croissante — survivez',
+  subtitle: 'Élite niveau 1 — survivez',
+  level: PLAYER_LEVEL,
 } as const;
 
+/**
+ * Mêlée sur le tank.
+ *
+ * Une créature de niveau 1 frappe pour 2 (médiane) à 10 (haut de la
+ * distribution) ; le facteur élite mesuré va de ×1,2 à ×3. On retient 8 par
+ * coup, dans la fourchette [6, 12] que ces deux bornes encadrent.
+ *
+ * La cadence est celle des créatures vanilla : un coup toutes les 2 s
+ * (`MeleeBaseAttackTime` = 2000 pour toutes les créatures de niveau 1).
+ */
 export const TANK_DAMAGE = {
-  amount: 400,
-  intervalMs: 1500,
-  /** Premier impact. */
-  firstAtMs: 1500,
+  amount: 8,
+  intervalMs: CREATURE_LEVEL_1.meleeAttackTimeMs,
+  firstAtMs: CREATURE_LEVEL_1.meleeAttackTimeMs,
 } as const;
 
+/** Capacité de zone du boss — game design, calibré sur des PV de niveau 1. */
 export const AOE_DAMAGE = {
-  amount: 500,
+  amount: 6,
   intervalMs: 12_000,
   firstAtMs: 12_000,
 } as const;
 
+/**
+ * Pic de dégâts sur un membre non-tank — game design.
+ * 18 dégâts retirent environ un tiers des PV d'un DPS de niveau 1.
+ */
 export const SPIKE_DAMAGE = {
-  amount: 1200,
+  amount: 18,
   minIntervalMs: 6000,
   maxIntervalMs: 10_000,
 } as const;
@@ -193,7 +271,7 @@ export const RAMP = {
 /* -------------------------------------------------------------------------- */
 
 export const WIPE = {
-  /** Nombre de morts (hors mort du tank) qui termine la partie. */
+  /** Nombre de morts qui termine la partie. */
   maxDeaths: 3,
 } as const;
 
@@ -202,11 +280,8 @@ export const WIPE = {
 /* -------------------------------------------------------------------------- */
 
 export const FEEDBACK = {
-  /** Durée de vie d'un feedback flottant. */
   lifetimeMs: 1200,
-  /** Durée de vie d'un message textuel (refus de lancement, annulation). */
   messageLifetimeMs: 1600,
-  /** Nombre maximum de feedbacks conservés dans le state (anti-fuite mémoire). */
   maxEntries: 40,
 } as const;
 
@@ -216,6 +291,7 @@ export type CastRefusalReason =
   | 'paused'
   | 'casting'
   | 'gcd'
+  | 'level'
   | 'no_target'
   | 'target_dead'
   | 'mana';
@@ -225,6 +301,7 @@ export const REFUSAL_MESSAGES: Record<CastRefusalReason, string> = {
   paused: 'Jeu en pause',
   casting: 'Cast déjà en cours',
   gcd: 'GCD actif',
+  level: 'Niveau insuffisant',
   no_target: 'Cible requise',
   target_dead: 'Cible morte',
   mana: 'Mana insuffisante',

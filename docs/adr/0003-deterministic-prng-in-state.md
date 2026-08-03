@@ -5,8 +5,9 @@
 
 ## Context
 
-Trois mécaniques ont besoin de hasard : le choix de la cible d'un spike, la
-variation ±10 % des soins directs, et l'intervalle avant le prochain spike.
+Trois mécaniques ont besoin de hasard : le choix de la cible d'un spike, le
+montant d'un soin (tiré dans la fourchette du sort, par exemple 46 – 56 pour
+Lesser Heal), et l'intervalle avant le prochain spike.
 `Math.random()` rendrait chaque partie unique mais aussi impossible à rejouer,
 à déboguer et à tester — impossible d'écrire « ce spike doit toucher un
 non-tank » sans dépendre de la chance.
@@ -24,7 +25,7 @@ chaque tirage. Aucune fonction ne conserve d'état caché.
 
 L'ordre de consommation est fixé et documenté :
 
-1. variation d'un soin direct, au moment où le cast se termine ;
+1. montant du soin, au moment où le cast se termine ;
 2. choix de la cible du spike ;
 3. intervalle du prochain spike.
 
@@ -41,6 +42,10 @@ fin, utilisable via `?seed=`).
 - **Mersenne Twister / bibliothèque externe** — rejeté : dépendance inutile pour
   la qualité statistique requise ; mulberry32 tient en dix lignes et passe
   largement les besoins d'un jeu.
+
+> Mise à jour (ADR-0007) : le tirage du soin utilise désormais la fourchette
+> min/max du sort Classic au lieu d'une variation ±10 % autour d'une base. La
+> place du tirage dans la séquence, elle, n'a pas changé.
 
 ## Consequences
 

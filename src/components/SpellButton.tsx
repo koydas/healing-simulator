@@ -21,7 +21,9 @@ export const SpellButton = memo(function SpellButton({ spell, onCast }: SpellBut
     onCast(spell.id);
   }, [onCast, spell.id]);
 
-  const className = ['spell', spell.disabled ? 'spell--disabled' : ''].filter(Boolean).join(' ');
+  const className = ['spell', spell.disabled ? 'spell--disabled' : '', spell.locked ? 'spell--locked' : '']
+    .filter(Boolean)
+    .join(' ');
 
   return (
     <button
@@ -29,15 +31,27 @@ export const SpellButton = memo(function SpellButton({ spell, onCast }: SpellBut
       className={className}
       onClick={handleClick}
       aria-disabled={spell.disabled}
-      title={spell.disabled && spell.reason ? REFUSAL_MESSAGES[spell.reason] : spell.name}
+      title={
+        spell.locked
+          ? `${spell.name} (rang ${spell.rank}) — appris au niveau ${spell.requiredLevel}`
+          : spell.disabled && spell.reason
+            ? REFUSAL_MESSAGES[spell.reason]
+            : `${spell.name} (rang ${spell.rank})`
+      }
     >
       <span className="spell__gcd" aria-hidden="true" />
       <span className="spell__name">{spell.name}</span>
-      <span className="spell__meta">
-        <span className="spell__mana">{spell.manaCost}</span>
-        <span className="spell__cast">{spell.castLabel}</span>
-      </span>
-      <span className="spell__description">{spell.description}</span>
+      {spell.locked ? (
+        <span className="spell__lock">Niv. {spell.requiredLevel}</span>
+      ) : (
+        <>
+          <span className="spell__meta">
+            <span className="spell__mana">{spell.manaCost}</span>
+            <span className="spell__cast">{spell.castLabel}</span>
+          </span>
+          <span className="spell__description">{spell.description}</span>
+        </>
+      )}
     </button>
   );
 });

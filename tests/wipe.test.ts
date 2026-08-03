@@ -9,12 +9,20 @@ import {
 } from '../src/simulation/actions';
 import { createInitialState } from '../src/simulation/initialState';
 import { stepSimulation } from '../src/simulation/simulation';
-import { advance, isolateTimers, memberOf, patchMember, patchState, totalHp } from './helpers';
+import {
+  advance,
+  isolateTimers,
+  memberOf,
+  patchMember,
+  patchState,
+  totalHp,
+  unlockAllSpells,
+} from './helpers';
 
 describe('conditions de wipe', () => {
   it('termine la partie à la mort du tank', () => {
     let state = isolateTimers(createInitialState(31));
-    state = patchMember(state, 'tank', { hp: 100 });
+    state = patchMember(state, 'tank', { hp: 5 });
     state = patchState(state, { timers: { ...state.timers, tankDamageMs: TICK_MS } });
 
     const after = stepSimulation(state, TICK_MS);
@@ -28,7 +36,7 @@ describe('conditions de wipe', () => {
     let state = isolateTimers(createInitialState(32));
     state = patchMember(state, 'dps1', { alive: false, hp: 0 });
     state = patchMember(state, 'dps2', { alive: false, hp: 0 });
-    state = patchMember(state, 'dps3', { hp: 100 });
+    state = patchMember(state, 'dps3', { hp: 5 });
     state = patchState(state, { timers: { ...state.timers, aoeMs: TICK_MS } });
 
     const after = stepSimulation(state, TICK_MS);
@@ -39,8 +47,8 @@ describe('conditions de wipe', () => {
 
   it('continue avec deux morts', () => {
     let state = isolateTimers(createInitialState(33));
-    state = patchMember(state, 'dps1', { hp: 100 });
-    state = patchMember(state, 'dps2', { hp: 100 });
+    state = patchMember(state, 'dps1', { hp: 5 });
+    state = patchMember(state, 'dps2', { hp: 5 });
     state = patchState(state, { timers: { ...state.timers, aoeMs: TICK_MS } });
 
     const after = stepSimulation(state, TICK_MS);
@@ -50,9 +58,9 @@ describe('conditions de wipe', () => {
   });
 
   it('annule le cast en cours au wipe', () => {
-    let state = isolateTimers(createInitialState(34));
-    state = castSpell(state, 'group');
-    state = patchMember(state, 'tank', { hp: 100 });
+    let state = unlockAllSpells(isolateTimers(createInitialState(34)));
+    state = castSpell(state, 'prayerOfHealing');
+    state = patchMember(state, 'tank', { hp: 5 });
     state = patchState(state, { timers: { ...state.timers, tankDamageMs: TICK_MS } });
 
     const after = stepSimulation(state, TICK_MS);
@@ -64,7 +72,7 @@ describe('conditions de wipe', () => {
 
   it('n’applique plus aucun événement après le wipe', () => {
     let state = isolateTimers(createInitialState(35));
-    state = patchMember(state, 'tank', { hp: 100 });
+    state = patchMember(state, 'tank', { hp: 5 });
     state = patchState(state, { timers: { ...state.timers, tankDamageMs: TICK_MS } });
     const wiped = stepSimulation(state, TICK_MS);
 
@@ -76,15 +84,16 @@ describe('conditions de wipe', () => {
   it('refuse toute action après le wipe', () => {
     let state = isolateTimers(createInitialState(36));
     state = patchState(state, { status: 'over' });
-    const after = castSpell(state, 'flash');
+    const after = castSpell(state, 'lesserHeal');
 
     expect(after.mana).toBe(MANA.initial);
-    expect(after.stats.castsStartedBySpell.flash).toBe(0);
+    expect(after.stats.castsStartedBySpell.lesserHeal).toBe(0);
   });
 
   it('marque un mort comme non ciblable et sans HoT', () => {
     let state = isolateTimers(createInitialState(37));
-    state = patchMember(state, 'dps1', { hp: 100 });
+    state = unlockAllSpells(state);
+    state = patchMember(state, 'dps1', { hp: 5 });
     state = selectTarget(state, 'dps1');
     state = castSpell(state, 'renew');
     state = patchState(state, { timers: { ...state.timers, aoeMs: TICK_MS } });

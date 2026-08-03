@@ -25,9 +25,22 @@ construction — c'est un choix de conception (voir ADR-0002), pas un bug.
 
 ### Un test échoue après un changement de balance
 
-Plusieurs tests s'appuient sur les valeurs nominales (400 de dégâts tank, 500
-d'AoE, 1200 de spike, 4000 / 8000 HP). Mettre à jour le test **et**
-`docs/balance.md` en même temps que `gameConfig.ts`.
+Plusieurs tests s'appuient sur les valeurs nominales de niveau 1 (mêlée 8, AoE 6,
+spike 18, PV 90 / 51 / 55 / 50 / 46). Mettre à jour le test, `docs/balance.md`
+et, si la valeur se présente comme issue de Classic, `docs/classic-stats.md`.
+
+### « Les PV ne correspondent pas à ce que j'attendais »
+
+Les PV ne sont pas écrits dans le code : ils sont recalculés à partir de la race,
+de la classe et des formules vanilla (`src/config/classicData.ts`). Le palier à
+20 points d'endurance explique les écarts — au-delà de 20, chaque point vaut
+10 PV au lieu de 1. Voir [classic-stats.md](./classic-stats.md).
+
+### Une combinaison race/classe lève une erreur
+
+`getAttributes` ne connaît que les combinaisons présentes dans
+`RACE_CLASS_ATTRIBUTES_LEVEL_1`. Ajouter la ligne correspondante depuis la table
+`player_levelstats` de la base vanilla plutôt que d'improviser des attributs.
 
 ### Un test de durée échoue d'un pas
 
@@ -108,15 +121,32 @@ utilise aucun.
 
 ### « La partie se termine trop vite »
 
-Sans aucun soin, le wipe survient autour de 30 s. Avec un jeu correct, la survie
+Sans aucun soin, le wipe survient autour de 22 s (le tank a 90 PV et encaisse
+8 dégâts toutes les 2 s). Avec un jeu correct, la survie
 dépasse largement la minute ; la rampe ×1,15 toutes les 30 s finit
 mathématiquement par dépasser le débit de soin — c'est le principe du mode.
 
 ### « Le sort ne part pas »
 
 Le message affiché sous le groupe donne toujours le motif exact : `GCD actif`,
-`Cast déjà en cours`, `Mana insuffisante`, `Cible requise`, `Cible morte`,
-`Jeu en pause` ou `Partie terminée`.
+`Cast déjà en cours`, `Niveau insuffisant`, `Mana insuffisante`, `Cible requise`,
+`Cible morte`, `Jeu en pause` ou `Partie terminée`.
+
+### « Quatre boutons sur cinq sont grisés »
+
+C'est voulu. Au niveau 1, un prêtre de WoW Classic ne connaît que Lesser Heal ;
+Renew s'apprend au niveau 8, Heal au 16, Flash Heal au 20 et Prayer of Healing
+au 30. Les boutons verrouillés affichent leur niveau requis. Pour jouer avec
+tout le livre de sorts, monter `PLAYER_LEVEL` dans
+`src/config/gameConfig.ts` — en gardant à l'esprit que les tables de stats ne
+couvrent aujourd'hui que le niveau 1
+(voir [classic-stats.md](./classic-stats.md#monter-de-niveau-plus-tard)).
+
+### « La mana ne remonte pas »
+
+La règle des cinq secondes de vanilla est appliquée : après une dépense de mana,
+la régénération liée à l'esprit est totalement suspendue pendant 5 secondes.
+Les paliers tombent ensuite toutes les 2 secondes, pour 18,5 points.
 
 ### Rejouer exactement la même partie
 

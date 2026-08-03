@@ -46,11 +46,12 @@ export const PartyFrame = memo(function PartyFrame({ memberId }: PartyFrameProps
       onClick={handleSelect}
       disabled={!member.alive}
       aria-pressed={member.selected}
-      aria-label={`${member.name}, ${member.roleLabel}, ${member.hpPercent} %`}
+      aria-label={`${member.name}, ${member.classLabel}, ${member.roleLabel}, ${member.hpPercent} %`}
     >
       <span className="frame__header">
         <span className="frame__name">{member.name}</span>
         <span className="frame__role">{member.roleLabel}</span>
+        <span className="frame__class">{member.classLabel}</span>
         {member.renewTicks > 0 && (
           <span className="frame__renew" title="Renew actif">
             ⟳ {member.renewTicks}

@@ -34,7 +34,8 @@ ordre — c'est la partie du contrat qui rend le jeu prévisible :
 La purge des feedbacks expirés a lieu après l'étape 8.
 
 Avant l'étape 1, le pas met à jour : `elapsedMs`, `damageMultiplier`,
-`gcdRemainingMs` et `msSinceLastCastStart`.
+`gcdRemainingMs` et `msSinceLastCastStart` (le compteur de la règle des cinq
+secondes).
 
 ## Déterminisme
 
@@ -43,7 +44,7 @@ Le hasard n'est consommé qu'à trois endroits, toujours dans le même ordre :
 
 | Ordre dans le pas | Usage |
 | --- | --- |
-| complétion d'un soin direct | variation ±10 % (`rollHealAmount`) |
+| complétion d'un soin | tirage dans la fourchette du sort, ex. 46 – 56 (`rollHealAmount`) |
 | spike, d'abord | choix de la cible parmi les non-tanks vivants |
 | spike, ensuite | intervalle du prochain spike, uniforme dans [6 s, 10 s) |
 
@@ -57,9 +58,12 @@ le découpage temporel. C'est vérifié par `tests/determinism.test.ts`.
 
 | Événement | Montant | Intervalle | Premier impact |
 | --- | --- | --- | --- |
-| Dégâts tank | 400 | 1,5 s | 1,5 s |
-| AoE | 500 par membre vivant | 12 s | 12 s |
-| Spike | 1200 sur un non-tank vivant | uniforme [6 s, 10 s) | tiré à la création |
+| Mêlée sur le tank | 8 | 2 s (cadence vanilla) | 2 s |
+| AoE | 6 par membre vivant | 12 s | 12 s |
+| Spike | 18 sur un non-tank vivant | uniforme [6 s, 10 s) | tiré à la création |
+
+Ces montants sont à l'échelle du niveau 1 (le tank a 90 PV). Leur origine —
+mesurée ou conçue — est détaillée dans [classic-stats.md](./classic-stats.md).
 
 La rampe multiplie **cumulativement** tous les dégâts par 1,15 toutes les 30 s :
 
@@ -86,9 +90,10 @@ est celui affiché :
 | 2 | partie en pause | `Jeu en pause` |
 | 3 | cast déjà en cours | `Cast déjà en cours` |
 | 4 | GCD actif | `GCD actif` |
-| 5 | aucune cible (sorts ciblés) | `Cible requise` |
-| 6 | cible morte | `Cible morte` |
-| 7 | mana insuffisante | `Mana insuffisante` |
+| 5 | sort non appris à ce niveau | `Niveau insuffisant` |
+| 6 | aucune cible (sorts ciblés) | `Cible requise` |
+| 7 | cible morte | `Cible morte` |
+| 8 | mana insuffisante | `Mana insuffisante` |
 
 Un refus ne dépense **aucune** mana et ne déclenche **aucun** GCD ; il produit
 seulement un message.
@@ -101,20 +106,31 @@ Un cast est annulé dans trois cas seulement : bouton `Cancel`, mort de sa cible
 fin de partie. Une annulation conserve la mana et le GCD, n'applique aucun soin
 et incrémente `castsCancelled`.
 
-## Mana
+## Mana — modèle vanilla
 
-- pool : 10 000, plein au départ ;
-- régénération normale : 100/s ;
-- régénération améliorée : 200/s, active quand **aucun cast n'est en cours** et
-  que `msSinceLastCastStart >= 2000` ;
-- le pas qui atteint exactement 2000 ms bénéficie déjà du bonus ;
+- pool : 160 pour un prêtre humain de niveau 1, plein au départ ;
+- la régénération tombe **par paliers de 2 s** (`timers.manaTickMs`), pas en
+  continu ;
+- un palier ne crédite la mana que si `msSinceLastCastStart >= 5000` :
+  c'est la **règle des cinq secondes**, qui suspend totalement la régénération
+  après chaque dépense ;
+- montant par palier : 18,5 (esprit 24) ;
 - la mana est bornée à `[0, manaMax]`.
+
+Voir [ADR-0009](./adr/0009-vanilla-mana-regen-five-second-rule.md).
+
+## Niveau et disponibilité des sorts
+
+Le `GameState` porte `playerLevel` (1 par défaut). Un sort dont
+`requiredLevel > playerLevel` est refusé avec le motif `level`. Au niveau 1,
+seul Lesser Heal est disponible ; les autres boutons sont visibles mais
+verrouillés. Voir [ADR-0008](./adr/0008-classic-spellbook-level-gating.md).
 
 ## Renew
 
-- 5 ticks de 150, espacés de 2 s, **aucun tick immédiat** ;
+- 5 ticks de 9 (45 au total), espacés de **3 s**, **aucun tick immédiat** ;
 - ne stacke jamais : réappliquer remplace l'effet, remet les ticks à 5 et le
-  délai à 2 s ;
+  délai à 3 s ;
 - disparaît à la mort du porteur.
 
 ## Fin de partie
@@ -130,6 +146,7 @@ moment le moteur passe `status` à `over` et annule le cast en cours. Aucun
 | `0 <= hp <= hpMax` | `applyHealTo` / `applyDamageTo` (clamps) |
 | `0 <= mana <= manaMax` | `regenerateMana`, `castSpell` |
 | aucun soin sur une cible morte | `applyHealTo`, `applySpellEffect` |
+| aucun sort lancé sous son niveau requis | `checkCast` (motif `level`) |
 | aucune dépense si le lancement est refusé | `castSpell` (branche de refus) |
 | aucun remboursement après interruption | `cancelActiveCast` |
 | Renew ne stacke jamais | `applyHot` (remplacement par `spellId`) |

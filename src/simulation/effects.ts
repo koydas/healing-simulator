@@ -17,15 +17,16 @@ export function findMember(state: GameState, id: string | null): PartyMember | u
 }
 
 /**
- * Tire un montant de soin en appliquant la variation du sort.
- * Consomme l'état du générateur pseudo-aléatoire lorsque la variation existe.
+ * Tire un montant de soin dans la fourchette du sort, comme en Classic
+ * (« Heals your target for 46 to 56 »).
+ * Consomme l'état du générateur pseudo-aléatoire dès que la fourchette
+ * comporte plus d'une valeur.
  */
-export function rollHealAmount(draft: GameState, base: number, variancePct: number): number {
-  if (variancePct <= 0) return Math.round(base);
+export function rollHealAmount(draft: GameState, healMin: number, healMax: number): number {
+  if (healMax <= healMin) return Math.round(healMin);
   const { value, seed } = nextRandom(draft.seed);
   draft.seed = seed;
-  const factor = 1 - variancePct + value * variancePct * 2;
-  return Math.round(base * factor);
+  return Math.round(healMin + value * (healMax - healMin));
 }
 
 /**
@@ -74,7 +75,7 @@ export function applyDamageTo(draft: GameState, member: PartyMember, rawAmount: 
 export function applyHot(member: PartyMember, spell: SpellDefinition): void {
   const hot: HotEffect = {
     spellId: spell.id,
-    healPerTick: spell.healAmount,
+    healPerTick: spell.healPerTick,
     intervalMs: spell.hotIntervalMs,
     ticksRemaining: spell.hotTicks,
     // Réappliquer réinitialise le délai : aucun tick immédiat.
@@ -99,9 +100,11 @@ export function applySpellEffect(
   targetId: string | null,
 ): void {
   if (spell.kind === 'group') {
+    // Un tirage unique, appliqué à tout le groupe (comme Prayer of Healing).
+    const amount = rollHealAmount(draft, spell.healMin, spell.healMax);
     for (const member of draft.party) {
       if (member.alive) {
-        applyHealTo(draft, member, spell.healAmount);
+        applyHealTo(draft, member, amount);
       }
     }
     return;
@@ -115,6 +118,6 @@ export function applySpellEffect(
     return;
   }
 
-  const amount = rollHealAmount(draft, spell.healAmount, spell.variancePct);
+  const amount = rollHealAmount(draft, spell.healMin, spell.healMax);
   applyHealTo(draft, target, amount);
 }

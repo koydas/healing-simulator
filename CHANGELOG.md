@@ -5,6 +5,48 @@ Toutes les évolutions notables de ce projet sont consignées ici, au format
 
 ## [Unreleased]
 
+### Changed
+
+- **Toutes les stats de personnage viennent désormais de WoW Classic 1.12, au
+  niveau 1** (ADR-0007). Les PV et la mana sont calculés par les formules du jeu
+  (`min(stat, 20) × 1 + surplus × 10` pour l'endurance, `× 15` pour
+  l'intelligence) à partir des tables `player_classlevelstats` et
+  `player_levelstats` : Thorgrim (nain guerrier) 90 PV, Elowen (humain prêtre)
+  51 PV et 160 de mana, Kaelan 55 PV, Fizzwick 50 PV, Sylandra 46 PV.
+- **Les sorts sont les cinq familles de soin du prêtre vanilla, au rang 1**, avec
+  leurs vraies valeurs et leur niveau d'apprentissage (ADR-0008) : Lesser Heal
+  (niv. 1), Renew (8), Heal (16), Flash Heal (20), Prayer of Healing (30). Le
+  soin est tiré dans la fourchette du sort au lieu d'un « base ± 10 % ».
+- **Au niveau 1, seul Lesser Heal est lançable** : les autres boutons sont
+  affichés verrouillés avec leur niveau requis, et un lancement refusé indique
+  « Niveau insuffisant ».
+- **La régénération de mana suit le modèle vanilla** (ADR-0009) : un palier de
+  18,5 toutes les 2 secondes, totalement suspendu pendant les 5 secondes qui
+  suivent une dépense (règle des cinq secondes). L'ancienne régénération
+  continue 100/200 par seconde disparaît.
+- **Le boss est un élite de niveau 1** (ADR-0010) : mêlée de 8 toutes les 2 s
+  (cadence sourcée dans `creature_template`), AoE de 6 toutes les 12 s, spike de
+  18 toutes les 6 à 10 s. Survie mesurée : 22 s sans soin, 48 à 97 s avec un
+  soigneur automatique.
+- Renew tick désormais toutes les 3 secondes (5 ticks de 9, 45 au total), comme
+  en Classic.
+- Les frames affichent la race et la classe de chaque personnage, l'en-tête
+  affiche le niveau du boss.
+
+### Added
+
+- `src/config/classicData.ts` : données WoW Classic sourcées (tables de base,
+  attributs par race/classe, formules officielles, sorts, mesures sur les
+  créatures de niveau 1) — aucune valeur de gameplay n'y est inventée.
+- `playerLevel` dans le `GameState` : le verrouillage des sorts suit le niveau,
+  ce qui prépare la montée en niveau.
+- `docs/classic-stats.md` : sources, formules, tableaux, et la séparation
+  explicite entre valeurs **sourcées**, **dérivées**, **approximées** et
+  **conçues**.
+- ADR-0007 à ADR-0010 documentant ces quatre décisions.
+- `tests/classicStats.test.ts` : 14 tests sur les formules vanilla, les PV
+  dérivés du groupe et les valeurs des sorts (92 tests au total).
+
 ## [1.0.0] — 2026-08-02
 
 ### Added

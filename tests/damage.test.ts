@@ -1,38 +1,42 @@
 import { describe, expect, it } from 'vitest';
 import {
   AOE_DAMAGE,
+  RAMP,
   SPIKE_DAMAGE,
   TANK_DAMAGE,
   TICK_MS,
-  RAMP,
 } from '../src/config/gameConfig';
 import { createInitialState } from '../src/simulation/initialState';
 import { computeDamageMultiplier, stepSimulation } from '../src/simulation/simulation';
 import { advance, isolateTimers, memberOf, patchState } from './helpers';
 
-describe('dégâts sur le tank', () => {
-  it('frappe pour la première fois à 1,5 s, pas avant', () => {
-    let state = createInitialState(101);
-    state = advance(state, 1400);
-    expect(memberOf(state, 'tank').hp).toBe(8000);
+const TANK_HP = 90; // Nain guerrier niveau 1
+const HEALER_HP = 51; // Humain prêtre niveau 1
 
-    state = advance(state, 100);
-    expect(memberOf(state, 'tank').hp).toBe(8000 - TANK_DAMAGE.amount);
+describe('dégâts sur le tank', () => {
+  it('frappe pour la première fois au bout de la cadence vanilla (2 s)', () => {
+    expect(TANK_DAMAGE.intervalMs).toBe(2000);
+
+    let state = createInitialState(101);
+    state = advance(state, TANK_DAMAGE.firstAtMs - TICK_MS);
+    expect(memberOf(state, 'tank').hp).toBe(TANK_HP);
+
+    state = advance(state, TICK_MS);
+    expect(memberOf(state, 'tank').hp).toBe(TANK_HP - TANK_DAMAGE.amount);
   });
 
-  it('frappe toutes les 1,5 s', () => {
-    let state = createInitialState(101);
-    state = advance(state, 4500);
-    expect(memberOf(state, 'tank').hp).toBe(8000 - 3 * TANK_DAMAGE.amount);
+  it('frappe à chaque cycle d’attaque', () => {
+    const state = advance(createInitialState(101), 3 * TANK_DAMAGE.intervalMs);
+    expect(memberOf(state, 'tank').hp).toBe(TANK_HP - 3 * TANK_DAMAGE.amount);
   });
 
   it('ne touche que le tank', () => {
-    const state = advance(createInitialState(202), 1500);
-    expect(memberOf(state, 'healer').hp).toBe(4000);
+    const state = advance(createInitialState(202), TANK_DAMAGE.firstAtMs);
+    expect(memberOf(state, 'healer').hp).toBe(HEALER_HP);
   });
 
   it('comptabilise les dégâts encaissés', () => {
-    const state = advance(createInitialState(101), 1500);
+    const state = advance(createInitialState(101), TANK_DAMAGE.firstAtMs);
     expect(state.stats.damageTaken).toBe(TANK_DAMAGE.amount);
   });
 });
@@ -48,7 +52,7 @@ describe('dégâts de zone', () => {
       const delta = (hpBefore.get(member.id) ?? 0) - member.hp;
       expect(delta).toBeGreaterThanOrEqual(AOE_DAMAGE.amount);
     }
-    // Le tank encaisse aussi son coup régulier au même instant (1500 × 8).
+    // Le tank encaisse aussi son coup de mêlée au même instant (2000 × 6).
     expect((hpBefore.get('tank') ?? 0) - memberOf(after, 'tank').hp).toBe(
       AOE_DAMAGE.amount + TANK_DAMAGE.amount,
     );
@@ -67,18 +71,19 @@ describe('dégâts de zone', () => {
 
 describe('spikes', () => {
   function spikeOnly(seed: number) {
-    let state = isolateTimers(createInitialState(seed));
-    state = { ...state, timers: { ...state.timers, spikeMs: TICK_MS } };
+    const base = isolateTimers(createInitialState(seed));
+    const state = patchState(base, { timers: { ...base.timers, spikeMs: TICK_MS } });
     return stepSimulation(state, TICK_MS);
   }
 
   it('touche un seul membre non-tank vivant', () => {
     const state = spikeOnly(5150);
     const damaged = state.party.filter((member) => member.hp < member.hpMax);
+
     expect(damaged).toHaveLength(1);
     expect(damaged[0].role).not.toBe('tank');
-    expect(damaged[0].hp).toBe(4000 - SPIKE_DAMAGE.amount);
-    expect(memberOf(state, 'tank').hp).toBe(8000);
+    expect(damaged[0].hp).toBe(damaged[0].hpMax - SPIKE_DAMAGE.amount);
+    expect(memberOf(state, 'tank').hp).toBe(TANK_HP);
   });
 
   it('ne cible jamais le tank, quelle que soit la seed', () => {
@@ -89,8 +94,8 @@ describe('spikes', () => {
       expect(damaged).toBeDefined();
       targets.add(damaged!.id);
     }
+
     expect(targets.has('tank')).toBe(false);
-    // La sélection est bien répartie sur plusieurs cibles possibles.
     expect(targets.size).toBeGreaterThan(1);
   });
 
@@ -102,18 +107,26 @@ describe('spikes', () => {
     }
   });
 
+  it('retire environ un tiers des PV d’un DPS de niveau 1', () => {
+    const state = spikeOnly(5150);
+    const damaged = state.party.find((member) => member.hp < member.hpMax)!;
+    const share = SPIKE_DAMAGE.amount / damaged.hpMax;
+
+    expect(share).toBeGreaterThan(0.3);
+    expect(share).toBeLessThan(0.45);
+  });
+
   it('ne fait rien si aucun membre non-tank n’est vivant, mais replanifie', () => {
-    let state = isolateTimers(createInitialState(12));
-    state = {
-      ...state,
-      party: state.party.map((member) =>
+    const base = isolateTimers(createInitialState(12));
+    const state = patchState(base, {
+      party: base.party.map((member) =>
         member.role === 'tank' ? member : { ...member, alive: false, hp: 0, hots: [] },
       ),
-      timers: { ...state.timers, spikeMs: TICK_MS },
-    };
+      timers: { ...base.timers, spikeMs: TICK_MS },
+    });
 
     const after = stepSimulation(state, TICK_MS);
-    expect(memberOf(after, 'tank').hp).toBe(8000);
+    expect(memberOf(after, 'tank').hp).toBe(TANK_HP);
     expect(after.timers.spikeMs).toBeGreaterThanOrEqual(SPIKE_DAMAGE.minIntervalMs);
   });
 });
@@ -137,7 +150,7 @@ describe('rampe de dégâts', () => {
 
     const after = stepSimulation(state, TICK_MS);
     expect(after.damageMultiplier).toBeCloseTo(1.15, 10);
-    expect(memberOf(after, 'tank').hp).toBe(8000 - Math.round(TANK_DAMAGE.amount * 1.15));
+    expect(memberOf(after, 'tank').hp).toBe(TANK_HP - Math.round(TANK_DAMAGE.amount * 1.15));
   });
 
   it('multiplie les dégâts après 60 s', () => {
@@ -148,6 +161,6 @@ describe('rampe de dégâts', () => {
     });
 
     const after = stepSimulation(state, TICK_MS);
-    expect(memberOf(after, 'tank').hp).toBe(8000 - Math.round(TANK_DAMAGE.amount * 1.3225));
+    expect(memberOf(after, 'tank').hp).toBe(TANK_HP - Math.round(TANK_DAMAGE.amount * 1.3225));
   });
 });

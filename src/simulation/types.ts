@@ -5,9 +5,12 @@
  * contient que des données sérialisables et des fonctions pures.
  */
 
+import type { ClassId, RaceId } from '../config/classicData';
+
 export type Role = 'tank' | 'healer' | 'dps';
 
-export type SpellId = 'renew' | 'flash' | 'greater' | 'group';
+/** Les cinq familles de soin du prêtre vanilla (rang 1). */
+export type SpellId = 'lesserHeal' | 'renew' | 'heal' | 'flashHeal' | 'prayerOfHealing';
 
 export type GameStatus = 'active' | 'paused' | 'over';
 
@@ -24,6 +27,8 @@ export interface PartyMember {
   id: string;
   name: string;
   role: Role;
+  race: RaceId;
+  classId: ClassId;
   hpMax: number;
   hp: number;
   alive: boolean;
@@ -64,6 +69,8 @@ export interface GameStats {
 }
 
 export interface GameTimers {
+  /** Temps restant avant le prochain palier de régénération de mana (2 s). */
+  manaTickMs: number;
   /** Temps restant avant le prochain coup sur le tank. */
   tankDamageMs: number;
   /** Temps restant avant la prochaine AoE. */
@@ -74,6 +81,11 @@ export interface GameTimers {
 
 export interface GameState {
   status: GameStatus;
+  /**
+   * Niveau du soigneur : conditionne les sorts disponibles.
+   * Les tables de stats ne couvrent aujourd'hui que le niveau 1.
+   */
+  playerLevel: number;
   /** Temps de simulation écoulé, en millisecondes. */
   elapsedMs: number;
   /** État du générateur pseudo-aléatoire (déterminisme). */

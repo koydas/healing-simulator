@@ -60,26 +60,33 @@ jobs:
       # Bumping the tag here (rather than leaving the Deployment on :latest)
       # is what makes this a Git commit ArgoCD can actually sync on --
       # see docs/adr/0012.
-      - name: Update deployment image tag
-        run: |
-          sed -i "s|ghcr.io/koydas/healing-simulator:.*|ghcr.io/koydas/healing-simulator:${{ steps.vars.outputs.sha }}|" k8s/deployment.yaml
-
+      #
       # main is ruleset-protected (PR required, no direct push, no bypass
       # available for the GitHub Actions app on a personal-account repo --
-      # see docs/adr/0013). Open a same-repo PR and merge it immediately
-      # instead of pushing straight to main.
+      # see docs/adr/0013). The edit is based on origin/main's tip *at this
+      # point in the job*, not on this job's triggering commit: the
+      # `docker-publish-main` concurrency group queues same-time pushes to
+      # run one after another rather than in parallel, and by the time a
+      # queued run reaches this step, an earlier run may already have merged
+      # its own tag-bump PR into main. Sedding the stale, trigger-commit copy
+      # of k8s/deployment.yaml would make this run's PR change the same line
+      # from an already-superseded old tag, which conflicts with (and can't
+      # be auto-merged against) the newer tag the earlier run just landed.
       - name: Open and merge a deploy PR
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
+          git fetch origin main
+          BRANCH="deploy/${{ steps.vars.outputs.sha }}"
+          git checkout -B "$BRANCH" origin/main
+          sed -i "s|ghcr.io/koydas/healing-simulator:.*|ghcr.io/koydas/healing-simulator:${{ steps.vars.outputs.sha }}|" k8s/deployment.yaml
           git add k8s/deployment.yaml
           if git diff --cached --quiet; then
             echo "No manifest change, skipping deploy PR."
             exit 0
           fi
-          BRANCH="deploy/${{ steps.vars.outputs.sha }}"
           git commit -m "chore: deploy ${{ steps.vars.outputs.sha }}"
           # Force-push: BRANCH is deterministic per commit SHA, so a retry
           # after a failed `gh pr create`/`gh pr merge` below must be able to

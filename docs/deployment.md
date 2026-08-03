@@ -33,6 +33,13 @@ The image `HEALTHCHECK` polls `/health` every 30 s.
 - `X-Content-Type-Options`, `X-Frame-Options`, `Referrer-Policy` headers,
   `server_tokens off`, gzip compression.
 
+The three security headers are declared at server level **and repeated inside
+every `location` that declares an `add_header` of its own. That duplication is
+required, not sloppiness: nginx inherits `add_header` from the parent level
+only when the current level declares none, so a lone `Cache-Control` in a
+`location` silently drops every inherited header. Removing the repetition would
+serve the whole application without security headers.
+
 ## Read-only filesystem
 
 The Deployment sets `readOnlyRootFilesystem: true`. Nginx needs three writable

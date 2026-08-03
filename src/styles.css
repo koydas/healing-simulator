@@ -350,11 +350,15 @@ button {
 }
 
 .messages {
+  /* Pinned between the party and the controls, never inside the scrolling
+     region: combat messages must stay visible whatever the party scroll. */
+  flex: 0 0 auto;
   min-height: 46px;
   display: flex;
   flex-direction: column;
   justify-content: flex-end;
   gap: 2px;
+  padding: 0 var(--gap);
 }
 
 .messages__item {

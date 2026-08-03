@@ -47,8 +47,11 @@ export default function App() {
         <Header />
         <main className="app__main">
           <PartyList />
-          <MessageFeed />
         </main>
+        {/* Outside the scroller on purpose: the party can overflow on short
+            viewports, and a refusal message that scrolls out of sight makes a
+            rejected cast look like a dead button. */}
+        <MessageFeed />
         <Controls />
         <GameOver onRestart={handleRestart} />
       </div>

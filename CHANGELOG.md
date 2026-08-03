@@ -23,6 +23,17 @@ All notable changes to this project are recorded here, following
   204 px of the party were clipped (279 px in landscape), leaving the lower
   members drawn outside the visible area and impossible to tap — so they could
   not be selected for healing. The region is now `overflow-y: auto`.
+- **Combat messages stay visible on short viewports.** Making the party
+  scrollable pushed the message strip below the fold on small phones and in
+  landscape, so a refused cast ("Not enough mana", "Level too low") rendered
+  off-screen and the button looked dead. `MessageFeed` now sits between the
+  scrolling party and the controls; verified visible at 320 × 568, 667 × 375
+  and 390 × 844.
+- **Nginx no longer drops its security headers.** `add_header` is inherited
+  only when the child level declares none, so the `Cache-Control` in each
+  `location` was suppressing `X-Content-Type-Options`, `X-Frame-Options` and
+  `Referrer-Policy` for every application response. The three headers are now
+  repeated in all four locations, with a comment explaining why.
 - **Sub-path deployment is documented accurately.** `base: './'` was described
   as working "behind a path prefix" without qualification. It only does when
   the Ingress strips the prefix; an Ingress forwarding `/sim/` makes the

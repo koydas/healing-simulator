@@ -7,14 +7,14 @@
  * `useRef` and every child subscribes to its own snapshot.
  */
 
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Controls } from './components/Controls';
 import { EnemySelect } from './components/EnemySelect';
 import { GameOver } from './components/GameOver';
 import { Header } from './components/Header';
 import { MessageFeed } from './components/CombatFeedback';
 import { PartyList } from './components/PartyList';
-import { DEFAULT_SEED } from './config/gameConfig';
+import { DEFAULT_SEED, ENEMY_ORDER } from './config/gameConfig';
 import { GameStoreContext } from './hooks/useGameStore';
 import { useGameLoop } from './hooks/useGameLoop';
 import type { EnemyId } from './simulation/types';
@@ -32,6 +32,21 @@ function readInitialSeed(): number {
   return Number.isFinite(parsed) ? parsed : DEFAULT_SEED;
 }
 
+/**
+ * `?enemy=skarn` in the URL skips the selection screen and pins the
+ * encounter, the same way `?seed=` pins the fight itself — without this, a
+ * shared `?seed=` URL for Skarn or Threx would still land on the selection
+ * screen and could replay against the wrong enemy, breaking the exact-replay
+ * contract from ADR-0005.
+ */
+function readInitialEnemyId(): EnemyId | null {
+  if (typeof window === 'undefined') return null;
+  const parameter = new URLSearchParams(window.location.search).get('enemy');
+  return (ENEMY_ORDER as readonly string[]).includes(parameter ?? '')
+    ? (parameter as EnemyId)
+    : null;
+}
+
 interface FightProps {
   enemyId: EnemyId;
   /** Back to the enemy selection screen — tears the store down entirely. */
@@ -46,6 +61,23 @@ function Fight({ enemyId, onChangeEnemy }: FightProps) {
   const store = storeRef.current;
 
   useGameLoop(store);
+
+  // Encode the resolved seed and enemy into the URL once, on mount: whatever
+  // wasn't already pinned by the visitor (an auto-generated seed, an enemy
+  // picked on the selection screen) becomes part of a shareable link that
+  // reproduces this exact fight — the other half of the ADR-0005 contract
+  // `readInitialSeed` / `readInitialEnemyId` only read from.
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const url = new URL(window.location.href);
+    url.searchParams.set('seed', String(store.getState().initialSeed));
+    url.searchParams.set('enemy', enemyId);
+    window.history.replaceState(null, '', url);
+    // Deliberately once per mount: a same-enemy "New fight" rolls a fresh
+    // seed without rewriting the URL, matching how it already behaved before
+    // enemy selection existed. `store` and `enemyId` are both fixed for the
+    // lifetime of this component (a new enemy remounts `Fight` entirely).
+  }, [store, enemyId]);
 
   const handleRestart = useCallback(() => {
     store.restart(Date.now() >>> 0, enemyId);
@@ -70,7 +102,7 @@ function Fight({ enemyId, onChangeEnemy }: FightProps) {
 }
 
 export default function App() {
-  const [enemyId, setEnemyId] = useState<EnemyId | null>(null);
+  const [enemyId, setEnemyId] = useState<EnemyId | null>(readInitialEnemyId);
 
   if (enemyId === null) {
     return <EnemySelect onSelect={setEnemyId} />;

@@ -24,6 +24,14 @@ All notable changes to this project are recorded here, following
 
 ### Fixed
 
+- **A shared `?seed=` URL now replays against the right enemy.** The enemy
+  selection screen ignored `?enemy=` entirely, so a link to a Skarn or Threx
+  fight still landed on the picker and could replay against a different
+  encounter — breaking the exact-replay contract from ADR-0005. `App` now
+  reads `?enemy=` on load (`readInitialEnemyId`) and writes both `seed` and
+  `enemy` back into the URL once a fight starts, so the address bar always
+  identifies the exact fight in progress. Caught by Codex review on #6.
+
 - **All five party members now fit on an iPhone 13 mini without scrolling.**
   Spell buttons drop from 72 × 72 px to 64 × 64 px and pack into a single row
   instead of two on a phone, freeing ~88 px for the party. Desktop/landscape

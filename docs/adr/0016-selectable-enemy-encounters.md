@@ -68,9 +68,12 @@ the same caveat ADR-0010 already carries for Gorvath.
 ## Alternatives Considered
 
 - **Pick the enemy at random each fight** — rejected: removes player agency,
-  and makes it impossible to intentionally replay a specific fight shape (the
-  `?seed=` mechanic from ADR-0005 would then also need to pin the enemy, which
-  is exactly what carrying it in `GameState` already gives for free).
+  and makes it impossible to intentionally replay a specific fight shape.
+  Carrying the encounter in `GameState` makes the *engine* replay identically
+  from a given seed and enemy, but the URL layer (ADR-0005) still needed its
+  own explicit `?enemy=` parameter to pin the choice from the outside — a gap
+  a review caught after this ADR first shipped without it; `readInitialSeed`
+  gained a `readInitialEnemyId` counterpart in `App.tsx`.
 - **A single difficulty multiplier on Gorvath's existing profile** — rejected:
   a faster or slower version of the same shape does not teach a different
   healing pattern; the interesting distinction is *where* the damage lands

@@ -70,8 +70,10 @@ npm run build && npm run preview
 ```
 
 Things to check: the enemy selection screen on load (three cards, each with a
-level), selecting a frame, the refusal message shown when tapping an
-unavailable spell, the cast bar and `Cancel` button, GCD progress across the
-five buttons, the boss health bar draining over the fight, the end screen
-titled "Victory" or "Wipe" depending on which happened, "New fight" (same
-enemy, new seed), and "Choose another enemy" (back to the selection screen).
+level), `?seed=1&enemy=skarn` skipping straight to that fight, picking an
+enemy from the screen rewriting the URL to `?seed=…&enemy=…` afterwards,
+selecting a frame, the refusal message shown when tapping an unavailable
+spell, the cast bar and `Cancel` button, GCD progress across the five
+buttons, the boss health bar draining over the fight, the end screen titled
+"Victory" or "Wipe" depending on which happened, "New fight" (same enemy, new
+seed), and "Choose another enemy" (back to the selection screen).

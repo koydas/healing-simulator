@@ -76,4 +76,5 @@ selecting a frame, the refusal message shown when tapping an unavailable
 spell, the cast bar and `Cancel` button, GCD progress across the five
 buttons, the boss health bar draining over the fight, the end screen titled
 "Victory" or "Wipe" depending on which happened, "New fight" (same enemy, new
-seed), and "Choose another enemy" (back to the selection screen).
+seed — and the URL's `seed` updating to match), and "Choose another enemy"
+(back to the selection screen).

@@ -47,6 +47,20 @@ function readInitialEnemyId(): EnemyId | null {
     : null;
 }
 
+/**
+ * Writes the currently displayed fight's seed and enemy into the URL, so
+ * copying or reloading it always reproduces *that* fight — called on mount
+ * and again on every "New fight", since a rematch rolls a fresh seed that
+ * would otherwise leave the address bar pointing at the previous one.
+ */
+function syncFightUrl(seed: number, enemyId: EnemyId): void {
+  if (typeof window === 'undefined') return;
+  const url = new URL(window.location.href);
+  url.searchParams.set('seed', String(seed));
+  url.searchParams.set('enemy', enemyId);
+  window.history.replaceState(null, '', url);
+}
+
 interface FightProps {
   enemyId: EnemyId;
   /** Back to the enemy selection screen — tears the store down entirely. */
@@ -68,19 +82,18 @@ function Fight({ enemyId, onChangeEnemy }: FightProps) {
   // reproduces this exact fight — the other half of the ADR-0005 contract
   // `readInitialSeed` / `readInitialEnemyId` only read from.
   useEffect(() => {
-    if (typeof window === 'undefined') return;
-    const url = new URL(window.location.href);
-    url.searchParams.set('seed', String(store.getState().initialSeed));
-    url.searchParams.set('enemy', enemyId);
-    window.history.replaceState(null, '', url);
-    // Deliberately once per mount: a same-enemy "New fight" rolls a fresh
-    // seed without rewriting the URL, matching how it already behaved before
-    // enemy selection existed. `store` and `enemyId` are both fixed for the
-    // lifetime of this component (a new enemy remounts `Fight` entirely).
+    syncFightUrl(store.getState().initialSeed, enemyId);
+    // `store` and `enemyId` are both fixed for the lifetime of this
+    // component (a new enemy remounts `Fight` entirely) — this only needs to
+    // run once, the rematch case is handled by `handleRestart` itself.
   }, [store, enemyId]);
 
   const handleRestart = useCallback(() => {
-    store.restart(Date.now() >>> 0, enemyId);
+    const seed = Date.now() >>> 0;
+    store.restart(seed, enemyId);
+    // A rematch rolls a fresh seed: without this the address bar would keep
+    // pointing at the fight that just ended instead of the one on screen.
+    syncFightUrl(seed, enemyId);
   }, [store, enemyId]);
 
   return (

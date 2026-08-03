@@ -7,6 +7,11 @@ All notable changes to this project are recorded here, following
 
 ### Added
 
+- **`main` is now branch-protected.** The repo's ruleset (PR required, no
+  direct push/force-push/deletion) is active; `docker-publish.yml` now opens
+  and immediately squash-merges a same-repo PR to land the built image tag,
+  instead of pushing straight to `main`. See ADR-0013.
+
 - **Automated GHCR publishing and cluster deployment.** `.github/workflows/docker-publish.yml`
   builds and pushes the image to `ghcr.io/koydas/healing-simulator` on every
   push to `main` and commits the built tag into `k8s/deployment.yaml`, which an

@@ -11,6 +11,7 @@ on:
 permissions:
   contents: write
   packages: write
+  pull-requests: write
 
 concurrency:
   group: docker-publish-main
@@ -63,10 +64,26 @@ jobs:
         run: |
           sed -i "s|ghcr.io/koydas/healing-simulator:.*|ghcr.io/koydas/healing-simulator:${{ steps.vars.outputs.sha }}|" k8s/deployment.yaml
 
-      - name: Commit and push updated manifest
+      # main is ruleset-protected (PR required, no direct push, no bypass
+      # available for the GitHub Actions app on a personal-account repo --
+      # see docs/adr/0013). Open a same-repo PR and merge it immediately
+      # instead of pushing straight to main.
+      - name: Open and merge a deploy PR
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add k8s/deployment.yaml
-          git diff --cached --quiet || git commit -m "chore: deploy ${{ steps.vars.outputs.sha }}"
-          git push
+          if git diff --cached --quiet; then
+            echo "No manifest change, skipping deploy PR."
+            exit 0
+          fi
+          BRANCH="deploy/${{ steps.vars.outputs.sha }}"
+          git checkout -b "$BRANCH"
+          git commit -m "chore: deploy ${{ steps.vars.outputs.sha }}"
+          git push origin "$BRANCH"
+          gh pr create --base main --head "$BRANCH" \
+            --title "chore: deploy ${{ steps.vars.outputs.sha }}" \
+            --body "Automated image tag bump to ghcr.io/koydas/healing-simulator:${{ steps.vars.outputs.sha }}."
+          gh pr merge "$BRANCH" --squash --delete-branch

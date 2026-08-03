@@ -114,9 +114,14 @@ does).
 docker build -t <registry>/healing-simulator:1.0.0 .
 docker push <registry>/healing-simulator:1.0.0
 
-# 2. Adjust the image and the host
+# 2. Adjust the image, the host, and the pinned LoadBalancer IP
 #    - k8s/deployment.yaml: spec.template.spec.containers[0].image
 #    - k8s/ingress.yaml:    spec.rules[0].host and spec.ingressClassName
+#    - k8s/service.yaml:    metallb.io/loadBalancerIPs annotation is specific
+#                           to this homelab's MetalLB pool -- replace it with
+#                           a free address in yours, or drop it and the
+#                           LoadBalancer type back to ClusterIP for
+#                           Ingress-only access (see docs/deployment.md)
 
 # 3. Apply
 kubectl apply -f k8s/

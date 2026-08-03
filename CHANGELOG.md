@@ -10,7 +10,13 @@ All notable changes to this project are recorded here, following
 - **`main` is now branch-protected.** The repo's ruleset (PR required, no
   direct push/force-push/deletion) is active; `docker-publish.yml` now opens
   and immediately squash-merges a same-repo PR to land the built image tag,
-  instead of pushing straight to `main`. See ADR-0013.
+  instead of pushing straight to `main`. See ADR-0014.
+
+- **Dedicated MetalLB IP for zero-setup access.** `k8s/service.yaml` is now
+  `type: LoadBalancer` pinned to `192.168.1.247`, alongside the existing
+  `healing-simulator.home` Ingress route — `http://192.168.1.247` works from
+  any device (including a phone) with no `/etc/hosts` or DNS setup. See
+  ADR-0013.
 
 - **Automated GHCR publishing and cluster deployment.** `.github/workflows/docker-publish.yml`
   builds and pushes the image to `ghcr.io/koydas/healing-simulator` on every

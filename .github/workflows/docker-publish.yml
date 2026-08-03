@@ -63,7 +63,7 @@ jobs:
       #
       # main is ruleset-protected (PR required, no direct push, no bypass
       # available for the GitHub Actions app on a personal-account repo --
-      # see docs/adr/0013). The edit is based on origin/main's tip *at this
+      # see docs/adr/0014). The edit is based on origin/main's tip *at this
       # point in the job*, not on this job's triggering commit: the
       # `docker-publish-main` concurrency group queues same-time pushes to
       # run one after another rather than in parallel, and by the time a

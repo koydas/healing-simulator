@@ -1,4 +1,4 @@
-# ADR-0013: `main` ruleset activated — deploy pipeline switches to an auto-merged PR
+# ADR-0014: `main` ruleset activated — deploy pipeline switches to an auto-merged PR
 
 - **Date:** 2026-08-03
 - **Status:** Accepted

@@ -16,6 +16,7 @@ Architecture Decision Records for the Healing Simulator.
 - [ADR-0010: Level 1 boss profile — what is sourced, what is designed](./0010-level-1-boss-profile.md)
 - [ADR-0011: Root-relative asset base](./0011-root-relative-asset-base.md)
 - [ADR-0012: GitOps deployment via GHCR image + ArgoCD git-source Application](./0012-gitops-deployment-via-ghcr.md)
+- [ADR-0013: Dedicated MetalLB IP alongside the Ingress](./0013-dedicated-metallb-ip.md)
 
 ## Format
 

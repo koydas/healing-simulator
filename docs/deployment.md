@@ -56,7 +56,7 @@ paths, provided as `emptyDir` volumes:
 | File | Contents |
 | --- | --- |
 | `k8s/deployment.yaml` | 2 replicas, non-root context (uid/gid 101), `drop: ALL` capabilities, `allowPrivilegeEscalation: false`, `seccompProfile: RuntimeDefault`, startup / readiness / liveness probes on `/health`, requests & limits |
-| `k8s/service.yaml` | `ClusterIP`, port 80 → the named `http` port (8080) |
+| `k8s/service.yaml` | `LoadBalancer` pinned to `192.168.1.247` (ADR-0013), port 80 → the named `http` port (8080) |
 | `k8s/ingress.yaml` | host `healing-simulator.home`, `pathType: Prefix`, `ingressClassName: nginx` |
 
 ```bash
@@ -73,6 +73,10 @@ every push to `main` (see ADR-0012). An ArgoCD git-source Application in
 `gitops-homelab` (`apps/healing-simulator/application.yaml`) syncs that commit
 onto the cluster automatically — no manual `kubectl apply` needed for this
 deployment.
+
+Reachable two ways: `http://192.168.1.247` directly (no setup, ADR-0013) or
+`http://healing-simulator.home` (needs a per-device `/etc/hosts` entry or LAN
+DNS pointed at ingress-nginx's `192.168.1.243`).
 
 ### What to adjust before applying elsewhere
 

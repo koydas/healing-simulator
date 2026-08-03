@@ -7,6 +7,12 @@ All notable changes to this project are recorded here, following
 
 ### Added
 
+- **Dedicated MetalLB IP for zero-setup access.** `k8s/service.yaml` is now
+  `type: LoadBalancer` pinned to `192.168.1.247`, alongside the existing
+  `healing-simulator.home` Ingress route — `http://192.168.1.247` works from
+  any device (including a phone) with no `/etc/hosts` or DNS setup. See
+  ADR-0013.
+
 - **Automated GHCR publishing and cluster deployment.** `.github/workflows/docker-publish.yml`
   builds and pushes the image to `ghcr.io/koydas/healing-simulator` on every
   push to `main` and commits the built tag into `k8s/deployment.yaml`, which an

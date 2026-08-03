@@ -68,6 +68,10 @@ replacing the old "base ± 10%".
   an unfinished interface at first glance.
 - ⚠️ The bar grows from four to five buttons (three per row on a phone, two on
   the second row); the 72 × 72 px constraint still holds.
+
+> Update (ADR-0015): on a phone, spell buttons drop to 64 × 64 px and pack
+> into a single row instead of two, to leave room for the whole party without
+> scrolling. The 72 × 72 px size is kept on desktop/landscape only.
 - ⚠️ The higher ranks' amounts (Heal, Flash Heal, Prayer of Healing) are out of
   scale for level 1 health pools: they will only make sense once the party
   levels up.

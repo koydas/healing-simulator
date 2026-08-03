@@ -1,6 +1,6 @@
 ---
 name: render-budget
-description: How to add or change UI without breaking the render budget — the store/snapshot/onFrame split, React.memo, CSS-variable animation, cleanup, and the mobile layout rules (72x72 spell buttons, scrollable regions on short viewports). Use this skill whenever you touch src/components/, src/store/, src/hooks/ or src/styles.css, add a widget or an indicator, or wire a new value from the engine into the screen.
+description: How to add or change UI without breaking the render budget — the store/snapshot/onFrame split, React.memo, CSS-variable animation, cleanup, and the mobile layout rules (64x64 spell buttons on phones, 72x72 on desktop, scrollable regions on short viewports). Use this skill whenever you touch src/components/, src/store/, src/hooks/ or src/styles.css, add a widget or an indicator, or wire a new value from the engine into the screen.
 ---
 
 # render-budget
@@ -87,7 +87,9 @@ message ("Not enough mana", "Level too low", …). Do not "fix" that into a real
 
 ### Mobile layout rules
 
-- Party frames: 64 px minimum height. Spell buttons: 72 × 72 px minimum.
+- Party frames: 64 px minimum height. Spell buttons: 64 × 64 px minimum on a
+  phone (single row, see ADR-0015), 72 × 72 px on desktop/landscape
+  (`min-width: 720px and (orientation: landscape)`).
 - `touch-action: manipulation` and `user-select: none` on interactive surfaces;
   respect `env(safe-area-inset-*)`.
 - **Never lock zoom.** `maximum-scale` and `user-scalable=no` in the viewport

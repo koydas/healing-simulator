@@ -28,7 +28,8 @@ npm run dev          # http://localhost:5173
 | `npm run test:watch` | Vitest in watch mode |
 | `npm run typecheck` | typecheck only |
 
-Node.js **20+** is required (Vite 7).
+Node.js **20.19+** or **22.12+** is required — the range declared by the
+locked Vite 7 release.
 
 ## How to play
 
@@ -60,7 +61,8 @@ Mana follows the vanilla model: a 18.5 tick every 2 s, **suspended for 5 seconds
 after every expenditure** (the five-second rule).
 
 Every accepted cast triggers a 1.5 s global cooldown. The fight ends when the
-tank dies or when three members are dead.
+tank dies or when three members are dead. Elowen can die too: from that point
+casting is refused and you watch the party fall.
 
 A fight is **exactly replayable**: `?seed=1337` in the URL fixes the seed of the
 pseudo-random generator (the current seed is shown on the end screen).

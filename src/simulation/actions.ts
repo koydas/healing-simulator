@@ -8,6 +8,7 @@
 import {
   CANCEL_MESSAGE,
   GCD_MS,
+  PLAYER_MEMBER_ID,
   REFUSAL_MESSAGES,
   SPELLS,
   isSpellUnlocked,
@@ -33,6 +34,9 @@ export function checkCast(state: GameState, spellId: SpellId): CastCheck {
 
   if (state.status === 'over') return { allowed: false, reason: 'game_over' };
   if (state.status !== 'active') return { allowed: false, reason: 'paused' };
+  // A dead healer casts nothing, even while the fight goes on around them.
+  const caster = findMember(state, PLAYER_MEMBER_ID);
+  if (!caster || !caster.alive) return { allowed: false, reason: 'caster_dead' };
   if (state.activeCast) return { allowed: false, reason: 'casting' };
   if (state.gcdRemainingMs > 0) return { allowed: false, reason: 'gcd' };
   // The spell must be trained: at level 1 only Lesser Heal is.

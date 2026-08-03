@@ -140,6 +140,75 @@ describe('cost and global cooldown', () => {
   });
 });
 
+describe('a dead healer', () => {
+  /** Kills Elowen with an AoE while the tank and the others stay alive. */
+  function healerDown(seed = 1): GameState {
+    let state = isolateTimers(createInitialState(seed));
+    state = patchMember(state, 'healer', { hp: 1 });
+    state = patchMember(state, 'tank', { hp: 50 });
+    state = patchState(state, { timers: { ...state.timers, aoeMs: TICK_MS } });
+    return stepSimulation(state, TICK_MS);
+  }
+
+  it('dies without ending a fight the tank is still holding', () => {
+    const state = healerDown();
+    expect(memberOf(state, 'healer').alive).toBe(false);
+    expect(state.status).toBe('active');
+  });
+
+  it('cannot cast any more, and spends nothing trying', () => {
+    let state = selectTarget(healerDown(), 'tank');
+
+    expect(checkCast(state, 'lesserHeal')).toEqual({ allowed: false, reason: 'caster_dead' });
+
+    const manaBefore = state.mana;
+    state = castSpell(state, 'lesserHeal');
+
+    expect(state.mana).toBe(manaBefore);
+    expect(state.activeCast).toBeNull();
+    expect(state.gcdRemainingMs).toBe(0);
+    expect(state.stats.manaSpent).toBe(0);
+    expect(state.stats.castsStartedBySpell.lesserHeal).toBe(0);
+    expect(state.feedback.at(-1)?.text).toBe('You are dead');
+  });
+
+  it('interrupts the cast it had in flight, and heals nobody with it', () => {
+    let state = isolateTimers(createInitialState(1));
+    state = patchMember(state, 'tank', { hp: 50 });
+    state = selectTarget(state, 'tank');
+    state = castSpell(state, 'lesserHeal');
+
+    state = patchMember(state, 'healer', { hp: 1 });
+    state = patchState(state, { timers: { ...state.timers, aoeMs: TICK_MS } });
+    state = stepSimulation(state, TICK_MS); // the healer dies mid-cast
+
+    expect(memberOf(state, 'healer').alive).toBe(false);
+    expect(state.activeCast).toBeNull();
+    expect(state.stats.castsCancelled).toBe(1);
+
+    const tankHp = memberOf(state, 'tank').hp;
+    state = advance(state, 3000);
+    expect(memberOf(state, 'tank').hp).toBe(tankHp);
+    expect(state.stats.castsCompletedBySpell.lesserHeal).toBe(0);
+  });
+
+  it('leaves the HoTs it applied while alive ticking', () => {
+    let state = unlockAllSpells(isolateTimers(createInitialState(1)));
+    state = patchMember(state, 'tank', { hp: 50 });
+    state = selectTarget(state, 'tank');
+    state = castSpell(state, 'renew');
+
+    state = patchMember(state, 'healer', { hp: 1 });
+    state = patchState(state, { timers: { ...state.timers, aoeMs: TICK_MS } });
+    state = stepSimulation(state, TICK_MS);
+    expect(memberOf(state, 'healer').alive).toBe(false);
+
+    const tankHp = memberOf(state, 'tank').hp;
+    state = advance(state, 3000);
+    expect(memberOf(state, 'tank').hp).toBe(tankHp + 9);
+  });
+});
+
 describe('cast resolution', () => {
   it('applies healing when the cast finishes, not before', () => {
     let state = castSpell(woundedGame(), 'lesserHeal');

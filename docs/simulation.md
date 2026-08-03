@@ -88,12 +88,13 @@ the one displayed:
 | --- | --- | --- |
 | 1 | fight is over | `Fight is over` |
 | 2 | game paused | `Game paused` |
-| 3 | already casting | `Already casting` |
-| 4 | global cooldown active | `Global cooldown` |
-| 5 | spell not trained at this level | `Level too low` |
-| 6 | no target (targeted spells) | `Target required` |
-| 7 | target is dead | `Target is dead` |
-| 8 | not enough mana | `Not enough mana` |
+| 3 | the healer is dead | `You are dead` |
+| 4 | already casting | `Already casting` |
+| 5 | global cooldown active | `Global cooldown` |
+| 6 | spell not trained at this level | `Level too low` |
+| 7 | no target (targeted spells) | `Target required` |
+| 8 | target is dead | `Target is dead` |
+| 9 | not enough mana | `Not enough mana` |
 
 A refusal spends **no** mana and triggers **no** GCD; it only produces a
 message.
@@ -102,9 +103,19 @@ An accepted cast spends mana immediately, triggers a 1.5 s GCD and resets
 `msSinceLastCastStart`. Instant spells (Renew) apply their effect straight away
 and count both as *started* and *completed*.
 
-A cast is cancelled in three cases only: the `Cancel` button, its target dying,
-or the fight ending. A cancellation keeps the mana and the GCD, applies no
-healing and increments `castsCancelled`.
+A cast is cancelled in four cases only: the `Cancel` button, its target dying,
+**the healer dying**, or the fight ending. A cancellation keeps the mana and the
+GCD, applies no healing and increments `castsCancelled`.
+
+## When the healer dies
+
+Elowen is a party member like any other: an AoE or a spike can kill her while
+the tank is still holding, and the fight carries on until a wipe condition is
+met. From that moment the player is a spectator:
+
+- every cast is refused with `You are dead`, and spends neither mana nor GCD;
+- the cast in flight is interrupted (it counts as cancelled and heals nobody);
+- HoTs applied while she was alive **keep ticking**, as they do in game.
 
 ## Mana — vanilla model
 
@@ -146,6 +157,7 @@ can happen afterwards: `stepSimulation` returns the state untouched.
 | `0 <= hp <= hpMax` | `applyHealTo` / `applyDamageTo` (clamps) |
 | `0 <= mana <= manaMax` | `regenerateMana`, `castSpell` |
 | no healing on a dead target | `applyHealTo`, `applySpellEffect` |
+| a dead healer casts nothing | `checkCast` (`caster_dead`) + `resolveDeaths` |
 | no spell cast below its required level | `checkCast` (`level` reason) |
 | nothing spent when a cast is refused | `castSpell` (refusal branch) |
 | no refund after an interruption | `cancelActiveCast` |

@@ -129,7 +129,14 @@ that is the point of the mode.
 
 The message below the party always gives the exact reason: `Global cooldown`,
 `Already casting`, `Level too low`, `Not enough mana`, `Target required`,
-`Target is dead`, `Game paused` or `Fight is over`.
+`Target is dead`, `You are dead`, `Game paused` or `Fight is over`.
+
+### "Elowen died and I cannot do anything any more"
+
+That is expected. The healer is a party member: a spike or an AoE can kill her
+while the tank is still standing, and the fight then runs on without a healer
+until a wipe condition is met. Casting is refused with `You are dead`, and any
+cast in flight is interrupted. HoTs applied beforehand keep ticking.
 
 ### "Four buttons out of five are greyed out"
 

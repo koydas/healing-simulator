@@ -288,6 +288,7 @@ export const FEEDBACK = {
 export type CastRefusalReason =
   | 'game_over'
   | 'paused'
+  | 'caster_dead'
   | 'casting'
   | 'gcd'
   | 'level'
@@ -298,6 +299,7 @@ export type CastRefusalReason =
 export const REFUSAL_MESSAGES: Record<CastRefusalReason, string> = {
   game_over: 'Fight is over',
   paused: 'Game paused',
+  caster_dead: 'You are dead',
   casting: 'Already casting',
   gcd: 'Global cooldown',
   level: 'Level too low',

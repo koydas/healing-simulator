@@ -22,6 +22,7 @@ import {
   CANCEL_MESSAGE,
   CAST_IDLE_CAP_MS,
   MANA,
+  PLAYER_MEMBER_ID,
   RAMP,
   SPELLS,
   SPIKE_DAMAGE,
@@ -164,7 +165,12 @@ function resolveDeaths(draft: GameState): void {
     if (draft.selectedTargetId === member.id) {
       draft.selectedTargetId = null;
     }
-    if (draft.activeCast && draft.activeCast.targetId === member.id) {
+    // A cast is interrupted both when its target dies and when the healer —
+    // the caster — dies. Already applied HoTs keep ticking, as in game.
+    if (
+      draft.activeCast &&
+      (draft.activeCast.targetId === member.id || member.id === PLAYER_MEMBER_ID)
+    ) {
       cancelActiveCast(draft);
     }
   }

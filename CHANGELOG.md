@@ -5,6 +5,21 @@ All notable changes to this project are recorded here, following
 
 ## [Unreleased]
 
+### Fixed
+
+- **A dead healer can no longer heal.** When Elowen died from an AoE or a spike
+  while the tank was still holding, the fight stayed active and the controls
+  kept accepting casts: mana was spent, healing landed, and an in-flight cast
+  completed after its caster's death — inflating survival time and the end-of-
+  fight statistics. `checkCast` now refuses with `You are dead`, and the
+  healer's own death interrupts the running cast. HoTs applied while she was
+  alive keep ticking, as in game.
+- **`engines.node` matches the locked toolchain.** The range advertised
+  `>=20`, which accepts Node 20.0-20.18 and 22.0-22.11, while Vite 7.3.6
+  requires `^20.19.0 || >=22.12.0`: installing on those versions succeeded with
+  a warning, then failed at dev-server or build time. The manifest and the
+  README now state the real range.
+
 ### Changed
 
 - **All character stats now come from WoW Classic 1.12, at level 1**
@@ -42,7 +57,7 @@ All notable changes to this project are recorded here, following
   between **sourced**, **derived**, **approximated** and **designed** values.
 - ADR-0007 through ADR-0010 documenting those four decisions.
 - `tests/classicStats.test.ts`: 14 tests over the vanilla formulas, the derived
-  party health and the spell values (92 tests in total).
+  party health and the spell values (96 tests in total).
 
 ## [1.0.0] — 2026-08-02
 

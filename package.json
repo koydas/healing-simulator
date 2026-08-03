@@ -6,7 +6,7 @@
   "description": "Mobile web party-healer simulator inspired by WoW Classic — React + TypeScript + Vite, no backend.",
   "license": "MIT",
   "engines": {
-    "node": ">=20"
+    "node": "^20.19.0 || >=22.12.0"
   },
   "scripts": {
     "dev": "vite",

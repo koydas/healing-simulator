@@ -1,22 +1,22 @@
-# Dépendances et artefacts locaux
+# Dependencies and local artefacts
 node_modules
 dist
 coverage
 .vite
 
-# Git et CI
+# Git and CI
 .git
 .github
 .gitignore
 
-# Docs et manifestes non nécessaires au build de l'image
+# Docs and manifests not needed to build the image
 docs
 k8s
 README.md
 CHANGELOG.md
 LICENSE
 
-# Divers
+# Misc
 *.log
 npm-debug.log*
 .DS_Store

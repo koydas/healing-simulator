@@ -1,20 +1,20 @@
 /**
- * Cœur du moteur : `stepSimulation` fait avancer la partie d'un pas fixe.
+ * Engine core: `stepSimulation` advances the fight by one fixed step.
  *
- * Contraintes respectées par ce module :
- *   - fonction pure : l'état d'entrée n'est jamais muté, un nouvel état est renvoyé ;
- *   - aucun `Date.now()`, `performance.now()`, `Math.random()`, DOM ou API React ;
- *   - toute l'aléatoire passe par la seed transportée dans le state.
+ * Constraints this module honours:
+ *   - pure function: the input state is never mutated, a new state is returned;
+ *   - no `Date.now()`, `performance.now()`, `Math.random()`, DOM or React APIs;
+ *   - all randomness goes through the seed carried inside the state.
  *
- * Ordre de résolution des événements survenant au même instant :
- *   1. complétion des casts
- *   2. ticks de HoT
- *   3. régénération de mana
- *   4. dégâts tank
- *   5. dégâts AoE
+ * Resolution order for events landing on the same instant:
+ *   1. cast completion
+ *   2. HoT ticks
+ *   3. mana regeneration
+ *   4. tank damage
+ *   5. AoE damage
  *   6. spike
- *   7. résolution des morts
- *   8. vérification du wipe
+ *   7. death resolution
+ *   8. wipe check
  */
 
 import {
@@ -34,13 +34,13 @@ import { cloneState } from './initialState';
 import { nextInt, nextRange } from './random';
 import type { GameState } from './types';
 
-/** Multiplicateur de dégâts cumulatif pour un temps de jeu donné. */
+/** Cumulative damage multiplier for a given fight time. */
 export function computeDamageMultiplier(elapsedMs: number): number {
   const steps = Math.floor(elapsedMs / RAMP.intervalMs);
   return Math.pow(RAMP.factor, steps);
 }
 
-/** Annule le cast en cours (la mana et le GCD restent consommés). */
+/** Cancels the active cast (mana and the GCD stay spent). */
 export function cancelActiveCast(draft: GameState, message: string = CANCEL_MESSAGE): void {
   if (!draft.activeCast) return;
   draft.activeCast = null;
@@ -49,7 +49,7 @@ export function cancelActiveCast(draft: GameState, message: string = CANCEL_MESS
 }
 
 /* -------------------------------------------------------------------------- */
-/* Étapes                                                                      */
+/* Steps                                                                       */
 /* -------------------------------------------------------------------------- */
 
 function advanceCast(draft: GameState, dtMs: number): void {
@@ -64,7 +64,7 @@ function advanceCast(draft: GameState, dtMs: number): void {
   if (spell.requiresTarget) {
     const target = findMember(draft, cast.targetId);
     if (!target || !target.alive) {
-      // Sécurité : une cible morte annule normalement le cast avant ce point.
+      // Safety net: a dead target normally cancels the cast before this point.
       cancelActiveCast(draft);
       return;
     }
@@ -83,7 +83,7 @@ function tickHots(draft: GameState, dtMs: number): void {
     for (const hot of member.hots) {
       hot.nextTickInMs -= dtMs;
       while (hot.nextTickInMs <= 0 && hot.ticksRemaining > 0) {
-        // Le soin du HoT passe par le même chemin que les autres soins.
+        // HoT healing goes through the same path as any other heal.
         applyHealTo(draft, member, hot.healPerTick);
         hot.ticksRemaining -= 1;
         hot.nextTickInMs += hot.intervalMs;
@@ -98,9 +98,8 @@ function tickHots(draft: GameState, dtMs: number): void {
 }
 
 /**
- * Régénération de mana à la vanilla : un palier toutes les 2 secondes, et la
- * règle des cinq secondes qui suspend totalement la part liée à l'esprit
- * pendant 5 s après chaque dépense de mana.
+ * Vanilla mana regeneration: one tick every 2 seconds, and the five-second rule
+ * which fully suspends the spirit-based part for 5 s after any mana spend.
  */
 function regenerateMana(draft: GameState, dtMs: number): void {
   draft.timers.manaTickMs -= dtMs;
@@ -160,7 +159,7 @@ function resolveDeaths(draft: GameState): void {
     member.alive = false;
     member.hots = [];
     draft.stats.deaths.push(member.id);
-    pushFeedback(draft, { kind: 'death', targetId: member.id, text: `${member.name} est mort` });
+    pushFeedback(draft, { kind: 'death', targetId: member.id, text: `${member.name} died` });
 
     if (draft.selectedTargetId === member.id) {
       draft.selectedTargetId = null;
@@ -183,12 +182,12 @@ function checkWipe(draft: GameState): void {
 }
 
 /* -------------------------------------------------------------------------- */
-/* Boucle                                                                      */
+/* Loop                                                                        */
 /* -------------------------------------------------------------------------- */
 
 /**
- * Fait avancer la simulation d'exactement `dtMs` millisecondes.
- * Renvoie l'état inchangé si la partie n'est pas active.
+ * Advances the simulation by exactly `dtMs` milliseconds.
+ * Returns the state untouched when the fight is not active.
  */
 export function stepSimulation(state: GameState, dtMs: number): GameState {
   if (state.status !== 'active' || dtMs <= 0) return state;

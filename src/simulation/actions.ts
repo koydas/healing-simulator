@@ -1,8 +1,8 @@
 /**
- * Actions du joueur — fonctions pures `(state, payload) => state`.
+ * Player actions — pure `(state, payload) => state` functions.
  *
- * Aucune action n'utilise l'horloge réelle : elles s'intercalent entre deux
- * pas de simulation et sont donc rejouables à l'identique.
+ * No action reads the real clock: they slot in between two simulation steps and
+ * are therefore replayable as-is.
  */
 
 import {
@@ -25,8 +25,8 @@ export interface CastCheck {
 }
 
 /**
- * Vérifie si un sort peut être lancé, sans modifier l'état.
- * L'ordre des vérifications détermine le message affiché en cas de refus.
+ * Checks whether a spell can be cast, without modifying the state.
+ * The order of the checks determines which message is shown on refusal.
  */
 export function checkCast(state: GameState, spellId: SpellId): CastCheck {
   const spell = SPELLS[spellId];
@@ -35,7 +35,7 @@ export function checkCast(state: GameState, spellId: SpellId): CastCheck {
   if (state.status !== 'active') return { allowed: false, reason: 'paused' };
   if (state.activeCast) return { allowed: false, reason: 'casting' };
   if (state.gcdRemainingMs > 0) return { allowed: false, reason: 'gcd' };
-  // Le sort doit être appris : au niveau 1, seul Lesser Heal l'est.
+  // The spell must be trained: at level 1 only Lesser Heal is.
   if (!isSpellUnlocked(spell, state.playerLevel)) return { allowed: false, reason: 'level' };
 
   if (spell.requiresTarget) {
@@ -49,7 +49,7 @@ export function checkCast(state: GameState, spellId: SpellId): CastCheck {
   return { allowed: true, reason: null };
 }
 
-/** Sélectionne une cible (les membres morts ne sont pas ciblables). */
+/** Selects a target (dead members cannot be targeted). */
 export function selectTarget(state: GameState, memberId: string): GameState {
   const member = findMember(state, memberId);
   if (!member || !member.alive) return state;
@@ -61,11 +61,11 @@ export function selectTarget(state: GameState, memberId: string): GameState {
 }
 
 /**
- * Lance un sort sur la cible sélectionnée.
+ * Casts a spell on the selected target.
  *
- * Un refus ne dépense ni mana ni GCD : il produit uniquement un message.
- * Un lancement accepté dépense la mana immédiatement et déclenche le GCD ;
- * les sorts instantanés appliquent leur effet sur-le-champ.
+ * A refusal spends neither mana nor GCD: it only produces a message.
+ * An accepted cast spends mana immediately and triggers the GCD; instant spells
+ * apply their effect right away.
  */
 export function castSpell(state: GameState, spellId: SpellId): GameState {
   const spell = SPELLS[spellId];
@@ -107,8 +107,8 @@ export function castSpell(state: GameState, spellId: SpellId): GameState {
 }
 
 /**
- * Annule le cast en cours à la demande du joueur.
- * La mana dépensée et le GCD sont conservés.
+ * Cancels the active cast at the player's request.
+ * Spent mana and the GCD are kept.
  */
 export function cancelCast(state: GameState): GameState {
   if (!state.activeCast) return state;
@@ -117,7 +117,7 @@ export function cancelCast(state: GameState): GameState {
   return draft;
 }
 
-/** Met la partie en pause (aucune progression tant que la pause dure). */
+/** Pauses the fight (nothing progresses while paused). */
 export function pauseGame(state: GameState): GameState {
   if (state.status !== 'active') return state;
   const draft = cloneState(state);
@@ -125,7 +125,7 @@ export function pauseGame(state: GameState): GameState {
   return draft;
 }
 
-/** Reprend la partie. */
+/** Resumes the fight. */
 export function resumeGame(state: GameState): GameState {
   if (state.status !== 'paused') return state;
   const draft = cloneState(state);
@@ -133,14 +133,14 @@ export function resumeGame(state: GameState): GameState {
   return draft;
 }
 
-/** Bascule pause / reprise. */
+/** Toggles pause / resume. */
 export function togglePause(state: GameState): GameState {
   if (state.status === 'active') return pauseGame(state);
   if (state.status === 'paused') return resumeGame(state);
   return state;
 }
 
-/** Démarre une nouvelle partie avec la seed fournie. */
+/** Starts a new fight with the given seed. */
 export function restartGame(seed: number): GameState {
   return createInitialState(seed);
 }

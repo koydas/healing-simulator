@@ -1,8 +1,8 @@
 /**
- * Construction de l'état initial d'une partie.
+ * Builds the initial state of a fight.
  *
- * Fonction pure : la seed est fournie par l'appelant (la couche React peut,
- * elle, utiliser l'horloge réelle pour en générer une).
+ * Pure function: the seed is supplied by the caller (the React layer may use
+ * the real clock to generate one).
  */
 
 import {
@@ -19,8 +19,8 @@ import { nextRange, normalizeSeed } from './random';
 import type { GameStats, GameState, PartyMember } from './types';
 
 /**
- * Groupe de départ : PV issus des formules vanilla (voir `classicData.ts`),
- * jamais écrits en dur.
+ * Starting party: health comes from the vanilla formulas (see `classicData.ts`),
+ * never written by hand.
  */
 function createParty(): PartyMember[] {
   return PARTY_TEMPLATE.map((template) => ({
@@ -57,10 +57,10 @@ export function createEmptyStats(): GameStats {
 }
 
 /**
- * Crée une partie neuve.
+ * Creates a fresh fight.
  *
- * Le premier spike est planifié immédiatement à partir de la seed : c'est le
- * seul tirage aléatoire effectué avant le premier pas de simulation.
+ * The first spike is scheduled straight from the seed: it is the only random
+ * draw performed before the first simulation step.
  */
 export function createInitialState(
   seed: number = DEFAULT_SEED,
@@ -80,7 +80,7 @@ export function createInitialState(
     mana: MANA.initial,
     manaMax: MANA.max,
     gcdRemainingMs: 0,
-    // Aucune mana dépensée : la règle des cinq secondes ne s'applique pas.
+    // No mana spent yet: the five-second rule does not apply.
     msSinceLastCastStart: MANA.fiveSecondRuleMs,
     activeCast: null,
     timers: {
@@ -96,7 +96,7 @@ export function createInitialState(
   };
 }
 
-/** Clone profond d'un état (les fonctions du moteur travaillent sur un brouillon). */
+/** Deep clone of a state (engine functions work on a draft). */
 export function cloneState(state: GameState): GameState {
   return {
     ...state,

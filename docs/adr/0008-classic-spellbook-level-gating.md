@@ -1,75 +1,73 @@
-# ADR-0008: Sorts réels du prêtre et verrouillage par niveau d'apprentissage
+# ADR-0008: Real priest spell book gated by training level
 
 - **Date:** 2026-08-02
 - **Status:** Accepted
 
 ## Context
 
-Les quatre sorts d'origine (Renew, Flash Heal, Greater Heal, Group Heal) étaient
-inventés. En passant aux stats Classic, ils devaient devenir de vrais sorts de
-prêtre vanilla.
+The four original spells (Renew, Flash Heal, Greater Heal, Group Heal) were
+invented. Moving to Classic stats meant they had to become real vanilla priest
+spells.
 
-Un problème apparaît immédiatement : **au niveau 1, un prêtre ne connaît que
-Lesser Heal**. Renew s'apprend au niveau 8, Heal au 16, Flash Heal au 20,
-Prayer of Healing au 30. Une barre de quatre sorts « tous niveau 1 » n'existe
-pas dans le jeu. Et les coûts le confirment : Prayer of Healing coûte 410 de
-mana, soit 2,5 fois le pool d'un prêtre de niveau 1.
+A problem shows up immediately: **at level 1 a priest only knows Lesser Heal**.
+Renew is learned at level 8, Heal at 16, Flash Heal at 20, Prayer of Healing at
+30. A four-spell bar that is "all level 1" does not exist in the game. The costs
+confirm it: Prayer of Healing costs 410 mana, 2.5 times a level 1 priest's pool.
 
 ## Decision
 
-La barre affiche les **cinq familles de soin du prêtre vanilla**, au rang 1,
-avec leurs vraies valeurs :
+The bar shows the **five vanilla priest healing families**, at rank 1, with
+their real values:
 
-| Sort | Niveau | Mana | Incantation | Effet |
+| Spell | Level | Mana | Cast | Effect |
 | --- | --- | --- | --- | --- |
-| Lesser Heal | 1 | 30 | 1,5 s | 46 – 56 |
-| Renew | 8 | 30 | instantané | 5 ticks de 9, toutes les 3 s |
-| Heal | 16 | 155 | 3,0 s | 295 – 341 |
-| Flash Heal | 20 | 125 | 1,5 s | 193 – 237 |
-| Prayer of Healing | 30 | 410 | 3,0 s | 312 – 333 au groupe |
+| Lesser Heal | 1 | 30 | 1.5 s | 46 – 56 |
+| Renew | 8 | 30 | instant | 5 ticks of 9, every 3 s |
+| Heal | 16 | 155 | 3.0 s | 295 – 341 |
+| Flash Heal | 20 | 125 | 1.5 s | 193 – 237 |
+| Prayer of Healing | 30 | 410 | 3.0 s | 312 – 333 on the party |
 
-Le niveau du soigneur est porté par le `GameState` (`playerLevel`, initialisé
-depuis `PLAYER_LEVEL = 1`). `checkCast` refuse tout sort dont
-`requiredLevel > playerLevel`, avec le motif `level` et le message
-« Niveau insuffisant ». Les boutons verrouillés restent visibles, en pointillés,
-et affichent « Niv. 8 », « Niv. 16 », etc.
+The healer's level is carried by the `GameState` (`playerLevel`, initialised
+from `PLAYER_LEVEL = 1`). `checkCast` refuses any spell whose
+`requiredLevel > playerLevel`, with the `level` reason and the message
+"Level too low". Locked buttons stay visible, dashed, and display "Lv. 8",
+"Lv. 16" and so on.
 
-**Au niveau 1, la partie se joue donc avec un seul sort.** C'est un choix
-assumé : c'est le vrai kit d'un prêtre de niveau 1, et cela transforme la partie
-en exercice de triage — un Lesser Heal toutes les 1,5 s ne peut pas suivre deux
-cibles basses en même temps.
+**At level 1 the fight is therefore played with a single spell.** That is a
+deliberate choice: it is the real kit of a level 1 priest, and it turns the
+fight into an exercise in triage — one Lesser Heal every 1.5 s cannot follow two
+low targets at once.
 
-Le soin est tiré uniformément dans la fourchette du sort (46 – 56), comme en
-jeu, au lieu de l'ancien « base ± 10 % ».
+Healing is rolled uniformly inside the spell's range (46 – 56), like in game,
+replacing the old "base ± 10%".
 
 ## Alternatives Considered
 
-- **Garder quatre sorts inventés à l'échelle du niveau 1** — rejeté : c'était
-  précisément ce qu'on remplaçait ; les sorts auraient été aussi arbitraires
-  qu'avant, juste avec des nombres plus petits.
-- **Afficher les cinq sorts sans condition de niveau** — rejeté : contredit
-  « tous niveau 1 », et Prayer of Healing serait de toute façon inutilisable
-  (410 de mana pour un pool de 160). Flash Heal (193 – 237) soignerait quatre
-  fois les PV maximum d'un DPS : le jeu n'aurait plus d'enjeu.
-- **Ne montrer que Lesser Heal et masquer les autres** — rejeté : les boutons
-  verrouillés informent (« ce sort arrive au niveau 8 ») et rendent la
-  progression lisible.
-- **Prendre le kit d'un prêtre de niveau 16-20** pour avoir quatre sorts
-  utilisables — rejeté ici, mais c'est exactement ce que produira
-  `PLAYER_LEVEL = 20` le jour venu : rien d'autre à changer.
+- **Keeping four invented spells at level 1 scale** — rejected: that was exactly
+  what we were replacing; the spells would have been just as arbitrary as
+  before, only with smaller numbers.
+- **Showing the five spells with no level condition** — rejected: it contradicts
+  "everyone at level 1", and Prayer of Healing would be unusable anyway (410
+  mana for a 160 pool). Flash Heal (193 – 237) would heal four times a DPS's
+  maximum health: the game would lose all tension.
+- **Showing only Lesser Heal and hiding the rest** — rejected: locked buttons
+  inform ("this spell arrives at level 8") and make progression legible.
+- **Using a level 16-20 priest kit** to get four usable spells — rejected here,
+  but that is exactly what `PLAYER_LEVEL = 20` will produce when the time comes:
+  nothing else to change.
 
 ## Consequences
 
-- ✅ Chaque sort correspond à un sort réel, avec son identifiant Blizzard,
-  vérifiable en base.
-- ✅ Monter `PLAYER_LEVEL` débloque les sorts automatiquement, sans toucher au
-  moteur ni à l'interface.
-- ✅ Le niveau vivant dans le `GameState`, les tests peuvent simuler un prêtre de
-  niveau 20 sans modifier de constante globale.
-- ⚠️ Au niveau 1, quatre boutons sur cinq sont inertes : c'est fidèle, mais cela
-  peut se lire comme une interface incomplète au premier coup d'œil.
-- ⚠️ La barre passe de quatre à cinq boutons (trois par ligne sur téléphone,
-  deux sur la seconde) ; la contrainte de 72 × 72 px reste respectée.
-- ⚠️ Les montants des rangs supérieurs (Heal, Flash Heal, Prayer of Healing)
-  sont hors d'échelle pour des PV de niveau 1 : ils ne prendront leur sens
-  qu'avec la montée en niveau du groupe.
+- ✅ Every spell matches a real spell, with its Blizzard id, verifiable in the
+  database.
+- ✅ Raising `PLAYER_LEVEL` unlocks spells automatically, with no engine or UI
+  change.
+- ✅ Since the level lives in the `GameState`, tests can simulate a level 20
+  priest without touching a global constant.
+- ⚠️ At level 1 four buttons out of five are inert: faithful, but it can read as
+  an unfinished interface at first glance.
+- ⚠️ The bar grows from four to five buttons (three per row on a phone, two on
+  the second row); the 72 × 72 px constraint still holds.
+- ⚠️ The higher ranks' amounts (Heal, Flash Heal, Prayer of Healing) are out of
+  scale for level 1 health pools: they will only make sense once the party
+  levels up.

@@ -1,8 +1,8 @@
 /**
- * Zone de contrôles : barre de cast, barre de mana et boutons de sorts.
+ * Controls area: cast bar, mana bar and spell buttons.
  *
- * La progression du GCD est écrite une seule fois par frame sur le conteneur
- * (`--gcd-progress`), ce qui anime tous les boutons sans rendu React.
+ * GCD progress is written once per frame on the container
+ * (`--gcd-progress`), which animates every button without a React render.
  */
 
 import { memo, useCallback, useRef } from 'react';
@@ -34,7 +34,7 @@ export const Controls = memo(function Controls() {
   );
 
   return (
-    <section className="controls" ref={containerRef} aria-label="Contrôles">
+    <section className="controls" ref={containerRef} aria-label="Controls">
       <CastBar />
       <ManaBar />
       <div className="controls__spells">

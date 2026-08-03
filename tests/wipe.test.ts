@@ -19,8 +19,8 @@ import {
   unlockAllSpells,
 } from './helpers';
 
-describe('conditions de wipe', () => {
-  it('termine la partie à la mort du tank', () => {
+describe('wipe conditions', () => {
+  it('ends the fight when the tank dies', () => {
     let state = isolateTimers(createInitialState(31));
     state = patchMember(state, 'tank', { hp: 5 });
     state = patchState(state, { timers: { ...state.timers, tankDamageMs: TICK_MS } });
@@ -32,7 +32,7 @@ describe('conditions de wipe', () => {
     expect(after.stats.deaths).toEqual(['tank']);
   });
 
-  it('termine la partie à la troisième mort', () => {
+  it('ends the fight on the third death', () => {
     let state = isolateTimers(createInitialState(32));
     state = patchMember(state, 'dps1', { alive: false, hp: 0 });
     state = patchMember(state, 'dps2', { alive: false, hp: 0 });
@@ -45,7 +45,7 @@ describe('conditions de wipe', () => {
     expect(after.status).toBe('over');
   });
 
-  it('continue avec deux morts', () => {
+  it('carries on with two deaths', () => {
     let state = isolateTimers(createInitialState(33));
     state = patchMember(state, 'dps1', { hp: 5 });
     state = patchMember(state, 'dps2', { hp: 5 });
@@ -57,7 +57,7 @@ describe('conditions de wipe', () => {
     expect(after.party.filter((member) => !member.alive)).toHaveLength(2);
   });
 
-  it('annule le cast en cours au wipe', () => {
+  it('cancels the active cast on a wipe', () => {
     let state = unlockAllSpells(isolateTimers(createInitialState(34)));
     state = castSpell(state, 'prayerOfHealing');
     state = patchMember(state, 'tank', { hp: 5 });
@@ -70,7 +70,7 @@ describe('conditions de wipe', () => {
     expect(after.stats.castsCancelled).toBe(1);
   });
 
-  it('n’applique plus aucun événement après le wipe', () => {
+  it('applies no further event after the wipe', () => {
     let state = isolateTimers(createInitialState(35));
     state = patchMember(state, 'tank', { hp: 5 });
     state = patchState(state, { timers: { ...state.timers, tankDamageMs: TICK_MS } });
@@ -81,7 +81,7 @@ describe('conditions de wipe', () => {
     expect(later.elapsedMs).toBe(wiped.elapsedMs);
   });
 
-  it('refuse toute action après le wipe', () => {
+  it('refuses every action after the wipe', () => {
     let state = isolateTimers(createInitialState(36));
     state = patchState(state, { status: 'over' });
     const after = castSpell(state, 'lesserHeal');
@@ -90,7 +90,7 @@ describe('conditions de wipe', () => {
     expect(after.stats.castsStartedBySpell.lesserHeal).toBe(0);
   });
 
-  it('marque un mort comme non ciblable et sans HoT', () => {
+  it('marks a dead member as untargetable and strips its HoTs', () => {
     let state = isolateTimers(createInitialState(37));
     state = unlockAllSpells(state);
     state = patchMember(state, 'dps1', { hp: 5 });
@@ -107,7 +107,7 @@ describe('conditions de wipe', () => {
 });
 
 describe('pause', () => {
-  it('ne fait progresser aucun état pendant la pause', () => {
+  it('advances nothing while paused', () => {
     let state = advance(createInitialState(41), 3000);
     state = pauseGame(state);
 
@@ -119,19 +119,19 @@ describe('pause', () => {
     expect(after.mana).toBe(state.mana);
   });
 
-  it('reprend exactement là où la partie s’était arrêtée', () => {
+  it('resumes exactly where the fight stopped', () => {
     const reference = advance(createInitialState(42), 6000);
 
     let paused = advance(createInitialState(42), 3000);
     paused = pauseGame(paused);
-    paused = advance(paused, 10_000); // sans effet
+    paused = advance(paused, 10_000); // no effect
     paused = resumeGame(paused);
     paused = advance(paused, 3000);
 
     expect(paused).toEqual(reference);
   });
 
-  it('bascule pause / reprise et ignore la bascule après un wipe', () => {
+  it('toggles pause / resume and ignores the toggle after a wipe', () => {
     const active = createInitialState(43);
     const paused = togglePause(active);
     expect(paused.status).toBe('paused');
@@ -142,8 +142,8 @@ describe('pause', () => {
   });
 });
 
-describe('invariants sur une partie complète', () => {
-  it('respecte les bornes HP et mana, et s’arrête sur un wipe', () => {
+describe('invariants over a full fight', () => {
+  it('respects the health and mana bounds, and stops on a wipe', () => {
     let state = createInitialState(44);
 
     for (let step = 0; step < 3000; step += 1) {
@@ -165,7 +165,7 @@ describe('invariants sur une partie complète', () => {
       if (state.status === 'over') break;
     }
 
-    // Sans le moindre soin, le groupe finit toujours par tomber.
+    // With no healing at all, the party always goes down eventually.
     expect(state.status).toBe('over');
     expect(state.stats.deaths.length).toBeGreaterThan(0);
   });

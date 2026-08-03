@@ -1,8 +1,8 @@
 /**
- * Frame d'un membre du groupe.
+ * A single party member's frame.
  *
- * `React.memo` + abonnement ciblé : ce composant ne se re-rend que lorsque
- * SON snapshot change (HP, mort, Renew, sélection, feedback).
+ * `React.memo` plus a targeted subscription: this component only re-renders
+ * when ITS snapshot changes (health, death, Renew, selection, feedback).
  */
 
 import { memo, useCallback, type CSSProperties } from 'react';
@@ -46,14 +46,14 @@ export const PartyFrame = memo(function PartyFrame({ memberId }: PartyFrameProps
       onClick={handleSelect}
       disabled={!member.alive}
       aria-pressed={member.selected}
-      aria-label={`${member.name}, ${member.classLabel}, ${member.roleLabel}, ${member.hpPercent} %`}
+      aria-label={`${member.name}, ${member.classLabel}, ${member.roleLabel}, ${member.hpPercent}%`}
     >
       <span className="frame__header">
         <span className="frame__name">{member.name}</span>
         <span className="frame__role">{member.roleLabel}</span>
         <span className="frame__class">{member.classLabel}</span>
         {member.renewTicks > 0 && (
-          <span className="frame__renew" title="Renew actif">
+          <span className="frame__renew" title="Renew active">
             ⟳ {member.renewTicks}
           </span>
         )}
@@ -61,14 +61,14 @@ export const PartyFrame = memo(function PartyFrame({ memberId }: PartyFrameProps
 
       <span className="frame__bar">
         <span className={hpBarClass(member.hpRatio)} />
-        {!member.alive && <span className="frame__dead-label">MORT</span>}
+        {!member.alive && <span className="frame__dead-label">DEAD</span>}
       </span>
 
       <span className="frame__footer">
         <span className="frame__hp">
           {member.hp} / {member.hpMax}
         </span>
-        <span className="frame__percent">{member.hpPercent} %</span>
+        <span className="frame__percent">{member.hpPercent}%</span>
       </span>
 
       <MemberFeedback events={member.feedback} />

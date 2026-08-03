@@ -1,7 +1,7 @@
 /**
- * Vérifie que les PV, la mana et les sorts sont bien ceux de WoW Classic
- * niveau 1 — et qu'ils sont *dérivés* des formules, jamais écrits en dur.
- * Voir `docs/classic-stats.md` pour les sources.
+ * Checks that health, mana and spells really are the WoW Classic level 1 ones —
+ * and that they are *derived* from the formulas, never hard-coded.
+ * See `docs/classic-stats.md` for the sources.
  */
 
 import { describe, expect, it } from 'vitest';
@@ -18,8 +18,8 @@ import { MANA, PARTY_TEMPLATE, PLAYER_LEVEL, SPELLS } from '../src/config/gameCo
 import { createInitialState } from '../src/simulation/initialState';
 import { memberOf } from './helpers';
 
-describe('formules vanilla', () => {
-  it('convertit l’endurance en PV : 1 PV par point jusqu’à 20, puis 10', () => {
+describe('vanilla formulas', () => {
+  it('converts stamina into health: 1 HP per point up to 20, then 10', () => {
     expect(healthBonusFromStamina(0)).toBe(0);
     expect(healthBonusFromStamina(19)).toBe(19);
     expect(healthBonusFromStamina(20)).toBe(20);
@@ -27,48 +27,48 @@ describe('formules vanilla', () => {
     expect(healthBonusFromStamina(25)).toBe(70);
   });
 
-  it('convertit l’intelligence en mana : 1 mana par point jusqu’à 20, puis 15', () => {
+  it('converts intellect into mana: 1 mana per point up to 20, then 15', () => {
     expect(manaBonusFromIntellect(19)).toBe(19);
     expect(manaBonusFromIntellect(20)).toBe(20);
     expect(manaBonusFromIntellect(22)).toBe(50);
     expect(manaBonusFromIntellect(26)).toBe(110);
   });
 
-  it('reproduit les PV connus d’un guerrier humain niveau 1 (60 PV)', () => {
+  it('reproduces the known health of a level 1 human warrior (60 HP)', () => {
     const attributes = getAttributes('human', 'warrior');
     expect(attributes.stamina).toBe(22);
     expect(maxHealthAtLevel1('warrior', attributes)).toBe(60);
   });
 
-  it('donne 0 mana aux classes sans mana', () => {
+  it('gives 0 mana to classes without mana', () => {
     expect(CLASS_BASE_LEVEL_1.warrior.baseMana).toBe(0);
     expect(maxManaAtLevel1('warrior', getAttributes('dwarf', 'warrior'))).toBe(0);
     expect(maxManaAtLevel1('rogue', getAttributes('human', 'rogue'))).toBe(0);
   });
 
-  it('calcule la régénération d’esprit du prêtre (esprit / 4 + 12,5 par palier)', () => {
+  it('computes the priest spirit regeneration (spirit / 4 + 12.5 per tick)', () => {
     expect(manaPerTickFromSpirit(24)).toBe(18.5);
     expect(manaPerTickFromSpirit(20)).toBe(17.5);
   });
 
-  it('refuse une combinaison race/classe absente des tables', () => {
+  it('rejects a race/class combination missing from the tables', () => {
     expect(() => getAttributes('gnome', 'priest')).toThrow(/gnome\/priest/);
   });
 });
 
-describe('groupe de niveau 1', () => {
-  it('a les PV attendus par race et classe', () => {
+describe('level 1 party', () => {
+  it('has the health expected from its races and classes', () => {
     const state = createInitialState(1);
 
     expect(state.playerLevel).toBe(PLAYER_LEVEL);
-    expect(memberOf(state, 'tank').hpMax).toBe(90); // Nain guerrier, endurance 25
-    expect(memberOf(state, 'healer').hpMax).toBe(51); // Humain prêtre, endurance 20
-    expect(memberOf(state, 'dps1').hpMax).toBe(55); // Humain voleur, endurance 21
-    expect(memberOf(state, 'dps2').hpMax).toBe(50); // Gnome mage, endurance 19
-    expect(memberOf(state, 'dps3').hpMax).toBe(46); // Elfe de la nuit chasseur, endurance 20
+    expect(memberOf(state, 'tank').hpMax).toBe(90); // Dwarf warrior, stamina 25
+    expect(memberOf(state, 'healer').hpMax).toBe(51); // Human priest, stamina 20
+    expect(memberOf(state, 'dps1').hpMax).toBe(55); // Human rogue, stamina 21
+    expect(memberOf(state, 'dps2').hpMax).toBe(50); // Gnome mage, stamina 19
+    expect(memberOf(state, 'dps3').hpMax).toBe(46); // Night elf hunter, stamina 20
   });
 
-  it('démarre chaque membre à ses PV maximum', () => {
+  it('starts every member at full health', () => {
     const state = createInitialState(1);
     for (const member of state.party) {
       expect(member.hp).toBe(member.hpMax);
@@ -76,7 +76,7 @@ describe('groupe de niveau 1', () => {
     }
   });
 
-  it('donne au tank environ le double des PV d’un DPS', () => {
+  it('gives the tank roughly twice a DPS’s health', () => {
     const state = createInitialState(1);
     const tank = memberOf(state, 'tank').hpMax;
     const dps = memberOf(state, 'dps3').hpMax;
@@ -84,14 +84,14 @@ describe('groupe de niveau 1', () => {
     expect(tank / dps).toBeLessThan(2.5);
   });
 
-  it('dérive les PV du gabarit, sans valeur codée en dur', () => {
+  it('derives health from the template, with no hard-coded value', () => {
     const state = createInitialState(1);
     for (const template of PARTY_TEMPLATE) {
       expect(memberOf(state, template.id).hpMax).toBe(template.hpMax);
     }
   });
 
-  it('donne au prêtre humain 160 points de mana', () => {
+  it('gives the human priest 160 mana', () => {
     const state = createInitialState(1);
     expect(MANA.max).toBe(160);
     expect(state.mana).toBe(160);
@@ -99,8 +99,8 @@ describe('groupe de niveau 1', () => {
   });
 });
 
-describe('sorts de soin du prêtre (rang 1)', () => {
-  it('reprend les valeurs Classic', () => {
+describe('priest healing spells (rank 1)', () => {
+  it('uses the Classic values', () => {
     expect(SPELLS.lesserHeal).toMatchObject({
       spellId: 2050,
       requiredLevel: 1,
@@ -126,12 +126,12 @@ describe('sorts de soin du prêtre (rang 1)', () => {
     });
   });
 
-  it('répartit les 45 points de Renew en cinq ticks de 9', () => {
+  it('splits Renew’s 45 healing into five ticks of 9', () => {
     expect(SPELLS.renew.healPerTick).toBe(9);
     expect(SPELLS.renew.healPerTick * SPELLS.renew.hotTicks).toBe(45);
   });
 
-  it('ne rend Prayer of Healing lançable qu’avec un pool bien supérieur au niveau 1', () => {
+  it('makes Prayer of Healing castable only with a pool far above level 1', () => {
     expect(SPELLS.prayerOfHealing.manaCost).toBeGreaterThan(MANA.max);
   });
 });

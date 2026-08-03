@@ -1,8 +1,8 @@
 /**
- * Racine de l'application.
+ * Application root.
  *
- * `App` ne se re-rend jamais pendant une partie : le store est détenu par un
- * `useRef` et chaque sous-composant s'abonne à son propre snapshot.
+ * `App` never re-renders during a fight: the store is held by a `useRef` and
+ * every child subscribes to its own snapshot.
  */
 
 import { useCallback, useRef } from 'react';
@@ -17,9 +17,8 @@ import { useGameLoop } from './hooks/useGameLoop';
 import { createGameStore, type GameStore } from './store/gameStore';
 
 /**
- * Seed de départ : `?seed=123` dans l'URL pour rejouer une partie à
- * l'identique, sinon l'horloge réelle (utilisée uniquement ici, jamais dans le
- * moteur).
+ * Starting seed: `?seed=123` in the URL replays a fight exactly, otherwise the
+ * real clock is used (only here, never inside the engine).
  */
 function readInitialSeed(): number {
   if (typeof window === 'undefined') return DEFAULT_SEED;

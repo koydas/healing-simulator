@@ -1,85 +1,81 @@
 # Changelog
 
-Toutes les évolutions notables de ce projet sont consignées ici, au format
-[Keep a Changelog](https://keepachangelog.com/fr/1.0.0/).
+All notable changes to this project are recorded here, following
+[Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
 ### Changed
 
-- **Toutes les stats de personnage viennent désormais de WoW Classic 1.12, au
-  niveau 1** (ADR-0007). Les PV et la mana sont calculés par les formules du jeu
-  (`min(stat, 20) × 1 + surplus × 10` pour l'endurance, `× 15` pour
-  l'intelligence) à partir des tables `player_classlevelstats` et
-  `player_levelstats` : Thorgrim (nain guerrier) 90 PV, Elowen (humain prêtre)
-  51 PV et 160 de mana, Kaelan 55 PV, Fizzwick 50 PV, Sylandra 46 PV.
-- **Les sorts sont les cinq familles de soin du prêtre vanilla, au rang 1**, avec
-  leurs vraies valeurs et leur niveau d'apprentissage (ADR-0008) : Lesser Heal
-  (niv. 1), Renew (8), Heal (16), Flash Heal (20), Prayer of Healing (30). Le
-  soin est tiré dans la fourchette du sort au lieu d'un « base ± 10 % ».
-- **Au niveau 1, seul Lesser Heal est lançable** : les autres boutons sont
-  affichés verrouillés avec leur niveau requis, et un lancement refusé indique
-  « Niveau insuffisant ».
-- **La régénération de mana suit le modèle vanilla** (ADR-0009) : un palier de
-  18,5 toutes les 2 secondes, totalement suspendu pendant les 5 secondes qui
-  suivent une dépense (règle des cinq secondes). L'ancienne régénération
-  continue 100/200 par seconde disparaît.
-- **Le boss est un élite de niveau 1** (ADR-0010) : mêlée de 8 toutes les 2 s
-  (cadence sourcée dans `creature_template`), AoE de 6 toutes les 12 s, spike de
-  18 toutes les 6 à 10 s. Survie mesurée : 22 s sans soin, 48 à 97 s avec un
-  soigneur automatique.
-- Renew tick désormais toutes les 3 secondes (5 ticks de 9, 45 au total), comme
-  en Classic.
-- Les frames affichent la race et la classe de chaque personnage, l'en-tête
-  affiche le niveau du boss.
+- **All character stats now come from WoW Classic 1.12, at level 1**
+  (ADR-0007). Health and mana are computed by the game's formulas
+  (`min(stat, 20) × 1 + surplus × 10` for stamina, `× 15` for intellect) from
+  the `player_classlevelstats` and `player_levelstats` tables: Thorgrim (dwarf
+  warrior) 90 HP, Elowen (human priest) 51 HP and 160 mana, Kaelan 55 HP,
+  Fizzwick 50 HP, Sylandra 46 HP.
+- **Spells are the five vanilla priest healing families, at rank 1**, with
+  their real values and training levels (ADR-0008): Lesser Heal (lv. 1), Renew
+  (8), Heal (16), Flash Heal (20), Prayer of Healing (30). Healing is rolled
+  inside the spell's range instead of a "base ± 10%".
+- **At level 1 only Lesser Heal is castable**: the other buttons are shown
+  locked with their required level, and a refused cast reports "Level too low".
+- **Mana regeneration follows the vanilla model** (ADR-0009): an 18.5 tick every
+  2 seconds, fully suspended for the 5 seconds following any expenditure (the
+  five-second rule). The old continuous 100/200 per second regeneration is gone.
+- **The boss is a level 1 elite** (ADR-0010): 8 melee damage every 2 s (cadence
+  sourced from `creature_template`), 6 AoE damage every 12 s, 18 spike damage
+  every 6 to 10 s. Measured survival: 22 s with no healing, 48 to 97 s with an
+  automated healer.
+- Renew now ticks every 3 seconds (5 ticks of 9, 45 total), like in Classic.
+- Frames show each character's race and class; the header shows the boss level.
+- **The whole project is in English** — game UI, code comments, tests and
+  documentation.
 
 ### Added
 
-- `src/config/classicData.ts` : données WoW Classic sourcées (tables de base,
-  attributs par race/classe, formules officielles, sorts, mesures sur les
-  créatures de niveau 1) — aucune valeur de gameplay n'y est inventée.
-- `playerLevel` dans le `GameState` : le verrouillage des sorts suit le niveau,
-  ce qui prépare la montée en niveau.
-- `docs/classic-stats.md` : sources, formules, tableaux, et la séparation
-  explicite entre valeurs **sourcées**, **dérivées**, **approximées** et
-  **conçues**.
-- ADR-0007 à ADR-0010 documentant ces quatre décisions.
-- `tests/classicStats.test.ts` : 14 tests sur les formules vanilla, les PV
-  dérivés du groupe et les valeurs des sorts (92 tests au total).
+- `src/config/classicData.ts`: sourced WoW Classic data (base tables, race/class
+  attributes, official formulas, spells, level 1 creature measurements) — no
+  gameplay value is invented in that file.
+- `playerLevel` in the `GameState`: spell gating follows the level, which paves
+  the way for levelling up.
+- `docs/classic-stats.md`: sources, formulas, tables, and an explicit split
+  between **sourced**, **derived**, **approximated** and **designed** values.
+- ADR-0007 through ADR-0010 documenting those four decisions.
+- `tests/classicStats.test.ts`: 14 tests over the vanilla formulas, the derived
+  party health and the spell values (92 tests in total).
 
 ## [1.0.0] — 2026-08-02
 
 ### Added
 
-- Moteur de simulation pur et déterministe : `stepSimulation(state, dtMs)`, sans
-  horloge réelle, DOM ni React (ADR-0001).
-- Boucle de jeu à pas fixe de 100 ms, accumulateur `requestAnimationFrame`
-  plafonné à 500 ms de rattrapage et gel après un passage en arrière-plan
+- Pure, deterministic simulation engine: `stepSimulation(state, dtMs)`, with no
+  real clock, DOM or React inside it (ADR-0001).
+- Fixed 100 ms timestep game loop, `requestAnimationFrame` accumulator capped at
+  500 ms of catch-up, and a freeze after the tab goes to the background
   (ADR-0002).
-- Générateur pseudo-aléatoire mulberry32 dont l'état est transporté dans le
-  `GameState` ; seed rejouable via `?seed=` (ADR-0003, ADR-0005).
-- Groupe de cinq membres (tank à 8000 HP, quatre autres à 4000 HP), morts
-  définitives et non ciblables.
-- Quatre sorts — Renew, Flash Heal, Greater Heal, Group Heal — avec GCD de 1,5 s,
-  ciblage *target-then-cast*, motifs de refus explicites et annulation de cast.
-- Timeline de boss : dégâts tank toutes les 1,5 s, AoE toutes les 12 s, spikes
-  pseudo-aléatoires et rampe cumulative ×1,15 toutes les 30 s.
-- Statistiques de fin de partie : durée de survie, HPS, soin effectif, overheal
-  et pourcentage, mana dépensée, efficacité par point de mana, casts commencés /
-  complétés par sort, casts annulés, morts.
-- Interface mobile-first en CSS natif : frames de 64 px minimum, boutons de
-  sorts de 72 × 72 px, barres de cast et de mana, feedback de combat,
-  prise en charge de `env(safe-area-inset-*)`.
-- Store externe avec snapshots mémoïsés et mise à jour des barres par variables
-  CSS : aucun rendu complet de l'application toutes les 100 ms (ADR-0004).
-- Suite Vitest de 74 tests sur le moteur pur (déterminisme, dégâts, spikes,
-  rampe, Renew, interruptions, mana, overheal, wipe, pause, invariants).
-- Conteneurisation : `Dockerfile` multi-stage, Nginx non-root sur le port 8080,
-  endpoint `/health`, fallback SPA, `.dockerignore` (ADR-0006).
-- Manifestes Kubernetes : `Deployment` (sondes startup / readiness / liveness,
-  contexte de sécurité restreint), `Service`, `Ingress`.
-- Documentation `docs/` : architecture, moteur, balance, tests, déploiement,
-  runbook et six ADR.
+- Mulberry32 pseudo-random generator whose state lives in the `GameState`; seed
+  replayable through `?seed=` (ADR-0003, ADR-0005).
+- Five-member party, permanent and untargetable deaths.
+- Four healing spells with a 1.5 s global cooldown, target-then-cast targeting,
+  explicit refusal reasons and cast cancellation.
+- Boss timeline: tank damage, periodic AoE, pseudo-random spikes and a
+  cumulative ×1.15 ramp every 30 s.
+- End-of-fight statistics: survival time, HPS, effective healing, overhealing
+  and its percentage, mana spent, healing per point of mana, casts started /
+  completed per spell, casts cancelled, deaths.
+- Mobile-first plain-CSS interface: 64 px minimum frames, 72 × 72 px spell
+  buttons, cast and mana bars, combat feedback, `env(safe-area-inset-*)`
+  support.
+- External store with memoised snapshots and CSS-variable bar updates: no full
+  re-render of the application every 100 ms (ADR-0004).
+- Vitest suite over the pure engine (determinism, damage, spikes, ramp, Renew,
+  interruptions, mana, overhealing, wipe, pause, invariants).
+- Containerisation: multi-stage `Dockerfile`, non-root Nginx on port 8080,
+  `/health` endpoint, SPA fallback, `.dockerignore` (ADR-0006).
+- Kubernetes manifests: `Deployment` (startup / readiness / liveness probes,
+  restricted security context), `Service`, `Ingress`.
+- `docs/`: architecture, engine, balance, testing, deployment, runbook and six
+  ADRs.
 
 [Unreleased]: https://github.com/koydas/healing-simulator/compare/v1.0.0...HEAD
 [1.0.0]: https://github.com/koydas/healing-simulator/releases/tag/v1.0.0

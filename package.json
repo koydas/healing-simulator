@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "private": true,
   "type": "module",
-  "description": "Simulateur web mobile de healer de groupe inspiré de WoW — React + TypeScript + Vite, sans backend.",
+  "description": "Mobile web party-healer simulator inspired by WoW Classic — React + TypeScript + Vite, no backend.",
   "license": "MIT",
   "engines": {
     "node": ">=20"

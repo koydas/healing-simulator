@@ -1,56 +1,56 @@
-# Déploiement
+# Deployment
 
-## Image Docker
+## Docker image
 
-`Dockerfile` en deux étapes :
+`Dockerfile` in two stages:
 
-1. **build** — `node:22-alpine`, `npm ci`, suite de tests puis `npm run build`
-   (qui inclut `tsc --noEmit`). L'image échoue donc si les tests ou le typecheck
-   échouent.
-2. **runtime** — `nginxinc/nginx-unprivileged:1.29-alpine`, qui tourne en
-   **uid 101** et écoute sur un port non privilégié. Seuls `dist/` et la
-   configuration Nginx sont copiés : aucune dépendance Node dans l'image finale.
+1. **build** — `node:22-alpine`, `npm ci`, the test suite, then `npm run build`
+   (which includes `tsc --noEmit`). The image therefore fails to build if the
+   tests or the typecheck fail.
+2. **runtime** — `nginxinc/nginx-unprivileged:1.29-alpine`, which runs as
+   **uid 101** and listens on an unprivileged port. Only `dist/` and the Nginx
+   configuration are copied over: no Node dependency in the final image.
 
 ```bash
 docker build -t healing-simulator:1.0.0 .
 docker run --rm -p 8080:8080 healing-simulator:1.0.0
-curl -i http://localhost:8080/health      # 200 OK
-curl -i http://localhost:8080/une/route   # 200 + index.html (fallback SPA)
+curl -i http://localhost:8080/health     # 200 OK
+curl -i http://localhost:8080/some/route # 200 + index.html (SPA fallback)
 ```
 
-Le `HEALTHCHECK` de l'image interroge `/health` toutes les 30 s.
+The image `HEALTHCHECK` polls `/health` every 30 s.
 
-## Configuration Nginx
+## Nginx configuration
 
-`nginx/default.conf` :
+`nginx/default.conf`:
 
-- écoute `8080` (IPv4 et IPv6) ;
-- `location = /health` → `200 "OK"`, sans log ni accès disque ;
-- `location /assets/` → cache immuable un an (les noms de fichiers sont hashés
-  par Vite) ;
-- `location /` → `try_files $uri $uri/ /index.html` : **fallback SPA** ;
-- `index.html` en `no-store` pour qu'un déploiement soit vu immédiatement ;
-- en-têtes `X-Content-Type-Options`, `X-Frame-Options`, `Referrer-Policy`,
-  `server_tokens off`, compression gzip.
+- listens on `8080` (IPv4 and IPv6);
+- `location = /health` → `200 "OK"`, with no logging and no disk access;
+- `location /assets/` → immutable one-year cache (Vite content-hashes the file
+  names);
+- `location /` → `try_files $uri $uri/ /index.html`: the **SPA fallback**;
+- `index.html` served `no-store` so a deployment is picked up immediately;
+- `X-Content-Type-Options`, `X-Frame-Options`, `Referrer-Policy` headers,
+  `server_tokens off`, gzip compression.
 
-## Système de fichiers en lecture seule
+## Read-only filesystem
 
-Le Deployment active `readOnlyRootFilesystem: true`. Nginx a besoin de trois
-chemins inscriptibles, fournis par des `emptyDir` :
+The Deployment sets `readOnlyRootFilesystem: true`. Nginx needs three writable
+paths, provided as `emptyDir` volumes:
 
-| Chemin | Usage |
+| Path | Use |
 | --- | --- |
-| `/tmp` | corps de requête temporaires |
-| `/var/cache/nginx` | caches proxy / fastcgi |
-| `/var/run` | fichier PID |
+| `/tmp` | temporary request bodies |
+| `/var/cache/nginx` | proxy / fastcgi caches |
+| `/var/run` | PID file |
 
-## Manifestes Kubernetes
+## Kubernetes manifests
 
-| Fichier | Contenu |
+| File | Contents |
 | --- | --- |
-| `k8s/deployment.yaml` | 2 réplicas, contexte non-root (uid/gid 101), capabilities `drop: ALL`, `allowPrivilegeEscalation: false`, `seccompProfile: RuntimeDefault`, sondes startup / readiness / liveness sur `/health`, requests & limits |
-| `k8s/service.yaml` | `ClusterIP`, port 80 → port nommé `http` (8080) |
-| `k8s/ingress.yaml` | hôte `healing-simulator.local`, `pathType: Prefix`, `ingressClassName: nginx` |
+| `k8s/deployment.yaml` | 2 replicas, non-root context (uid/gid 101), `drop: ALL` capabilities, `allowPrivilegeEscalation: false`, `seccompProfile: RuntimeDefault`, startup / readiness / liveness probes on `/health`, requests & limits |
+| `k8s/service.yaml` | `ClusterIP`, port 80 → the named `http` port (8080) |
+| `k8s/ingress.yaml` | host `healing-simulator.local`, `pathType: Prefix`, `ingressClassName: nginx` |
 
 ```bash
 kubectl apply -f k8s/
@@ -58,28 +58,28 @@ kubectl rollout status deployment/healing-simulator
 kubectl port-forward svc/healing-simulator 8080:80
 ```
 
-### À adapter avant application
+### What to adjust before applying
 
-1. `k8s/deployment.yaml` → `image:` (registre et tag réels) ;
-2. `k8s/ingress.yaml` → `host:` et `ingressClassName:` du cluster ;
-3. le namespace, si vous n'utilisez pas `default` (`kubectl apply -n <ns> -f k8s/`).
+1. `k8s/deployment.yaml` → `image:` (your real registry and tag);
+2. `k8s/ingress.yaml` → the cluster's `host:` and `ingressClassName:`;
+3. the namespace, if you are not using `default`
+   (`kubectl apply -n <ns> -f k8s/`).
 
-### Sondes
+### Probes
 
-Les trois sondes visent `/health` sur le port nommé `http` :
+All three probes target `/health` on the named `http` port:
 
-- `startupProbe` : toutes les 2 s, 15 échecs tolérés (30 s pour démarrer) ;
-- `readinessProbe` : toutes les 5 s — retire le pod du Service s'il ne répond plus ;
-- `livenessProbe` : toutes les 10 s — redémarre le conteneur bloqué.
+- `startupProbe`: every 2 s, 15 failures tolerated (30 s to start);
+- `readinessProbe`: every 5 s — removes the pod from the Service when it stops
+  answering;
+- `livenessProbe`: every 10 s — restarts a stuck container.
 
-## Sous-chemin d'Ingress
+## Ingress sub-path
 
-Le build utilise `base: './'` (chemins relatifs), l'application fonctionne donc
-aussi bien à la racine du domaine que derrière un préfixe de chemin, sans
-recompilation.
+The build uses `base: './'` (relative paths), so the application works both at
+the domain root and behind a path prefix, with no rebuild.
 
-## Aucune dépendance externe
+## No external dependency
 
-L'application ne charge ni police, ni script, ni image distante : tout est
-embarqué dans l'image. Elle fonctionne dans un cluster totalement isolé du
-réseau public.
+The application loads no font, script or remote image: everything is baked into
+the image. It runs in a cluster fully isolated from the public internet.

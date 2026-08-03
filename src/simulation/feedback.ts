@@ -1,9 +1,9 @@
 /**
- * Gestion des feedbacks de combat (nombres flottants et messages).
+ * Combat feedback handling (floating numbers and messages).
  *
- * Les feedbacks sont datés avec l'horloge de simulation (`state.elapsedMs`) :
- * aucune horloge réelle n'intervient. Ils sont purgés à chaque pas et la liste
- * est plafonnée, ce qui garantit l'absence d'accumulation mémoire.
+ * Feedback is timestamped with the simulation clock (`state.elapsedMs`): no
+ * real clock is involved. Expired entries are pruned on every step and the list
+ * is capped, which guarantees no memory build-up.
  */
 
 import { FEEDBACK } from '../config/gameConfig';
@@ -17,7 +17,7 @@ interface FeedbackInput {
   lifetimeMs?: number;
 }
 
-/** Ajoute un feedback au brouillon d'état (mutation locale, jamais sur l'état d'entrée). */
+/** Adds feedback to the draft state (local mutation, never on the input state). */
 export function pushFeedback(draft: GameState, input: FeedbackInput): void {
   const lifetimeMs =
     input.lifetimeMs ??
@@ -43,7 +43,7 @@ export function pushFeedback(draft: GameState, input: FeedbackInput): void {
   }
 }
 
-/** Supprime les feedbacks expirés. */
+/** Removes expired feedback. */
 export function pruneFeedback(draft: GameState): void {
   if (draft.feedback.length === 0) return;
   const kept = draft.feedback.filter((event) => event.expiresAtMs > draft.elapsedMs);

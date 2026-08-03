@@ -1,62 +1,62 @@
-# ADR-0006: Conteneur Nginx non-root sur le port 8080 avec fallback SPA
+# ADR-0006: Non-root Nginx container on port 8080 with an SPA fallback
 
 - **Date:** 2026-08-02
 - **Status:** Accepted
 
 ## Context
 
-L'application est un site statique à déployer dans Kubernetes. Trois contraintes
-s'imposent : exécution sans privilèges root, écoute sur un port non privilégié
-(8080), et sondes de santé HTTP. S'y ajoutent deux besoins fonctionnels : le
-fallback SPA vers `index.html` et l'absence totale d'asset distant.
+The application is a static site to be deployed on Kubernetes. Three
+constraints apply: run without root privileges, listen on an unprivileged port
+(8080), and expose HTTP health probes. Two functional needs come on top: the SPA
+fallback to `index.html` and the complete absence of remote assets.
 
 ## Decision
 
-`Dockerfile` multi-stage :
+Multi-stage `Dockerfile`:
 
-1. `node:22-alpine` — `npm ci`, **suite de tests**, puis `npm run build`
-   (typecheck inclus). L'image ne se construit pas si un test échoue.
-2. `nginxinc/nginx-unprivileged:1.29-alpine` — image qui tourne nativement en
-   uid 101 et écoute sur un port non privilégié. Seuls `dist/` et
-   `nginx/default.conf` y sont copiés, avec `--chown=101:101`.
+1. `node:22-alpine` — `npm ci`, **the test suite**, then `npm run build`
+   (typecheck included). The image does not build if a test fails.
+2. `nginxinc/nginx-unprivileged:1.29-alpine` — an image that natively runs as
+   uid 101 and listens on an unprivileged port. Only `dist/` and
+   `nginx/default.conf` are copied into it, with `--chown=101:101`.
 
-`nginx/default.conf` fournit :
+`nginx/default.conf` provides:
 
-- `listen 8080` (IPv4 + IPv6) ;
-- `location = /health` → `200 "OK"` sans log ni accès disque ;
-- `try_files $uri $uri/ /index.html` pour le fallback SPA ;
-- cache immuable sur `/assets/` (noms hashés par Vite), `no-store` sur
-  `index.html` ;
-- en-têtes de sécurité et `server_tokens off`.
+- `listen 8080` (IPv4 + IPv6);
+- `location = /health` → `200 "OK"` with no logging and no disk access;
+- `try_files $uri $uri/ /index.html` for the SPA fallback;
+- an immutable cache on `/assets/` (Vite content-hashes the names), `no-store`
+  on `index.html`;
+- security headers and `server_tokens off`.
 
-Le Deployment ajoute `readOnlyRootFilesystem: true`, `capabilities: drop: ALL`,
-`allowPrivilegeEscalation: false`, `seccompProfile: RuntimeDefault`, et monte
-trois `emptyDir` (`/tmp`, `/var/cache/nginx`, `/var/run`) — les seuls chemins
-dont Nginx a besoin en écriture. Les trois sondes (startup, readiness, liveness)
-interrogent `/health`.
+The Deployment adds `readOnlyRootFilesystem: true`, `capabilities: drop: ALL`,
+`allowPrivilegeEscalation: false`, `seccompProfile: RuntimeDefault`, and mounts
+three `emptyDir` volumes (`/tmp`, `/var/cache/nginx`, `/var/run`) — the only
+paths Nginx needs to write to. All three probes (startup, readiness, liveness)
+hit `/health`.
 
 ## Alternatives Considered
 
-- **`nginx:alpine` officielle** — rejeté : tourne en root et écoute sur 80 ; il
-  faudrait réécrire les chemins de PID, de cache et de log, et ajuster les
-  permissions à la main. `nginx-unprivileged` fait cela nativement.
-- **Serveur Node (`serve`, `express`)** — rejeté : embarque un runtime Node
-  complet dans l'image finale, pour une surface d'attaque et une empreinte bien
-  supérieures à celles d'un serveur statique.
-- **Endpoint `/health` servi par un fichier statique** — rejeté : un `return 200`
-  ne touche pas le disque et reste vert même si le volume est indisponible, ce
-  qui est le comportement attendu d'une sonde de vivacité.
-- **`caddy`** — écarté : excellent choix technique, mais Nginx est explicitement
-  demandé.
+- **The official `nginx:alpine`** — rejected: it runs as root and listens on
+  port 80; you would have to rewrite the PID, cache and log paths and fix
+  permissions by hand. `nginx-unprivileged` does all of that natively.
+- **A Node server (`serve`, `express`)** — rejected: it ships a full Node
+  runtime in the final image, for a much larger attack surface and footprint
+  than a static server.
+- **Serving `/health` from a static file** — rejected: a `return 200` touches no
+  disk and stays green even if the volume is unavailable, which is the expected
+  behaviour of a liveness probe.
+- **`caddy`** — set aside: an excellent technical choice, but Nginx was
+  explicitly requested.
 
 ## Consequences
 
-- ✅ Le conteneur satisfait les Pod Security Standards « restricted ».
-- ✅ Image finale de quelques dizaines de mégaoctets, sans Node ni npm.
-- ✅ Les routes profondes et les rechargements fonctionnent (fallback SPA).
-- ✅ Les tests tournent dans la chaîne de build : une régression bloque l'image.
-- ⚠️ Le système de fichiers en lecture seule impose de monter trois volumes ;
-  les oublier fait échouer le démarrage de Nginx.
-- ⚠️ Le build de l'image relance `npm ci` et la suite de tests : il est plus
-  lent qu'une simple copie de `dist/`. C'est un compromis assumé en faveur de la
-  reproductibilité.
+- ✅ The container satisfies the "restricted" Pod Security Standards.
+- ✅ A final image of a few dozen megabytes, with no Node or npm.
+- ✅ Deep routes and reloads work (SPA fallback).
+- ✅ Tests run inside the build chain: a regression blocks the image.
+- ⚠️ The read-only filesystem requires mounting three volumes; forgetting them
+  makes Nginx fail to start.
+- ⚠️ Building the image re-runs `npm ci` and the test suite: it is slower than
+  copying a prebuilt `dist/`. That is an accepted trade-off in favour of
+  reproducibility.

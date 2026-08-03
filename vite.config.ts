@@ -3,8 +3,8 @@ import { defineConfig } from 'vitest/config';
 
 export default defineConfig({
   plugins: [react()],
-  // Chemins relatifs : l'application fonctionne à la racine du domaine comme
-  // dans un sous-chemin d'Ingress.
+  // Relative paths: the app works both at the domain root and under an
+  // Ingress sub-path.
   base: './',
   build: {
     outDir: 'dist',
@@ -20,7 +20,7 @@ export default defineConfig({
     port: 4173,
   },
   test: {
-    // Le moteur est pur : aucun DOM n'est nécessaire pour les tests.
+    // The engine is pure: tests need no DOM.
     environment: 'node',
     include: ['tests/**/*.test.ts'],
   },

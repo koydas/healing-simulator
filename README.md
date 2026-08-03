@@ -1,99 +1,97 @@
 # Healing Simulator
 
-Simulateur web **mobile-first** de healer de groupe inspiré de WoW.
-L'objectif n'est pas de tuer le boss : il s'agit de **maintenir le groupe en vie
-le plus longtemps possible** face à une pression de dégâts qui augmente toutes
-les 30 secondes.
+A **mobile-first** web game that simulates a party healer, inspired by WoW.
+The goal is not to kill the boss: it is to **keep the group alive as long as
+possible** against damage pressure that ramps up every 30 seconds.
 
-- stats **WoW Classic 1.12, niveau 1** : PV, mana, sorts et régénération sont
-  calculés avec les formules et les tables du jeu, pas inventés ;
-- React + TypeScript + Vite, **CSS natif** ;
-- **aucun backend**, aucune base de données, aucune persistance locale ;
-- **aucune dépendance UI ou moteur de jeu** externe ;
-- aucun CDN, aucun asset distant : tout est servi par le conteneur ;
-- moteur de simulation **pur et déterministe**, testé sans DOM.
+- **WoW Classic 1.12, level 1 stats**: health, mana, spells and regeneration are
+  computed with the game's own tables and formulas, not invented;
+- React + TypeScript + Vite, **plain CSS**;
+- **no backend**, no database, no local persistence;
+- **no UI or game-engine dependency**;
+- no CDN, no remote asset: everything is served by the container;
+- a **pure, deterministic** simulation engine, tested without a DOM.
 
-## Démarrage rapide
+## Quick start
 
 ```bash
 npm install
 npm run dev          # http://localhost:5173
 ```
 
-| Commande | Effet |
+| Command | What it does |
 | --- | --- |
-| `npm run dev` | serveur de développement Vite (HMR) |
-| `npm run build` | typecheck (`tsc --noEmit`) puis build de production dans `dist/` |
-| `npm run preview` | sert `dist/` localement (http://localhost:4173) |
-| `npm test` | suite Vitest (moteur pur, environnement `node`) |
-| `npm run test:watch` | Vitest en mode watch |
-| `npm run typecheck` | typecheck seul |
+| `npm run dev` | Vite dev server (HMR) |
+| `npm run build` | typecheck (`tsc --noEmit`) then production build into `dist/` |
+| `npm run preview` | serves `dist/` locally (http://localhost:4173) |
+| `npm test` | Vitest suite (pure engine, `node` environment) |
+| `npm run test:watch` | Vitest in watch mode |
+| `npm run typecheck` | typecheck only |
 
-Node.js **20+** est requis (Vite 7).
+Node.js **20+** is required (Vite 7).
 
-## Comment on joue
+## How to play
 
-1. **Toucher une frame** sélectionne la cible (modèle *target-then-cast*).
-2. **Toucher un sort** le lance sur la cible sélectionnée.
-3. `Prayer of Healing` ne nécessite aucune cible (à partir du niveau 30).
-4. Le bouton `Cancel` interrompt le cast en cours — la mana et le GCD restent
-   consommés.
+1. **Tap a frame** to select the target (target-then-cast model).
+2. **Tap a spell** to cast it on the selected target.
+3. `Prayer of Healing` needs no target (from level 30 onwards).
+4. The `Cancel` button interrupts the running cast — mana and the GCD stay
+   spent.
 
-Les cinq familles de soin du prêtre vanilla, au rang 1 :
+The five vanilla priest healing families, at rank 1:
 
-| Sort | Niveau | Cast | Mana | Effet |
+| Spell | Level | Cast | Mana | Effect |
 | --- | --- | --- | --- | --- |
-| Lesser Heal | **1** | 1,5 s | 30 | 46 – 56 |
-| Renew | 8 | instantané | 30 | 5 ticks de 9, toutes les 3 s (ne stacke pas) |
+| Lesser Heal | **1** | 1.5 s | 30 | 46 – 56 |
+| Renew | 8 | instant | 30 | 5 ticks of 9, every 3 s (never stacks) |
 | Heal | 16 | 3 s | 155 | 295 – 341 |
-| Flash Heal | 20 | 1,5 s | 125 | 193 – 237 |
-| Prayer of Healing | 30 | 3 s | 410 | 312 – 333 sur le groupe |
+| Flash Heal | 20 | 1.5 s | 125 | 193 – 237 |
+| Prayer of Healing | 30 | 3 s | 410 | 312 – 333 on the party |
 
-**Le groupe étant niveau 1, seul Lesser Heal est disponible** : les autres
-boutons affichent leur niveau d'apprentissage. C'est le vrai kit d'un prêtre de
-niveau 1 — la partie est un exercice de triage.
+**Since the party is level 1, only Lesser Heal is available**: the other buttons
+show their training level. That is the real kit of a level 1 priest — the fight
+is an exercise in triage.
 
-Le groupe : Thorgrim (nain guerrier, 90 PV), Elowen (humain prêtre, 51 PV et
-160 de mana), Kaelan (humain voleur, 55 PV), Fizzwick (gnome mage, 50 PV) et
-Sylandra (elfe de la nuit chasseur, 46 PV).
+The party: Thorgrim (dwarf warrior, 90 HP), Elowen (human priest, 51 HP and
+160 mana), Kaelan (human rogue, 55 HP), Fizzwick (gnome mage, 50 HP) and
+Sylandra (night elf hunter, 46 HP).
 
-La mana suit le modèle vanilla : un palier de 18,5 toutes les 2 s, **suspendu
-pendant 5 secondes après chaque dépense** (règle des cinq secondes).
+Mana follows the vanilla model: a 18.5 tick every 2 s, **suspended for 5 seconds
+after every expenditure** (the five-second rule).
 
-Tout lancement accepté déclenche un GCD de 1,5 s. La partie se termine quand le
-tank meurt ou quand trois membres sont morts.
+Every accepted cast triggers a 1.5 s global cooldown. The fight ends when the
+tank dies or when three members are dead.
 
-Une partie est **rejouable à l'identique** : `?seed=1337` dans l'URL fixe la
-seed du générateur pseudo-aléatoire (la seed de la partie en cours est affichée
-sur l'écran de fin).
+A fight is **exactly replayable**: `?seed=1337` in the URL fixes the seed of the
+pseudo-random generator (the current seed is shown on the end screen).
 
-## Structure
+## Layout
 
 ```
 src/
-  config/classicData.ts    données WoW Classic 1.12 sourcées + formules
-  config/gameConfig.ts     constantes de balance, dérivées des données Classic
-  simulation/              moteur pur (aucun React, aucun DOM)
+  config/classicData.ts    sourced WoW Classic 1.12 data + formulas
+  config/gameConfig.ts     balance constants, derived from the Classic data
+  simulation/              pure engine (no React, no DOM)
     types.ts random.ts initialState.ts effects.ts
     feedback.ts simulation.ts actions.ts selectors.ts
-  store/gameStore.ts       pont moteur ↔ React (snapshots mémoïsés)
-  hooks/                   useGameLoop.ts (rAF), useGameStore.ts (abonnements)
+  store/gameStore.ts       engine ↔ React bridge (memoised snapshots)
+  hooks/                   useGameLoop.ts (rAF), useGameStore.ts (subscriptions)
   components/              PartyFrame, PartyList, SpellButton, CastBar,
                            ManaBar, CombatFeedback, GameOver, Header, Controls
   App.tsx main.tsx styles.css
-tests/                     suite Vitest du moteur
-docs/                      architecture, moteur, stats Classic, balance, tests,
-                           déploiement, runbook, ADR
+tests/                     Vitest engine suite
+docs/                      architecture, engine, Classic stats, balance, tests,
+                           deployment, runbook, ADRs
 k8s/                       Deployment, Service, Ingress
-nginx/default.conf         configuration du serveur statique
+nginx/default.conf         static server configuration
 ```
 
-Documentation détaillée : [`docs/README.md`](./docs/README.md).
+Detailed documentation: [`docs/README.md`](./docs/README.md).
 
-## Conteneur
+## Container
 
-Image multi-stage : build Node puis service par **Nginx non-root sur le port
-8080**, avec fallback SPA vers `index.html` et endpoint `/health` renvoyant
+Multi-stage image: Node build, then served by **non-root Nginx on port 8080**,
+with an SPA fallback to `index.html` and a `/health` endpoint returning
 `200 OK`.
 
 ```bash
@@ -103,33 +101,33 @@ docker run --rm -p 8080:8080 healing-simulator:1.0.0
 # http://localhost:8080/health  → OK
 ```
 
-Le conteneur fonctionne avec un système de fichiers racine en lecture seule à
-condition de monter `/tmp`, `/var/cache/nginx` et `/var/run` (c'est ce que fait
-le manifeste Deployment).
+The container runs with a read-only root filesystem as long as `/tmp`,
+`/var/cache/nginx` and `/var/run` are mounted (which the Deployment manifest
+does).
 
-## Déploiement Kubernetes
+## Kubernetes deployment
 
 ```bash
-# 1. Construire et pousser l'image dans le registre du cluster
+# 1. Build and push the image to the cluster registry
 docker build -t <registry>/healing-simulator:1.0.0 .
 docker push <registry>/healing-simulator:1.0.0
 
-# 2. Adapter l'image et l'hôte
-#    - k8s/deployment.yaml : spec.template.spec.containers[0].image
-#    - k8s/ingress.yaml    : spec.rules[0].host et spec.ingressClassName
+# 2. Adjust the image and the host
+#    - k8s/deployment.yaml: spec.template.spec.containers[0].image
+#    - k8s/ingress.yaml:    spec.rules[0].host and spec.ingressClassName
 
-# 3. Appliquer
+# 3. Apply
 kubectl apply -f k8s/
 
-# 4. Vérifier
+# 4. Verify
 kubectl rollout status deployment/healing-simulator
 kubectl port-forward svc/healing-simulator 8080:80
 curl -i http://localhost:8080/health
 ```
 
-Les trois sondes (`startupProbe`, `readinessProbe`, `livenessProbe`) interrogent
-`/health` sur le port `8080`.
+All three probes (`startupProbe`, `readinessProbe`, `livenessProbe`) hit
+`/health` on port `8080`.
 
 ## Licence
 
-MIT — voir [`LICENSE`](./LICENSE).
+MIT — see [`LICENSE`](./LICENSE).

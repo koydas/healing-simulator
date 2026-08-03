@@ -6,9 +6,9 @@ import { stepSimulation } from '../src/simulation/simulation';
 import type { GameState } from '../src/simulation/types';
 import { advance } from './helpers';
 
-/** Rejoue une partie scriptée : mêmes actions, aux mêmes pas de simulation. */
+/** Replays a scripted fight: same actions, on the same simulation steps. */
 function playScriptedGame(seed: number, steps = 600): GameState {
-  // Niveau 20 : le script peut enchaîner plusieurs familles de sorts.
+  // Level 20: the script can chain several spell families.
   let state = createInitialState(seed, 20);
 
   for (let step = 0; step < steps; step += 1) {
@@ -26,34 +26,34 @@ function playScriptedGame(seed: number, steps = 600): GameState {
   return state;
 }
 
-describe('déterminisme du moteur', () => {
-  it('produit exactement la même partie avec la même seed et les mêmes actions', () => {
+describe('engine determinism', () => {
+  it('produces exactly the same fight from the same seed and actions', () => {
     const first = playScriptedGame(4242);
     const second = playScriptedGame(4242);
     expect(second).toEqual(first);
   });
 
-  it('produit des parties différentes avec des seeds différentes', () => {
+  it('produces different fights from different seeds', () => {
     const first = playScriptedGame(4242);
     const second = playScriptedGame(9001);
     expect(JSON.stringify(second)).not.toBe(JSON.stringify(first));
   });
 
-  it('n’utilise pas d’horloge réelle : deux exécutions décalées sont identiques', async () => {
+  it('uses no real clock: two runs at different times are identical', async () => {
     const first = advance(createInitialState(77), 5000);
     await new Promise((resolve) => setTimeout(resolve, 30));
     const second = advance(createInitialState(77), 5000);
     expect(second).toEqual(first);
   });
 
-  it('ne mute jamais l’état d’entrée', () => {
+  it('never mutates the input state', () => {
     const state = createInitialState(5);
     const before = JSON.stringify(state);
     stepSimulation(state, TICK_MS);
     expect(JSON.stringify(state)).toBe(before);
   });
 
-  it('découper le temps en pas fixes donne le même résultat qu’un enchaînement continu', () => {
+  it('slicing time into fixed steps matches one continuous run', () => {
     const reference = advance(createInitialState(31), 10_000);
     let chunked = createInitialState(31);
     chunked = advance(chunked, 3000);

@@ -1,15 +1,15 @@
 /**
- * Store de jeu — pont entre le moteur pur et la couche React.
+ * Game store — the bridge between the pure engine and the React layer.
  *
- * Le store est la source de vérité (un simple objet mutable détenu par un
- * `useRef`). Il expose :
- *   - des *snapshots* légers et mémoïsés, consommés par `useSyncExternalStore` :
- *     un composant ne se re-rend que si SON snapshot a changé ;
- *   - des callbacks « frame » pour les éléments animés (barres de cast / mana /
- *     GCD) qui sont mis à jour directement via des variables CSS, sans rendu React.
+ * The store is the source of truth (a plain mutable object held by a `useRef`).
+ * It exposes:
+ *   - light, memoised *snapshots* consumed through `useSyncExternalStore`: a
+ *     component only re-renders when ITS snapshot changed;
+ *   - "frame" callbacks for animated elements (cast / mana / GCD bars) that are
+ *     updated straight through CSS variables, with no React render.
  *
- * Conséquence : un pas de simulation de 100 ms ne provoque jamais un rendu
- * complet de l'application.
+ * As a result, a 100 ms simulation step never triggers a full re-render of the
+ * application.
  */
 
 import {
@@ -47,7 +47,7 @@ export interface MemberSnapshot {
   name: string;
   role: Role;
   roleLabel: string;
-  /** « Nain · Guerrier » — race et classe Classic du personnage. */
+  /** "Dwarf · Warrior" — the character's Classic race and class. */
   classLabel: string;
   hp: number;
   hpMax: number;
@@ -74,9 +74,9 @@ export interface SpellSnapshot {
   id: SpellId;
   name: string;
   rank: number;
-  /** Niveau d'apprentissage du sort en Classic. */
+  /** Training level of the spell in Classic. */
   requiredLevel: number;
-  /** Vrai tant que le soigneur n'a pas le niveau requis. */
+  /** True while the healer has not reached the required level. */
   locked: boolean;
   manaCost: number;
   castLabel: string;
@@ -134,7 +134,7 @@ function snapshotEqual<T extends object>(a: T, b: T): boolean {
   return true;
 }
 
-/** Conserve la référence précédente si le contenu n'a pas changé. */
+/** Keeps the previous reference when the content has not changed. */
 function reuse<T extends object>(previous: T | undefined, next: T): T {
   return previous && snapshotEqual(previous, next) ? previous : next;
 }
@@ -219,7 +219,7 @@ export function createGameStore(initialSeed: number): GameStore {
     };
   }
 
-  /** Recalcule tous les snapshots ; renvoie `true` si au moins un a changé. */
+  /** Recomputes every snapshot; returns `true` when at least one changed. */
   function refreshSnapshots(): boolean {
     let changed = false;
 
@@ -236,8 +236,8 @@ export function createGameStore(initialSeed: number): GameStore {
     headerSnapshot = nextHeader;
 
     const nextControlsBase = buildControlsSnapshot();
-    // Les snapshots de sorts sont mémoïsés individuellement pour que
-    // `React.memo` sur les boutons reste efficace.
+    // Spell snapshots are memoised individually so that `React.memo` on the
+    // buttons stays effective.
     const previousSpells = controlsSnapshot ? controlsSnapshot.spells : [];
     nextControlsBase.spells = nextControlsBase.spells.map((spell, index) =>
       reuse(previousSpells[index], spell),
@@ -278,7 +278,7 @@ export function createGameStore(initialSeed: number): GameStore {
     }
   }
 
-  // Initialisation des snapshots.
+  // Initial snapshots.
   refreshSnapshots();
 
   return {
@@ -328,8 +328,8 @@ export function createGameStore(initialSeed: number): GameStore {
       memberIds = next.party.map((member) => member.id);
       memberSnapshots = new Map();
       setState(next);
-      // Force la notification même si les snapshots sont identiques
-      // (nouvelle partie avec la même seed, par exemple).
+      // Force a notification even when the snapshots are identical
+      // (a new fight with the same seed, for instance).
       for (const listener of listeners) listener();
       for (const callback of frameListeners) callback(state);
     },

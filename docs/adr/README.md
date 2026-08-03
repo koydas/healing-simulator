@@ -1,21 +1,21 @@
 # ADR Index
 
-Architecture Decision Records du Healing Simulator.
+Architecture Decision Records for the Healing Simulator.
 
 ## Records
 
-- [ADR-0001: Moteur de simulation pur, isolé de React](./0001-pure-simulation-engine.md)
-- [ADR-0002: Boucle à pas fixe de 100 ms avec accumulateur borné](./0002-fixed-timestep-loop.md)
-- [ADR-0003: Générateur pseudo-aléatoire déterministe transporté dans le state](./0003-deterministic-prng-in-state.md)
-- [ADR-0004: Store externe et snapshots mémoïsés pour isoler les rendus React](./0004-external-store-memoized-snapshots.md)
-- [ADR-0005: Aucune persistance — seed rejouable par paramètre d'URL](./0005-no-persistence-url-seed.md)
-- [ADR-0006: Conteneur Nginx non-root sur le port 8080 avec fallback SPA](./0006-nonroot-nginx-container.md)
-- [ADR-0007: Stats dérivées des tables et formules de WoW Classic (niveau 1)](./0007-classic-derived-stats.md)
-- [ADR-0008: Sorts réels du prêtre et verrouillage par niveau d'apprentissage](./0008-classic-spellbook-level-gating.md)
-- [ADR-0009: Régénération de mana vanilla — paliers de 2 s et règle des cinq secondes](./0009-vanilla-mana-regen-five-second-rule.md)
-- [ADR-0010: Profil du boss de niveau 1 — part sourcée, part conçue](./0010-level-1-boss-profile.md)
+- [ADR-0001: Pure simulation engine, isolated from React](./0001-pure-simulation-engine.md)
+- [ADR-0002: Fixed 100 ms timestep loop with a bounded accumulator](./0002-fixed-timestep-loop.md)
+- [ADR-0003: Deterministic pseudo-random generator carried in the state](./0003-deterministic-prng-in-state.md)
+- [ADR-0004: External store and memoised snapshots to isolate React renders](./0004-external-store-memoized-snapshots.md)
+- [ADR-0005: No persistence — replayable seed through a URL parameter](./0005-no-persistence-url-seed.md)
+- [ADR-0006: Non-root Nginx container on port 8080 with an SPA fallback](./0006-nonroot-nginx-container.md)
+- [ADR-0007: Stats derived from the WoW Classic tables and formulas (level 1)](./0007-classic-derived-stats.md)
+- [ADR-0008: Real priest spell book gated by training level](./0008-classic-spellbook-level-gating.md)
+- [ADR-0009: Vanilla mana regeneration — 2 s ticks and the five-second rule](./0009-vanilla-mana-regen-five-second-rule.md)
+- [ADR-0010: Level 1 boss profile — what is sourced, what is designed](./0010-level-1-boss-profile.md)
 
 ## Format
 
-Chaque ADR suit la structure : Contexte, Décision, Alternatives considérées,
-Conséquences (✅ bénéfices / ⚠️ contreparties).
+Every ADR follows the same structure: Context, Decision, Alternatives
+Considered, Consequences (✅ benefits / ⚠️ trade-offs).

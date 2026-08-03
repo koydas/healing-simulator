@@ -5,7 +5,7 @@ metadata:
   labels:
     app.kubernetes.io/name: healing-simulator
 spec:
-  # Adapter le nom de l'IngressClass au cluster cible (nginx, traefik, ...).
+  # Adjust the IngressClass name to the target cluster (nginx, traefik, ...).
   ingressClassName: nginx
   rules:
     - host: healing-simulator.local

@@ -1,28 +1,28 @@
 # syntax=docker/dockerfile:1
 
 # ---------------------------------------------------------------------------
-# Étape 1 — build de l'application statique
+# Stage 1 — build the static application
 # ---------------------------------------------------------------------------
 FROM node:22-alpine AS build
 
 WORKDIR /app
 
-# Couche de dépendances (cache Docker) : ne dépend que des manifestes npm.
+# Dependency layer (Docker cache): depends only on the npm manifests.
 COPY package.json package-lock.json ./
 RUN npm ci
 
-# Sources puis build (typecheck inclus dans `npm run build`).
+# Sources, then build (typecheck is part of `npm run build`).
 COPY tsconfig.json vite.config.ts index.html ./
 COPY src ./src
 COPY tests ./tests
 RUN npm test && npm run build
 
 # ---------------------------------------------------------------------------
-# Étape 2 — service des fichiers statiques par Nginx, en non-root sur 8080
+# Stage 2 — serve the static files with Nginx, non-root on port 8080
 # ---------------------------------------------------------------------------
 FROM nginxinc/nginx-unprivileged:1.29-alpine AS runtime
 
-# L'image nginx-unprivileged tourne déjà en uid 101 et écoute en non-privilégié.
+# The nginx-unprivileged image already runs as uid 101 on an unprivileged port.
 USER 101
 
 COPY --chown=101:101 nginx/default.conf /etc/nginx/conf.d/default.conf

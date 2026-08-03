@@ -1,53 +1,53 @@
-# ADR-0001: Moteur de simulation pur, isolé de React
+# ADR-0001: Pure simulation engine, isolated from React
 
 - **Date:** 2026-08-02
 - **Status:** Accepted
 
 ## Context
 
-Le jeu est une simulation temps réel : dégâts périodiques, HoT, casts,
-régénération, morts, wipe. Mélanger cette logique avec des `useState` et des
-`useEffect` rend le comportement dépendant de l'ordre de rendu de React, très
-difficile à tester, et impossible à rejouer à l'identique.
+The game is a real-time simulation: periodic damage, HoTs, casts, regeneration,
+deaths, wipes. Mixing that logic with `useState` and `useEffect` would make the
+behaviour depend on React's render order, very hard to test, and impossible to
+replay exactly.
 
 ## Decision
 
-Toute la logique de jeu vit sous `src/simulation/` et n'importe **rien** de
-React, du DOM ou de l'horloge réelle. La fonction centrale est :
+All game logic lives under `src/simulation/` and imports **nothing** from React,
+the DOM or the real clock. The central function is:
 
 ```ts
 stepSimulation(state: GameState, dtMs: number): GameState
 ```
 
-Elle clone l'état d'entrée (`cloneState`), travaille sur ce brouillon et renvoie
-un nouvel état. Les actions du joueur (`castSpell`, `selectTarget`,
-`cancelCast`, `togglePause`) suivent la même signature `(state, payload) => state`.
+It clones the input state (`cloneState`), works on that draft and returns a new
+state. Player actions (`castSpell`, `selectTarget`, `cancelCast`,
+`togglePause`) follow the same `(state, payload) => state` signature.
 
-Le `GameState` est une structure de données sérialisable : party, mana, timers,
-seed, feedbacks, statistiques.
+The `GameState` is a serializable data structure: party, mana, timers, seed,
+feedback, statistics.
 
-Interdits sous `src/simulation/` : `Date.now()`, `performance.now()`,
-`Math.random()`, `setTimeout`, accès DOM, imports React.
+Forbidden under `src/simulation/`: `Date.now()`, `performance.now()`,
+`Math.random()`, `setTimeout`, DOM access, React imports.
 
 ## Alternatives Considered
 
-- **Logique dans les composants React** — rejeté : non testable sans DOM,
-  non déterministe, et le moindre re-rendu risque de dupliquer des effets.
-- **Classe `Game` mutable** — rejeté : plus simple à écrire, mais on perd la
-  comparaison d'états (« l'état est-il identique après une pause ? ») et les
-  tests doivent reconstruire l'objet à chaque scénario.
-- **Bibliothèque ECS externe** — rejeté : dépendance de moteur de jeu interdite
-  par le cahier des charges, et surdimensionnée pour 5 entités.
+- **Logic inside React components** — rejected: not testable without a DOM,
+  non-deterministic, and any re-render risks duplicating effects.
+- **A mutable `Game` class** — rejected: simpler to write, but you lose state
+  comparison ("is the state identical after a pause?") and tests have to rebuild
+  the object for every scenario.
+- **An external ECS library** — rejected: game-engine dependencies are ruled out
+  by the brief, and it would be oversized for five entities.
 
 ## Consequences
 
-- ✅ Le moteur est testable sans DOM ni mock de temps : `tests/` tourne en
-  environnement `node`.
-- ✅ Un état peut être fabriqué de toutes pièces dans un test (`patchState`),
-  ce qui évite de simuler des minutes de jeu pour atteindre une situation.
-- ✅ Comparer deux états suffit à prouver l'absence de progression (pause,
-  wipe) : `expect(after).toBe(before)`.
-- ⚠️ Chaque pas alloue un clone de l'état. À 10 pas/s pour 5 membres, le coût
-  est négligeable, mais ce ne serait pas le cas pour un raid de 40 joueurs.
-- ⚠️ Les développeurs doivent penser « immuable » : muter `state.party[0].hp`
-  directement dans un composant casserait le contrat silencieusement.
+- ✅ The engine is testable without a DOM or time mocking: `tests/` runs in a
+  `node` environment.
+- ✅ A test can build a state from scratch (`patchState`), so reaching a given
+  situation does not require simulating minutes of gameplay.
+- ✅ Comparing two states is enough to prove the absence of progress (pause,
+  wipe): `expect(after).toBe(before)`.
+- ⚠️ Every step allocates a clone of the state. At 10 steps per second for five
+  members the cost is negligible, but it would not be for a 40-player raid.
+- ⚠️ Contributors have to think immutably: mutating `state.party[0].hp` directly
+  from a component would silently break the contract.

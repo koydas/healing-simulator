@@ -1,72 +1,69 @@
-# ADR-0007: Stats dérivées des tables et formules de WoW Classic (niveau 1)
+# ADR-0007: Stats derived from the WoW Classic tables and formulas (level 1)
 
 - **Date:** 2026-08-02
 - **Status:** Accepted
 
 ## Context
 
-La première version utilisait des valeurs inventées : 4000 PV par personnage,
-8000 pour le tank, 10 000 de mana, des soins de 800 à 2000. Cohérentes entre
-elles, mais sans rapport avec WoW. La demande est d'utiliser les **vraies stats
-de WoW Classic**, tous les personnages au niveau 1.
+The first version used invented values: 4000 health per character, 8000 for the
+tank, 10,000 mana, heals from 800 to 2000. Internally consistent, but unrelated
+to WoW. The request is to use the **real WoW Classic stats**, with every
+character at level 1.
 
-Deux façons de s'y prendre : recopier à la main des valeurs trouvées ici ou là,
-ou reconstruire les personnages comme le fait le serveur — table de base par
-classe, attributs par race/classe, puis formules de conversion.
+There are two ways to do that: copy values found here and there by hand, or
+rebuild the characters the way the server does — class base table, race/class
+attributes, then the conversion formulas.
 
 ## Decision
 
-Les stats sont **calculées**, jamais recopiées.
+Stats are **computed**, never copied.
 
-`src/config/classicData.ts` contient exclusivement des données sourcées :
+`src/config/classicData.ts` contains sourced data only:
 
-- `CLASS_BASE_LEVEL_1` — PV et mana de base par classe, table
-  `player_classlevelstats` de la base vanilla MaNGOS Zero (1.12) ;
-- `RACE_CLASS_ATTRIBUTES_LEVEL_1` — force / agilité / endurance / intelligence /
-  esprit par race et classe, table `player_levelstats` ;
-- les deux formules officielles, reprises du code serveur
-  (`StatSystem.cpp`) :
+- `CLASS_BASE_LEVEL_1` — base health and mana per class, from the
+  `player_classlevelstats` table of the vanilla MaNGOS Zero (1.12) database;
+- `RACE_CLASS_ATTRIBUTES_LEVEL_1` — strength / agility / stamina / intellect /
+  spirit per race and class, from `player_levelstats`;
+- the two official formulas, taken from the server code (`StatSystem.cpp`):
 
 ```
-bonus PV   = min(end, 20) × 1 + max(0, end − 20) × 10
-bonus mana = min(int, 20) × 1 + max(0, int − 20) × 15
+health bonus = min(sta, 20) × 1 + max(0, sta − 20) × 10
+mana bonus   = min(int, 20) × 1 + max(0, int − 20) × 15
 ```
 
-`gameConfig.ts` en dérive le groupe : un nain guerrier a 90 PV, un prêtre humain
-51 PV et 160 de mana, etc. Aucun PV n'est écrit en dur dans le moteur, les
-composants ou les tests — ceux-ci lisent `PARTY_TEMPLATE`.
+`gameConfig.ts` derives the party from them: a dwarf warrior has 90 health, a
+human priest 51 health and 160 mana, and so on. No health value is hard-coded in
+the engine, the components or the tests — those read `PARTY_TEMPLATE`.
 
-Un test de non-régression vérifie une valeur connue publiquement : un guerrier
-humain de niveau 1 a bien 60 PV.
+A regression test checks a publicly known value: a level 1 human warrior does
+have 60 health.
 
-La distinction sourcé / dérivé / approximé / conçu est tenue à jour dans
+The sourced / derived / approximated / designed split is kept up to date in
 [`docs/classic-stats.md`](../classic-stats.md).
 
 ## Alternatives Considered
 
-- **Recopier des valeurs depuis un wiki** — rejeté : impossible de vérifier une
-  incohérence, et rien ne permet de passer au niveau 2 ensuite.
-- **Garder des PV « ronds » et prétendre qu'ils sont Classic** — rejeté :
-  malhonnête, et l'échelle (des milliers de PV) trahit immédiatement le contraire.
-- **Charger les DBC du client** — rejeté : ces fichiers ne sont pas
-  redistribuables, et le jeu doit rester un site statique sans dépendance.
-- **Conserver la règle « le tank a deux fois les PV des autres »** — abandonnée
-  au profit des vraies valeurs. Le rapport obtenu (90 contre 46) vaut 1,96 : la
-  règle initiale est *retrouvée* plutôt qu'imposée, parce que le tank est un
-  nain guerrier (endurance 25, la plus haute au niveau 1).
+- **Copying values from a wiki** — rejected: there would be no way to verify an
+  inconsistency, and nothing would let us move to level 2 afterwards.
+- **Keeping "round" health values and calling them Classic** — rejected:
+  dishonest, and the scale (thousands of health) gives it away immediately.
+- **Loading the client DBC files** — rejected: they are not redistributable, and
+  the game must stay a dependency-free static site.
+- **Keeping the "the tank has twice the health of the others" rule** — dropped
+  in favour of the real values. The resulting ratio (90 against 46) is 1.96: the
+  original rule is *recovered* rather than imposed, because the tank is a dwarf
+  warrior (stamina 25, the highest at level 1).
 
 ## Consequences
 
-- ✅ Chaque nombre est traçable jusqu'à une table serveur ou une ligne de code
-  d'émulateur.
-- ✅ Monter le groupe au niveau 10 ou 60 demandera d'étendre deux tables, pas de
-  réécrire la balance : les fichiers SQL sources contiennent déjà tous les
-  niveaux.
-- ✅ Les tests portent sur les formules, pas sur des constantes recopiées.
-- ⚠️ L'échelle change radicalement (46 à 90 PV au lieu de 4000) : toute la
-  timeline de dégâts a dû être recalibrée (voir ADR-0010).
-- ⚠️ Les PV varient beaucoup d'un membre à l'autre à cause du palier à 20 points
-  d'endurance. C'est fidèle, mais déroutant si l'on s'attend à des PV uniformes.
-- ⚠️ Les tables ne couvrent aujourd'hui que le niveau 1 et les combinaisons
-  race/classe du groupe : demander autre chose lève une erreur explicite plutôt
-  que de renvoyer une valeur fausse.
+- ✅ Every number is traceable to a server table or a line of emulator code.
+- ✅ Levelling the party to 10 or 60 will mean extending two tables, not
+  rewriting the balance: the source SQL files already contain every level.
+- ✅ Tests exercise the formulas, not copied constants.
+- ⚠️ The scale changes radically (46 to 90 health instead of 4000): the whole
+  damage timeline had to be recalibrated (see ADR-0010).
+- ⚠️ Health varies a lot between members because of the 20-stamina threshold.
+  That is faithful, but surprising if you expect uniform health pools.
+- ⚠️ The tables currently cover only level 1 and the party's race/class
+  combinations: asking for anything else raises an explicit error rather than
+  returning a wrong value.

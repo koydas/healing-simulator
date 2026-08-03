@@ -1,56 +1,55 @@
-# ADR-0004: Store externe et snapshots mémoïsés pour isoler les rendus React
+# ADR-0004: External store and memoised snapshots to isolate React renders
 
 - **Date:** 2026-08-02
 - **Status:** Accepted
 
 ## Context
 
-La simulation produit un nouvel état toutes les 100 ms. Placer cet état dans un
-`useState` au sommet de l'application déclencherait 10 rendus complets par
-seconde : cinq frames de groupe, quatre boutons de sorts, l'en-tête et les
-barres seraient reconstruits en permanence, ce que le cahier des charges
-interdit explicitement.
+The simulation produces a new state every 100 ms. Putting that state in a
+`useState` at the top of the application would trigger 10 full re-renders per
+second: five party frames, five spell buttons, the header and the bars would be
+rebuilt constantly — which the brief explicitly forbids.
 
 ## Decision
 
-Le `GameState` vit dans un store créé par `createGameStore(seed)` et détenu par
-un `useRef` dans `App`. Le store expose deux canaux distincts :
+The `GameState` lives in a store created by `createGameStore(seed)` and held by
+a `useRef` in `App`. The store exposes two distinct channels:
 
-**1. Snapshots mémoïsés + `useSyncExternalStore`.** Après chaque pas, le store
-reconstruit des projections légères (`MemberSnapshot`, `HeaderSnapshot`,
-`ControlsSnapshot`, messages, résumé de fin). Une comparaison superficielle
-(`snapshotEqual`, avec égalité élément par élément pour les tableaux) permet de
-**réutiliser la référence précédente** si le contenu est inchangé. Les
-composants s'abonnent à leur propre snapshot ; React compare la référence et ne
-re-rend que ce qui a réellement bougé. Le store ne notifie ses abonnés que si au
-moins un snapshot a changé.
+**1. Memoised snapshots + `useSyncExternalStore`.** After every step the store
+rebuilds light projections (`MemberSnapshot`, `HeaderSnapshot`,
+`ControlsSnapshot`, messages, end-of-fight summary). A shallow comparison
+(`snapshotEqual`, with element-wise equality for arrays) lets it **reuse the
+previous reference** when the content is unchanged. Components subscribe to
+their own snapshot; React compares the reference and only re-renders what
+actually moved. The store notifies its listeners only when at least one snapshot
+changed.
 
-**2. Callbacks « frame » (`onFrame`).** Les valeurs qui changent à chaque pas —
-mana, progression du cast, progression du GCD — sont écrites directement dans
-des variables CSS (`--mana-fill`, `--cast-progress`, `--gcd-progress`) et un
-`textContent`, via des refs DOM. Aucun rendu React n'est impliqué.
+**2. "Frame" callbacks (`onFrame`).** The values that change on every step —
+mana, cast progress, GCD progress — are written straight into CSS variables
+(`--mana-fill`, `--cast-progress`, `--gcd-progress`) and a `textContent`,
+through DOM refs. No React render is involved.
 
-Tous les composants abonnés sont enveloppés dans `React.memo` et reçoivent des
-callbacks stabilisés par `useCallback`.
+Every subscribed component is wrapped in `React.memo` and receives callbacks
+stabilised with `useCallback`.
 
 ## Alternatives Considered
 
-- **`useState` global dans `App`** — rejeté : rendu complet à 10 Hz.
-- **Redux / Zustand / Jotai** — rejeté : dépendance externe non nécessaire ;
-  `useSyncExternalStore` fait exactement le travail en standard.
-- **`useReducer` + Context** — rejeté : le Context propage la valeur à tous les
-  consommateurs, ce qui reproduit le problème du rendu global.
-- **Rendu sur `<canvas>`** — rejeté : perte de l'accessibilité et des cibles
-  tactiles natives, pour un gain inutile à cette échelle.
+- **A global `useState` in `App`** — rejected: full re-render at 10 Hz.
+- **Redux / Zustand / Jotai** — rejected: an external dependency is not needed;
+  `useSyncExternalStore` does exactly this job out of the box.
+- **`useReducer` + Context** — rejected: Context propagates the value to every
+  consumer, which reintroduces the global-render problem.
+- **Rendering on a `<canvas>`** — rejected: you lose accessibility and native
+  touch targets for no benefit at this scale.
 
 ## Consequences
 
-- ✅ `App` ne se re-rend jamais pendant une partie ; une frame ne se re-rend que
-  quand ses HP, son état de vie, son Renew, sa sélection ou son feedback
-  changent.
-- ✅ Les barres animées restent fluides sans coût de réconciliation.
-- ✅ Aucune dépendance d'état externe : le store fait 250 lignes et reste lisible.
-- ⚠️ La mémoïsation est manuelle : ajouter un champ à un snapshot sans penser à
-  sa stabilité peut réintroduire des rendus inutiles.
-- ⚠️ Les valeurs pilotées par `onFrame` ne sont pas visibles dans les React
-  DevTools — il faut inspecter le DOM pour les déboguer.
+- ✅ `App` never re-renders during a fight; a frame only re-renders when its
+  health, alive state, Renew, selection or feedback changes.
+- ✅ Animated bars stay smooth with no reconciliation cost.
+- ✅ No external state dependency: the store is around 250 lines and stays
+  readable.
+- ⚠️ Memoisation is manual: adding a field to a snapshot without thinking about
+  its stability can reintroduce useless renders.
+- ⚠️ Values driven by `onFrame` are invisible in the React DevTools — you have
+  to inspect the DOM to debug them.

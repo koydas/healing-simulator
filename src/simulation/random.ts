@@ -1,27 +1,26 @@
 /**
- * Générateur pseudo-aléatoire pur (mulberry32).
+ * Pure pseudo-random generator (mulberry32).
  *
- * Aucune fonction de ce module n'utilise `Math.random()` : l'état du
- * générateur est une simple valeur entière transportée dans le `GameState`.
- * À seed identique et séquence d'appels identique, les valeurs produites sont
- * toujours les mêmes.
+ * No function here uses `Math.random()`: the generator state is a plain integer
+ * carried inside the `GameState`. Given the same seed and the same sequence of
+ * calls, the produced values are always identical.
  */
 
 export interface RandomResult {
-  /** Valeur dans [0, 1). */
+  /** Value in [0, 1). */
   value: number;
-  /** Nouvel état du générateur, à replacer dans le state. */
+  /** New generator state, to be stored back into the state. */
   seed: number;
 }
 
-/** Normalise une valeur quelconque en seed entière non signée sur 32 bits. */
+/** Normalises any number into an unsigned 32-bit seed. */
 export function normalizeSeed(input: number): number {
   if (!Number.isFinite(input)) return 1;
   const normalized = Math.floor(Math.abs(input)) >>> 0;
   return normalized === 0 ? 1 : normalized;
 }
 
-/** Tire la valeur suivante et renvoie le nouvel état du générateur. */
+/** Draws the next value and returns the new generator state. */
 export function nextRandom(seed: number): RandomResult {
   const nextSeed = (seed + 0x6d2b79f5) >>> 0;
   let x = nextSeed;
@@ -31,13 +30,13 @@ export function nextRandom(seed: number): RandomResult {
   return { value, seed: nextSeed };
 }
 
-/** Tire une valeur uniforme dans [min, max). */
+/** Draws a uniform value in [min, max). */
 export function nextRange(seed: number, min: number, max: number): RandomResult {
   const { value, seed: nextSeed } = nextRandom(seed);
   return { value: min + value * (max - min), seed: nextSeed };
 }
 
-/** Tire un entier uniforme dans [0, boundExclusive). */
+/** Draws a uniform integer in [0, boundExclusive). */
 export function nextInt(seed: number, boundExclusive: number): RandomResult {
   if (boundExclusive <= 0) return { value: 0, seed };
   const { value, seed: nextSeed } = nextRandom(seed);

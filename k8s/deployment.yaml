@@ -63,8 +63,8 @@ spec:
               cpu: 200m
               memory: 128Mi
           volumeMounts:
-            # Le système de fichiers racine est en lecture seule : Nginx a
-            # besoin de ces trois chemins inscriptibles.
+            # The root filesystem is read-only: Nginx needs these three
+            # writable paths.
             - name: tmp
               mountPath: /tmp
             - name: nginx-cache

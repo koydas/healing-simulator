@@ -1,73 +1,67 @@
-# ADR-0009: Régénération de mana vanilla — paliers de 2 s et règle des cinq secondes
+# ADR-0009: Vanilla mana regeneration — 2 s ticks and the five-second rule
 
 - **Date:** 2026-08-02
 - **Status:** Accepted
 
 ## Context
 
-La première version régénérait 100 de mana par seconde, portés à 200 après deux
-secondes sans lancement — une mécanique inventée pour récompenser les pauses.
+The first version regenerated 100 mana per second, raised to 200 after two
+seconds without a cast — a mechanic invented to reward pauses.
 
-WoW Classic fonctionne autrement, et de façon plus intéressante :
+WoW Classic works differently, and more interestingly:
 
-1. la mana tombe par **paliers de 2 secondes**, pas en continu ;
-2. la part liée à l'esprit est **totalement suspendue pendant les 5 secondes qui
-   suivent une dépense de mana** — c'est la « règle des cinq secondes » (5SR).
-   Sans le talent Méditation, un prêtre qui enchaîne les sorts ne régénère
-   strictement rien.
+1. mana lands in **2-second ticks**, not continuously;
+2. the spirit-based part is **fully suspended for the 5 seconds following a mana
+   expenditure** — the "five-second rule" (5SR). Without the Meditation talent,
+   a priest who chains casts regenerates strictly nothing.
 
-Passer aux stats Classic sans reprendre cette mécanique aurait laissé la
-ressource centrale du jeu à côté de la plaque.
+Moving to Classic stats without adopting that mechanic would have left the
+game's central resource wide of the mark.
 
 ## Decision
 
-La régénération suit le modèle vanilla :
+Regeneration follows the vanilla model:
 
-- un palier toutes les `MANA.tickMs` = 2000 ms, porté par un timer du
-  `GameState` (`timers.manaTickMs`) qui tourne en continu ;
-- à chaque palier, la mana n'est créditée que si
-  `msSinceLastCastStart >= 5000` ;
-- le montant par palier est dérivé de l'esprit du prêtre :
-  `esprit / 4 + 12,5`, soit **18,5** pour un prêtre humain de niveau 1
-  (esprit 24).
+- one tick every `MANA.tickMs` = 2000 ms, driven by a `GameState` timer
+  (`timers.manaTickMs`) that keeps running continuously;
+- on each tick, mana is only credited when `msSinceLastCastStart >= 5000`;
+- the amount per tick is derived from the priest's spirit:
+  `spirit / 4 + 12.5`, i.e. **18.5** for a level 1 human priest (spirit 24).
 
-`msSinceLastCastStart` est remis à zéro à chaque lancement accepté — la mana
-étant dépensée au lancement, ce compteur est exactement le déclencheur du 5SR.
+`msSinceLastCastStart` is reset on every accepted cast — since mana is spent at
+cast start, that counter is exactly the 5SR trigger.
 
-L'ancienne notion de « régénération améliorée » disparaît, remplacée par
-« régénération active / suspendue ».
+The old notion of "enhanced regeneration" disappears, replaced by "regeneration
+active / suspended".
 
-Le coefficient d'esprit est la **seule valeur approchée** du projet : la vraie
-table (`gtRegenMPPerSpt` dans les DBC du client) dépend de la classe et du
-niveau et n'est pas exploitable publiquement. La formule retenue décrit le
-niveau 60 ; elle est signalée comme approximation dans
-[`docs/classic-stats.md`](../classic-stats.md).
+The spirit coefficient is the **only approximated value** in the project: the
+real table (`gtRegenMPPerSpt` in the client DBC files) depends on class and
+level and is not publicly usable. The formula we use describes level 60; it is
+flagged as an approximation in [`docs/classic-stats.md`](../classic-stats.md).
 
 ## Alternatives Considered
 
-- **Garder la régénération continue 100/200 par seconde** — rejeté : incohérent
-  avec la demande, et à l'échelle du niveau 1 cela reviendrait à remplir le pool
-  (160) deux fois par seconde.
-- **Régénération continue à 9,25 mana/s** (le même débit moyen, mais lissé) —
-  rejeté : plus simple, mais on perd le grain de jeu. Avec les paliers, arrêter
-  de lancer 5,2 s ou 6,1 s ne donne pas le même résultat, ce qui est exactement
-  la tension de la gestion de mana en vanilla.
-- **Modéliser aussi le talent Méditation** (15 % de régénération conservée
-  pendant le 5SR) — écarté : c'est un talent, et un prêtre de niveau 1 n'a aucun
-  point de talent.
-- **Reconstituer `gtRegenMPPerSpt` à partir de mesures** — écarté pour
-  l'instant : disproportionné, et la formule niveau 60 donne déjà un équilibre
-  jouable.
+- **Keeping continuous 100/200 per second regeneration** — rejected:
+  inconsistent with the request, and at level 1 scale it would refill the pool
+  (160) twice per second.
+- **Continuous regeneration at 9.25 mana/s** (the same average throughput,
+  smoothed) — rejected: simpler, but it loses the texture. With ticks, stopping
+  for 5.2 s or 6.1 s does not give the same result, which is exactly the tension
+  of vanilla mana management.
+- **Modelling the Meditation talent too** (15% regeneration kept during the
+  5SR) — set aside: it is a talent, and a level 1 priest has no talent points.
+- **Reconstructing `gtRegenMPPerSpt` from measurements** — set aside for now:
+  disproportionate, and the level 60 formula already yields a playable balance.
 
 ## Consequences
 
-- ✅ La ressource centrale du jeu se comporte comme en Classic : cinq Lesser
-  Heal d'affilée, puis une fenêtre de silence obligatoire.
-- ✅ La règle des cinq secondes crée une décision réelle à chaque instant —
-  lancer maintenant, ou laisser le palier tomber.
-- ✅ Le comportement est testable au palier près (`tests/spells.test.ts`).
-- ⚠️ Le coefficient d'esprit est approché ; la régénération réelle au niveau 1
-  est probablement un peu plus faible, ce qui rendrait le jeu plus dur.
-- ⚠️ Le palier tombant toutes les 2 s indépendamment des actions, un lancement
-  juste après un palier « perd » moins qu'un lancement juste avant : c'est le
-  comportement du jeu, pas un défaut.
+- ✅ The game's central resource behaves like Classic: five Lesser Heals in a
+  row, then a mandatory quiet window.
+- ✅ The five-second rule creates a real decision at every moment — cast now, or
+  let the tick land.
+- ✅ The behaviour is testable tick by tick (`tests/spells.test.ts`).
+- ⚠️ The spirit coefficient is approximated; real level 1 regeneration is
+  probably a little lower, which would make the game harder.
+- ⚠️ Since the tick lands every 2 s regardless of what the player does, a cast
+  just after a tick "loses" less than one just before: that is the game's
+  behaviour, not a defect.

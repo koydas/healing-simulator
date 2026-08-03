@@ -1,62 +1,61 @@
-# ADR-0003: Générateur pseudo-aléatoire déterministe transporté dans le state
+# ADR-0003: Deterministic pseudo-random generator carried in the state
 
 - **Date:** 2026-08-02
 - **Status:** Accepted
 
 ## Context
 
-Trois mécaniques ont besoin de hasard : le choix de la cible d'un spike, le
-montant d'un soin (tiré dans la fourchette du sort, par exemple 46 – 56 pour
-Lesser Heal), et l'intervalle avant le prochain spike.
-`Math.random()` rendrait chaque partie unique mais aussi impossible à rejouer,
-à déboguer et à tester — impossible d'écrire « ce spike doit toucher un
-non-tank » sans dépendre de la chance.
+Three mechanics need randomness: the target of a spike, the healing amount
+(rolled inside the spell's range, e.g. 46 – 56 for Lesser Heal), and the delay
+before the next spike. `Math.random()` would make every fight unique but also
+impossible to replay, debug and test — you could not write "this spike must hit
+a non-tank" without relying on luck.
 
 ## Decision
 
-Un générateur **mulberry32** pur est implémenté dans `src/simulation/random.ts` :
+A pure **mulberry32** generator lives in `src/simulation/random.ts`:
 
 ```ts
 nextRandom(seed: number): { value: number; seed: number }
 ```
 
-L'état du générateur est un simple entier stocké dans `state.seed` et remplacé à
-chaque tirage. Aucune fonction ne conserve d'état caché.
+The generator state is a plain integer stored in `state.seed` and replaced on
+every draw. No function keeps hidden state.
 
-L'ordre de consommation est fixé et documenté :
+The consumption order is fixed and documented:
 
-1. montant du soin, au moment où le cast se termine ;
-2. choix de la cible du spike ;
-3. intervalle du prochain spike.
+1. the healing amount, when a cast completes;
+2. the spike target;
+3. the next spike interval.
 
-`createInitialState(seed)` effectue un seul tirage, pour planifier le premier
-spike, et conserve la seed d'origine dans `initialSeed` (affichée à l'écran de
-fin, utilisable via `?seed=`).
+`createInitialState(seed)` performs a single draw, to schedule the **first**
+spike, and keeps the original seed in `initialSeed` (shown on the end screen,
+usable through `?seed=`).
 
 ## Alternatives Considered
 
-- **`Math.random()`** — rejeté : aucune reproductibilité, tests fragiles.
-- **Objet PRNG mutable (`rng.next()`)** — rejeté : le clonage d'état ne
-  capturerait plus la position du générateur ; deux états « identiques »
-  divergeraient au tirage suivant.
-- **Mersenne Twister / bibliothèque externe** — rejeté : dépendance inutile pour
-  la qualité statistique requise ; mulberry32 tient en dix lignes et passe
-  largement les besoins d'un jeu.
+- **`Math.random()`** — rejected: no reproducibility, fragile tests.
+- **A mutable PRNG object (`rng.next()`)** — rejected: cloning the state would
+  no longer capture the generator's position; two "identical" states would
+  diverge on the next draw.
+- **Mersenne Twister / an external library** — rejected: unnecessary dependency
+  for the statistical quality needed here; mulberry32 fits in ten lines and is
+  more than good enough for a game.
 
-> Mise à jour (ADR-0007) : le tirage du soin utilise désormais la fourchette
-> min/max du sort Classic au lieu d'une variation ±10 % autour d'une base. La
-> place du tirage dans la séquence, elle, n'a pas changé.
+> Update (ADR-0007): the healing roll now uses the Classic spell's min/max range
+> instead of a ±10% variation around a base value. Its position in the sequence
+> has not changed.
 
 ## Consequences
 
-- ✅ Rejouabilité totale : `?seed=1337` produit toujours la même partie à
-  actions égales.
-- ✅ Les tests peuvent balayer 40 seeds et vérifier une propriété (« le spike ne
-  cible jamais le tank », « l'intervalle reste dans [6 s, 10 s) »).
-- ✅ Le clone d'état capture le hasard : pause, reprise et comparaison d'états
-  restent exacts.
-- ⚠️ Ajouter un nouvel usage du hasard **change la séquence** de tous les
-  tirages suivants : les parties enregistrées avec une seed donnée ne sont
-  comparables qu'à version de moteur constante.
-- ⚠️ La seed étant visible et modifiable, un joueur peut rechercher une seed
-  favorable. Sans classement en ligne, c'est sans conséquence.
+- ✅ Full replayability: `?seed=1337` always produces the same fight for the
+  same actions.
+- ✅ Tests can sweep 40 seeds and assert a property ("the spike never targets the
+  tank", "the interval stays within [6 s, 10 s)").
+- ✅ Cloning the state captures the randomness: pause, resume and state
+  comparison stay exact.
+- ⚠️ Adding a new use of randomness **shifts the whole sequence** of subsequent
+  draws: fights recorded with a given seed are only comparable at a fixed engine
+  version.
+- ⚠️ Since the seed is visible and editable, a player could hunt for a
+  favourable one. With no online leaderboard, that is harmless.

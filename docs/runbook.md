@@ -1,154 +1,152 @@
 # Runbook
 
-Diagnostic des problèmes courants, du poste de développement au cluster.
+Troubleshooting for the common problems, from the dev machine to the cluster.
 
-## Développement
+## Development
 
-### `npm run dev` démarre mais la page est blanche
+### `npm run dev` starts but the page is blank
 
-1. Ouvrir la console du navigateur : une exception dans `main.tsx` (élément
-   `#root` absent) ou dans un composant arrête le rendu.
-2. Vérifier que `index.html` contient bien `<div id="root">`.
-3. `npm run typecheck` pour écarter une erreur de types masquée par le HMR.
+1. Open the browser console: an exception in `main.tsx` (missing `#root`
+   element) or in a component stops the render.
+2. Check that `index.html` still contains `<div id="root">`.
+3. Run `npm run typecheck` to rule out a type error hidden by HMR.
 
-### Le jeu semble « sauter » après un changement d'onglet
+### The game seems to "jump" after switching tabs
 
-C'est le comportement attendu : au-delà de `LONG_STALL_MS` (1 s), le temps
-écoulé est **jeté**, il n'y a aucun rattrapage. Le timer ne progresse pas
-pendant que l'onglet est en arrière-plan.
+That is the expected behaviour: beyond `LONG_STALL_MS` (1 s) the elapsed time is
+**discarded**, there is no catch-up. The timer does not progress while the tab
+is in the background.
 
-### Le jeu avance trop lentement sur un appareil lent
+### The game runs too slowly on a weak device
 
-Le rattrapage est plafonné à `MAX_CATCHUP_MS` (500 ms, soit 5 pas par frame).
-Si l'appareil ne tient pas 2 frames/s, la simulation prend du retard par
-construction — c'est un choix de conception (voir ADR-0002), pas un bug.
+Catch-up is capped at `MAX_CATCHUP_MS` (500 ms, i.e. 5 steps per frame). If the
+device cannot hold 2 frames per second the simulation falls behind by design —
+that is a deliberate choice (see ADR-0002), not a bug.
 
-### Un test échoue après un changement de balance
+### A test fails after a balance change
 
-Plusieurs tests s'appuient sur les valeurs nominales de niveau 1 (mêlée 8, AoE 6,
-spike 18, PV 90 / 51 / 55 / 50 / 46). Mettre à jour le test, `docs/balance.md`
-et, si la valeur se présente comme issue de Classic, `docs/classic-stats.md`.
+Several tests rely on the nominal level 1 values (melee 8, AoE 6, spike 18,
+health 90 / 51 / 55 / 50 / 46). Update the test, `docs/balance.md`, and — if the
+value claims to come from Classic — `docs/classic-stats.md`.
 
-### « Les PV ne correspondent pas à ce que j'attendais »
+### "The health values are not what I expected"
 
-Les PV ne sont pas écrits dans le code : ils sont recalculés à partir de la race,
-de la classe et des formules vanilla (`src/config/classicData.ts`). Le palier à
-20 points d'endurance explique les écarts — au-delà de 20, chaque point vaut
-10 PV au lieu de 1. Voir [classic-stats.md](./classic-stats.md).
+Health is not written in the code: it is recomputed from race, class and the
+vanilla formulas (`src/config/classicData.ts`). The threshold at 20 stamina
+explains the gaps — beyond 20, each point is worth 10 health instead of 1. See
+[classic-stats.md](./classic-stats.md).
 
-### Une combinaison race/classe lève une erreur
+### A race/class combination throws
 
-`getAttributes` ne connaît que les combinaisons présentes dans
-`RACE_CLASS_ATTRIBUTES_LEVEL_1`. Ajouter la ligne correspondante depuis la table
-`player_levelstats` de la base vanilla plutôt que d'improviser des attributs.
+`getAttributes` only knows the combinations present in
+`RACE_CLASS_ATTRIBUTES_LEVEL_1`. Add the matching row from the vanilla
+`player_levelstats` table rather than improvising attributes.
 
-### Un test de durée échoue d'un pas
+### A duration test is off by one step
 
-`advance(state, ms)` arrondit `ms / 100` : utiliser des multiples de 100 ms.
-Attention aussi aux effets de bord de seuil — un événement planifié à 2000 ms
-survient pendant le pas qui **atteint** 2000 ms.
+`advance(state, ms)` rounds `ms / 100`: use multiples of 100 ms. Watch out for
+threshold effects too — an event scheduled at 2000 ms fires during the step that
+**reaches** 2000 ms.
 
 ## Build
 
-### `npm run build` échoue sur `tsc --noEmit`
+### `npm run build` fails on `tsc --noEmit`
 
-Le script enchaîne typecheck puis build : corriger les erreurs TypeScript
-d'abord. `tsconfig.json` active `strict`, `noUnusedLocals` et
-`noUnusedParameters` — un import inutilisé suffit à faire échouer le build.
+The script chains typecheck then build: fix the TypeScript errors first.
+`tsconfig.json` enables `strict`, `noUnusedLocals` and `noUnusedParameters` — an
+unused import alone will fail the build.
 
 ### `Property 'at' does not exist on type`
 
-`lib` doit contenir `ES2022` dans `tsconfig.json`.
+`lib` must include `ES2022` in `tsconfig.json`.
 
-## Conteneur
+## Container
 
-### Le build Docker échoue à l'étape `npm ci`
+### The Docker build fails on `npm ci`
 
-`package-lock.json` doit être commité et synchronisé avec `package.json`.
-Relancer `npm install` localement et committer le lock modifié.
+`package-lock.json` must be committed and in sync with `package.json`. Run
+`npm install` locally and commit the updated lockfile.
 
-### Le build Docker échoue à l'étape de test
+### The Docker build fails on the test step
 
-C'est volontaire : l'image ne se construit pas si la suite échoue. Reproduire
-avec `npm test` en local.
+That is intentional: the image does not build if the suite fails. Reproduce it
+locally with `npm test`.
 
-### `403 Forbidden` ou `Permission denied` au démarrage de Nginx
+### `403 Forbidden` or `Permission denied` when Nginx starts
 
-L'image `nginx-unprivileged` tourne en uid 101. Vérifier que les fichiers copiés
-le sont avec `--chown=101:101` (c'est le cas dans le `Dockerfile` fourni).
+The `nginx-unprivileged` image runs as uid 101. Check that the copied files use
+`--chown=101:101` (the provided `Dockerfile` does).
 
 ### `nginx: [emerg] ... Read-only file system`
 
-Un chemin inscriptible manque. Monter `/tmp`, `/var/cache/nginx` et `/var/run`
-en `emptyDir` (voir `k8s/deployment.yaml`).
+A writable path is missing. Mount `/tmp`, `/var/cache/nginx` and `/var/run` as
+`emptyDir` volumes (see `k8s/deployment.yaml`).
 
 ## Kubernetes
 
-### Le pod reste en `CrashLoopBackOff`
+### The pod stays in `CrashLoopBackOff`
 
 ```bash
 kubectl logs deployment/healing-simulator
 kubectl describe pod -l app.kubernetes.io/name=healing-simulator
 ```
 
-Causes fréquentes : image absente du registre du cluster, volumes inscriptibles
-manquants, `runAsUser` incompatible avec une PodSecurityPolicy locale.
+Common causes: the image is missing from the cluster registry, the writable
+volumes are missing, or `runAsUser` conflicts with a local PodSecurityPolicy.
 
-### La `startupProbe` échoue
+### The `startupProbe` fails
 
 ```bash
 kubectl port-forward deployment/healing-simulator 8080:8080
 curl -i http://localhost:8080/health
 ```
 
-Si la commande répond `200 OK` en direct, le problème vient du port de la sonde
-(doit être le port nommé `http`, soit 8080) et non de l'application.
+If that returns `200 OK` directly, the problem is the probe port (it must be the
+named `http` port, i.e. 8080), not the application.
 
-### 404 sur un rechargement d'une route profonde
+### 404 when reloading a deep route
 
-Le fallback SPA est assuré par `try_files ... /index.html`. Si un Ingress
-réécrit les chemins (`rewrite-target`), vérifier que la réécriture ne casse pas
-la résolution des assets sous `/assets/`.
+The SPA fallback is handled by `try_files ... /index.html`. If an Ingress
+rewrites paths (`rewrite-target`), make sure the rewrite does not break asset
+resolution under `/assets/`.
 
-### Les assets ne se mettent pas à jour après un déploiement
+### Assets do not update after a deployment
 
-Les noms de fichiers sont hashés par Vite et `index.html` est servi en
-`no-store` : un rechargement suffit. Si un cache intermédiaire (CDN d'entreprise,
-proxy) conserve `index.html`, purger ce cache — l'application elle-même n'en
-utilise aucun.
+Vite content-hashes the file names and `index.html` is served `no-store`: a
+reload is enough. If an intermediate cache (corporate CDN, proxy) holds on to
+`index.html`, purge that cache — the application itself uses none.
 
 ## Gameplay
 
-### « La partie se termine trop vite »
+### "The fight ends too quickly"
 
-Sans aucun soin, le wipe survient autour de 22 s (le tank a 90 PV et encaisse
-8 dégâts toutes les 2 s). Avec un jeu correct, la survie
-dépasse largement la minute ; la rampe ×1,15 toutes les 30 s finit
-mathématiquement par dépasser le débit de soin — c'est le principe du mode.
+With no healing at all, the wipe happens around 22 s (the tank has 90 HP and
+takes 8 damage every 2 s). Played well, survival goes well past a minute; the
+×1.15 ramp every 30 s mathematically overtakes healing throughput in the end —
+that is the point of the mode.
 
-### « Le sort ne part pas »
+### "The spell does not fire"
 
-Le message affiché sous le groupe donne toujours le motif exact : `GCD actif`,
-`Cast déjà en cours`, `Niveau insuffisant`, `Mana insuffisante`, `Cible requise`,
-`Cible morte`, `Jeu en pause` ou `Partie terminée`.
+The message below the party always gives the exact reason: `Global cooldown`,
+`Already casting`, `Level too low`, `Not enough mana`, `Target required`,
+`Target is dead`, `Game paused` or `Fight is over`.
 
-### « Quatre boutons sur cinq sont grisés »
+### "Four buttons out of five are greyed out"
 
-C'est voulu. Au niveau 1, un prêtre de WoW Classic ne connaît que Lesser Heal ;
-Renew s'apprend au niveau 8, Heal au 16, Flash Heal au 20 et Prayer of Healing
-au 30. Les boutons verrouillés affichent leur niveau requis. Pour jouer avec
-tout le livre de sorts, monter `PLAYER_LEVEL` dans
-`src/config/gameConfig.ts` — en gardant à l'esprit que les tables de stats ne
-couvrent aujourd'hui que le niveau 1
-(voir [classic-stats.md](./classic-stats.md#monter-de-niveau-plus-tard)).
+That is intended. At level 1 a WoW Classic priest only knows Lesser Heal; Renew
+comes at level 8, Heal at 16, Flash Heal at 20 and Prayer of Healing at 30. The
+locked buttons show their required level. To play with the full spell book,
+raise `PLAYER_LEVEL` in `src/config/gameConfig.ts` — keeping in mind that the
+stat tables currently only cover level 1 (see
+[classic-stats.md](./classic-stats.md#levelling-up-later)).
 
-### « La mana ne remonte pas »
+### "Mana is not coming back"
 
-La règle des cinq secondes de vanilla est appliquée : après une dépense de mana,
-la régénération liée à l'esprit est totalement suspendue pendant 5 secondes.
-Les paliers tombent ensuite toutes les 2 secondes, pour 18,5 points.
+Vanilla's five-second rule is in effect: after a mana expenditure, spirit-based
+regeneration is fully suspended for 5 seconds. Ticks then land every 2 seconds,
+for 18.5 points.
 
-### Rejouer exactement la même partie
+### Replaying the exact same fight
 
-Ajouter `?seed=<valeur>` à l'URL. La seed de la partie en cours est affichée en
-bas de l'écran de fin.
+Add `?seed=<value>` to the URL. The current seed is displayed at the bottom of
+the end screen.

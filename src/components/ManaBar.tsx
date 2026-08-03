@@ -1,8 +1,8 @@
 /**
- * Barre de mana.
+ * Mana bar.
  *
- * Le remplissage et la valeur numérique sont mis à jour via refs DOM à chaque
- * frame : la mana change en continu, un rendu React serait du gaspillage.
+ * Fill and numeric value are updated through DOM refs on every frame: mana
+ * changes constantly, so a React render would be pure waste.
  */
 
 import { memo, useCallback, useRef } from 'react';

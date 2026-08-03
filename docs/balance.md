@@ -1,113 +1,113 @@
 # Balance
 
-Deux fichiers, deux rôles :
+Two files, two roles:
 
-- **`src/config/classicData.ts`** — données brutes de WoW Classic 1.12 et
-  formules officielles. On n'y écrit que du sourcé (voir
+- **`src/config/classicData.ts`** — raw WoW Classic 1.12 data and official
+  formulas. Only sourced values go in there (see
   [classic-stats.md](./classic-stats.md)).
-- **`src/config/gameConfig.ts`** — constantes du jeu. Les stats de personnage y
-  sont *calculées* à partir du fichier précédent ; seul le profil du boss et la
-  cadence des événements y sont posés à la main.
+- **`src/config/gameConfig.ts`** — game constants. Character stats are
+  *computed* from the previous file; only the boss profile and the event cadence
+  are set by hand.
 
-Aucune autre couche ne contient de nombre de gameplay.
+No other layer holds a gameplay number.
 
-## Boucle
+## Loop
 
-| Constante | Valeur | Rôle |
+| Constant | Value | Role |
 | --- | --- | --- |
-| `TICK_MS` | 100 | pas de simulation fixe |
-| `MAX_CATCHUP_MS` | 500 | rattrapage maximum par frame (5 pas) |
-| `LONG_STALL_MS` | 1000 | au-delà, le temps écoulé est jeté |
-| `DEFAULT_SEED` | 1337 | seed utilisée si `?seed=` est invalide |
-| `PLAYER_LEVEL` | 1 | niveau du groupe et du boss |
+| `TICK_MS` | 100 | fixed simulation step |
+| `MAX_CATCHUP_MS` | 500 | maximum catch-up per frame (5 steps) |
+| `LONG_STALL_MS` | 1000 | beyond this, elapsed time is discarded |
+| `DEFAULT_SEED` | 1337 | seed used when `?seed=` is invalid |
+| `PLAYER_LEVEL` | 1 | level of the party and of the boss |
 
-## Groupe — dérivé des formules vanilla
+## Party — derived from the vanilla formulas
 
-`PARTY_TEMPLATE` calcule les PV et la mana à partir de la race, de la classe et
-des attributs de niveau 1. Ces valeurs ne sont écrites nulle part en dur.
+`PARTY_TEMPLATE` computes health and mana from race, class and level 1
+attributes. None of these values are hard-coded.
 
-| Membre | Race / classe | PV | Mana |
+| Member | Race / class | Health | Mana |
 | --- | --- | --- | --- |
-| Thorgrim (tank) | Nain guerrier | 90 | — |
-| Elowen (soigneur) | Humain prêtre | 51 | 160 |
-| Kaelan (DPS) | Humain voleur | 55 | — |
+| Thorgrim (tank) | Dwarf warrior | 90 | — |
+| Elowen (healer) | Human priest | 51 | 160 |
+| Kaelan (DPS) | Human rogue | 55 | — |
 | Fizzwick (DPS) | Gnome mage | 50 | 210 |
-| Sylandra (DPS) | Elfe de la nuit chasseur | 46 | 83 |
+| Sylandra (DPS) | Night elf hunter | 46 | 83 |
 
-Changer un membre de race ou de classe suffit à recalculer ses PV : c'est
-`PARTY_SLOTS` qu'on édite, jamais un nombre.
+Changing a member's race or class is enough to recompute their health: you edit
+`PARTY_SLOTS`, never a number.
 
-## Mana du soigneur
+## Healer mana
 
-| Constante | Valeur | Origine |
+| Constant | Value | Origin |
 | --- | --- | --- |
-| `MANA.max` | 160 | 110 (base prêtre) + 50 (intelligence 22) |
-| `MANA.tickMs` | 2000 | palier de régénération vanilla |
-| `MANA.perTick` | 18,5 | esprit 24 → `24 / 4 + 12,5` |
-| `MANA.fiveSecondRuleMs` | 5000 | règle des cinq secondes |
-| `GCD_MS` | 1500 | global cooldown vanilla |
+| `MANA.max` | 160 | 110 (priest base) + 50 (intellect 22) |
+| `MANA.tickMs` | 2000 | vanilla regeneration tick |
+| `MANA.perTick` | 18.5 | spirit 24 → `24 / 4 + 12.5` |
+| `MANA.fiveSecondRuleMs` | 5000 | five-second rule |
+| `GCD_MS` | 1500 | vanilla global cooldown |
 
-## Sorts — rang 1, verrouillés par niveau
+## Spells — rank 1, gated by level
 
-| Sort | Niveau | Mana | Incantation | Effet |
+| Spell | Level | Mana | Cast | Effect |
 | --- | --- | --- | --- | --- |
-| Lesser Heal | **1** | 30 | 1,5 s | 46 – 56 |
-| Renew | 8 | 30 | instantané | 9 par tick × 5, toutes les 3 s |
-| Heal | 16 | 155 | 3,0 s | 295 – 341 |
-| Flash Heal | 20 | 125 | 1,5 s | 193 – 237 |
-| Prayer of Healing | 30 | 410 | 3,0 s | 312 – 333 au groupe |
+| Lesser Heal | **1** | 30 | 1.5 s | 46 – 56 |
+| Renew | 8 | 30 | instant | 9 per tick × 5, every 3 s |
+| Heal | 16 | 155 | 3.0 s | 295 – 341 |
+| Flash Heal | 20 | 125 | 1.5 s | 193 – 237 |
+| Prayer of Healing | 30 | 410 | 3.0 s | 312 – 333 on the party |
 
-Au niveau 1, seul Lesser Heal est lançable ; les autres apparaissent verrouillés
-avec leur niveau requis (ADR-0008). Aucun cooldown individuel, aucune haste,
-aucune file d'attente.
+At level 1 only Lesser Heal is castable; the others appear locked with their
+required level (ADR-0008). No per-spell cooldown, no haste, no spell queue.
 
-## Timeline du boss
+## Boss timeline
 
-| Constante | Valeur | Nature |
+| Constant | Value | Nature |
 | --- | --- | --- |
-| `TANK_DAMAGE` | 8 toutes les 2000 ms | montant conçu, cadence sourcée |
-| `AOE_DAMAGE` | 6 par membre toutes les 12 000 ms | conçu |
-| `SPIKE_DAMAGE` | 18, intervalle uniforme [6000, 10 000) ms | conçu |
-| `RAMP` | ×1,15 toutes les 30 000 ms | conçu |
-| `WIPE.maxDeaths` | 3 | conçu |
+| `TANK_DAMAGE` | 8 every 2000 ms | amount designed, cadence sourced |
+| `AOE_DAMAGE` | 6 per member every 12 000 ms | designed |
+| `SPIKE_DAMAGE` | 18, uniform interval [6000, 10 000) ms | designed |
+| `RAMP` | ×1.15 every 30 000 ms | designed |
+| `WIPE.maxDeaths` | 3 | designed |
 
-Justification des montants : [classic-stats.md](./classic-stats.md#le-boss) et
-[ADR-0010](./adr/0010-level-1-boss-profile.md).
+Where the amounts come from: [classic-stats.md](./classic-stats.md#the-boss)
+and [ADR-0010](./adr/0010-level-1-boss-profile.md).
 
-## Ordres de grandeur
+## Orders of magnitude
 
-- Pression sur le tank : 8 / 2 s = **4,0 PV/s** ; il tombe en 22 s sans soin.
-- AoE : 6 × 5 / 12 s ≈ **2,5 PV/s** répartis.
-- Spike : 18 toutes les 8 s en moyenne ≈ **2,2 PV/s** sur un non-tank, soit un
-  tiers de ses PV d'un coup.
-- Débit de soin **instantané** : 51 PV toutes les 1,5 s ≈ 34 PV/s.
-- Débit de soin **soutenable** : limité par la mana à ≈ 15 PV/s (9,25 mana/s
-  hors règle des cinq secondes, 1,7 PV par point de mana).
-- Survie mesurée : 22 s sans aucun soin, 48 à 97 s avec un soigneur automatique
-  naïf.
+- Pressure on the tank: 8 / 2 s = **4.0 HP/s**; they fall in 22 s with no
+  healing.
+- AoE: 6 × 5 / 12 s ≈ **2.5 HP/s** spread across the party.
+- Spike: 18 every 8 s on average ≈ **2.2 HP/s** on a non-tank, a third of their
+  health in one hit.
+- **Burst** healing throughput: 51 HP every 1.5 s ≈ 34 HP/s.
+- **Sustainable** healing throughput: mana-limited to ≈ 15 HP/s (9.25 mana/s
+  outside the five-second rule, 1.7 HP per point of mana).
+- Measured survival: 22 s with no healing, 48 to 97 s with a naive automated
+  healer.
 
-La rampe fait passer la pression au-dessus du soin soutenable après quelques
-paliers : la défaite est inévitable, seule sa date change.
+The ramp pushes pressure above sustainable healing after a few tiers: defeat is
+inevitable, only its timing changes.
 
 ## Feedback
 
-| Constante | Valeur |
+| Constant | Value |
 | --- | --- |
-| `FEEDBACK.lifetimeMs` | 1200 ms (nombres flottants) |
-| `FEEDBACK.messageLifetimeMs` | 1600 ms (messages, morts) |
-| `FEEDBACK.maxEntries` | 40 (plafond anti-fuite) |
+| `FEEDBACK.lifetimeMs` | 1200 ms (floating numbers) |
+| `FEEDBACK.messageLifetimeMs` | 1600 ms (messages, deaths) |
+| `FEEDBACK.maxEntries` | 40 (anti-leak cap) |
 
-## Régler la difficulté
+## Tuning the difficulty
 
-Ne touchez pas aux valeurs sourcées : la marge de réglage est du côté du boss.
+Do not touch the sourced values: the tuning room is on the boss side.
 
-- **Plus facile** : baisser `TANK_DAMAGE.amount` ou `SPIKE_DAMAGE.amount`,
-  allonger `RAMP.intervalMs`.
-- **Plus dur** : monter `SPIKE_DAMAGE.amount`, raccourcir
-  `SPIKE_DAMAGE.minIntervalMs`, ou baisser `RAMP.intervalMs`.
-- **Changer d'échelle** : monter `PLAYER_LEVEL` — cela débloque des sorts, mais
-  les tables de stats ne couvrent aujourd'hui que le niveau 1 (voir
-  [classic-stats.md](./classic-stats.md#monter-de-niveau-plus-tard)).
+- **Easier**: lower `TANK_DAMAGE.amount` or `SPIKE_DAMAGE.amount`, lengthen
+  `RAMP.intervalMs`.
+- **Harder**: raise `SPIKE_DAMAGE.amount`, shorten
+  `SPIKE_DAMAGE.minIntervalMs`, or lower `RAMP.intervalMs`.
+- **Change scale**: raise `PLAYER_LEVEL` — that unlocks spells, but the stat
+  tables currently only cover level 1 (see
+  [classic-stats.md](./classic-stats.md#levelling-up-later)).
 
-Après tout changement, relancer `npm test` : plusieurs tests s'appuient sur les
-valeurs nominales (90 / 51 / 55 / 50 / 46 PV, 8 / 6 / 18 dégâts).
+After any change, run `npm test`: several tests rely on the nominal values
+(90 / 51 / 55 / 50 / 46 health, 8 / 6 / 18 damage).

@@ -1,173 +1,173 @@
-# Moteur de simulation
+# Simulation engine
 
-## Contrat
+## Contract
 
 ```ts
 stepSimulation(state: GameState, dtMs: number): GameState
 ```
 
-- **Pure** : l'état d'entrée n'est jamais muté ; un nouvel état est renvoyé.
-  Le moteur travaille sur un clone profond (`cloneState`).
-- **Sans horloge** : aucun `Date.now()`, `performance.now()`, `Math.random()`,
-  accès DOM ni API React sous `src/simulation/`. L'horloge réelle n'est lue que
-  dans `src/hooks/useGameLoop.ts`.
-- **Pas fixe** : la boucle appelle toujours `stepSimulation(state, 100)`.
-  Tous les intervalles de la timeline sont des multiples de 100 ms, la
-  résolution est donc exacte.
-- **Inerte hors partie active** : si `status !== 'active'`, la fonction renvoie
-  **la même référence** d'état. Pause et wipe gèlent donc complètement le jeu.
+- **Pure**: the input state is never mutated; a new state is returned. The
+  engine works on a deep clone (`cloneState`).
+- **Clockless**: no `Date.now()`, `performance.now()`, `Math.random()`, DOM
+  access or React API under `src/simulation/`. The real clock is only read in
+  `src/hooks/useGameLoop.ts`.
+- **Fixed step**: the loop always calls `stepSimulation(state, 100)`. Every
+  timeline interval is a multiple of 100 ms, so resolution is exact.
+- **Inert outside an active fight**: when `status !== 'active'` the function
+  returns **the same reference**. Pause and wipe therefore freeze the game
+  completely.
 
-## Ordre de résolution
+## Resolution order
 
-Quand plusieurs événements tombent au même instant, ils sont résolus dans cet
-ordre — c'est la partie du contrat qui rend le jeu prévisible :
+When several events land on the same instant they resolve in this order — the
+part of the contract that makes the game predictable:
 
-1. complétion des casts ;
-2. ticks de HoT ;
-3. régénération de mana ;
-4. dégâts tank ;
-5. dégâts AoE ;
-6. spike ;
-7. résolution des morts ;
-8. vérification du wipe.
+1. cast completion;
+2. HoT ticks;
+3. mana regeneration;
+4. tank damage;
+5. AoE damage;
+6. spike;
+7. death resolution;
+8. wipe check.
 
-La purge des feedbacks expirés a lieu après l'étape 8.
+Expired feedback is pruned after step 8.
 
-Avant l'étape 1, le pas met à jour : `elapsedMs`, `damageMultiplier`,
-`gcdRemainingMs` et `msSinceLastCastStart` (le compteur de la règle des cinq
-secondes).
+Before step 1 the step updates `elapsedMs`, `damageMultiplier`,
+`gcdRemainingMs` and `msSinceLastCastStart` (the five-second rule counter).
 
-## Déterminisme
+## Determinism
 
-L'état du générateur pseudo-aléatoire (`state.seed`) fait partie du `GameState`.
-Le hasard n'est consommé qu'à trois endroits, toujours dans le même ordre :
+The pseudo-random generator state (`state.seed`) is part of the `GameState`.
+Randomness is consumed in exactly three places, always in the same order:
 
-| Ordre dans le pas | Usage |
+| Order within the step | Use |
 | --- | --- |
-| complétion d'un soin | tirage dans la fourchette du sort, ex. 46 – 56 (`rollHealAmount`) |
-| spike, d'abord | choix de la cible parmi les non-tanks vivants |
-| spike, ensuite | intervalle du prochain spike, uniforme dans [6 s, 10 s) |
+| heal completion | roll inside the spell's range, e.g. 46 – 56 (`rollHealAmount`) |
+| spike, first | target choice among living non-tanks |
+| spike, then | next spike interval, uniform in [6 s, 10 s) |
 
-Un tirage supplémentaire a lieu une seule fois dans `createInitialState`, pour
-planifier le **premier** spike.
+One extra draw happens once, in `createInitialState`, to schedule the **first**
+spike.
 
-Conséquence : *même seed + même séquence d'actions ⇒ même partie*, quel que soit
-le découpage temporel. C'est vérifié par `tests/determinism.test.ts`.
+Consequence: *same seed + same action sequence ⇒ same fight*, whatever the time
+slicing. `tests/determinism.test.ts` verifies it.
 
-## Timeline de dégâts
+## Damage timeline
 
-| Événement | Montant | Intervalle | Premier impact |
+| Event | Amount | Interval | First hit |
 | --- | --- | --- | --- |
-| Mêlée sur le tank | 8 | 2 s (cadence vanilla) | 2 s |
-| AoE | 6 par membre vivant | 12 s | 12 s |
-| Spike | 18 sur un non-tank vivant | uniforme [6 s, 10 s) | tiré à la création |
+| Melee on the tank | 8 | 2 s (vanilla cadence) | 2 s |
+| AoE | 6 per living member | 12 s | 12 s |
+| Spike | 18 on a living non-tank | uniform [6 s, 10 s) | rolled at creation |
 
-Ces montants sont à l'échelle du niveau 1 (le tank a 90 PV). Leur origine —
-mesurée ou conçue — est détaillée dans [classic-stats.md](./classic-stats.md).
+Those amounts are on a level 1 scale (the tank has 90 HP). Where each one comes
+from — measured or designed — is detailed in
+[classic-stats.md](./classic-stats.md).
 
-La rampe multiplie **cumulativement** tous les dégâts par 1,15 toutes les 30 s :
+The ramp multiplies all damage **cumulatively** by 1.15 every 30 s:
 
 ```
-multiplicateur = 1.15 ^ floor(elapsedMs / 30000)
+multiplier = 1.15 ^ floor(elapsedMs / 30000)
 
-0 – 29,999 s   ×1,0000
-30 – 59,999 s  ×1,1500
-60 – 89,999 s  ×1,3225
+0 – 29.999 s   ×1.0000
+30 – 59.999 s  ×1.1500
+60 – 89.999 s  ×1.3225
 ```
 
-Le montant final est arrondi à l'entier le plus proche (`Math.round`) puis
-appliqué. Un spike qui ne trouve aucune cible valide n'inflige rien mais
-replanifie quand même le suivant.
+The final amount is rounded to the nearest integer (`Math.round`) before being
+applied. A spike that finds no valid target deals nothing but still reschedules
+the next one.
 
-## Règles de cast
+## Cast rules
 
-`checkCast(state, spellId)` refuse dans cet ordre — le premier motif rencontré
-est celui affiché :
+`checkCast(state, spellId)` refuses in this order — the first matching reason is
+the one displayed:
 
-| Ordre | Motif | Message |
+| Order | Reason | Message |
 | --- | --- | --- |
-| 1 | partie terminée | `Partie terminée` |
-| 2 | partie en pause | `Jeu en pause` |
-| 3 | cast déjà en cours | `Cast déjà en cours` |
-| 4 | GCD actif | `GCD actif` |
-| 5 | sort non appris à ce niveau | `Niveau insuffisant` |
-| 6 | aucune cible (sorts ciblés) | `Cible requise` |
-| 7 | cible morte | `Cible morte` |
-| 8 | mana insuffisante | `Mana insuffisante` |
+| 1 | fight is over | `Fight is over` |
+| 2 | game paused | `Game paused` |
+| 3 | already casting | `Already casting` |
+| 4 | global cooldown active | `Global cooldown` |
+| 5 | spell not trained at this level | `Level too low` |
+| 6 | no target (targeted spells) | `Target required` |
+| 7 | target is dead | `Target is dead` |
+| 8 | not enough mana | `Not enough mana` |
 
-Un refus ne dépense **aucune** mana et ne déclenche **aucun** GCD ; il produit
-seulement un message.
+A refusal spends **no** mana and triggers **no** GCD; it only produces a
+message.
 
-Un lancement accepté dépense la mana immédiatement, déclenche un GCD de 1,5 s et
-remet `msSinceLastCastStart` à zéro. Les sorts instantanés (Renew) appliquent
-leur effet sur-le-champ et comptent à la fois comme *commencé* et *complété*.
+An accepted cast spends mana immediately, triggers a 1.5 s GCD and resets
+`msSinceLastCastStart`. Instant spells (Renew) apply their effect straight away
+and count both as *started* and *completed*.
 
-Un cast est annulé dans trois cas seulement : bouton `Cancel`, mort de sa cible,
-fin de partie. Une annulation conserve la mana et le GCD, n'applique aucun soin
-et incrémente `castsCancelled`.
+A cast is cancelled in three cases only: the `Cancel` button, its target dying,
+or the fight ending. A cancellation keeps the mana and the GCD, applies no
+healing and increments `castsCancelled`.
 
-## Mana — modèle vanilla
+## Mana — vanilla model
 
-- pool : 160 pour un prêtre humain de niveau 1, plein au départ ;
-- la régénération tombe **par paliers de 2 s** (`timers.manaTickMs`), pas en
-  continu ;
-- un palier ne crédite la mana que si `msSinceLastCastStart >= 5000` :
-  c'est la **règle des cinq secondes**, qui suspend totalement la régénération
-  après chaque dépense ;
-- montant par palier : 18,5 (esprit 24) ;
-- la mana est bornée à `[0, manaMax]`.
+- pool: 160 for a level 1 human priest, full at the start;
+- regeneration lands in **2-second ticks** (`timers.manaTickMs`), not
+  continuously;
+- a tick only credits mana when `msSinceLastCastStart >= 5000`: that is the
+  **five-second rule**, which fully suspends regeneration after any
+  expenditure;
+- amount per tick: 18.5 (spirit 24);
+- mana is clamped to `[0, manaMax]`.
 
-Voir [ADR-0009](./adr/0009-vanilla-mana-regen-five-second-rule.md).
+See [ADR-0009](./adr/0009-vanilla-mana-regen-five-second-rule.md).
 
-## Niveau et disponibilité des sorts
+## Level and spell availability
 
-Le `GameState` porte `playerLevel` (1 par défaut). Un sort dont
-`requiredLevel > playerLevel` est refusé avec le motif `level`. Au niveau 1,
-seul Lesser Heal est disponible ; les autres boutons sont visibles mais
-verrouillés. Voir [ADR-0008](./adr/0008-classic-spellbook-level-gating.md).
+The `GameState` carries `playerLevel` (1 by default). A spell whose
+`requiredLevel > playerLevel` is refused with the `level` reason. At level 1
+only Lesser Heal is available; the other buttons are visible but locked. See
+[ADR-0008](./adr/0008-classic-spellbook-level-gating.md).
 
 ## Renew
 
-- 5 ticks de 9 (45 au total), espacés de **3 s**, **aucun tick immédiat** ;
-- ne stacke jamais : réappliquer remplace l'effet, remet les ticks à 5 et le
-  délai à 3 s ;
-- disparaît à la mort du porteur.
+- 5 ticks of 9 (45 total), **3 s** apart, with **no immediate tick**;
+- never stacks: reapplying replaces the effect, resets the ticks to 5 and the
+  delay to 3 s;
+- falls off when its carrier dies.
 
-## Fin de partie
+## End of fight
 
-Le wipe survient quand le tank meurt **ou** quand trois membres sont morts. À ce
-moment le moteur passe `status` à `over` et annule le cast en cours. Aucun
-événement ne peut plus se produire : `stepSimulation` renvoie l'état inchangé.
+A wipe happens when the tank dies **or** when three members are dead. At that
+point the engine sets `status` to `over` and cancels the running cast. Nothing
+can happen afterwards: `stepSimulation` returns the state untouched.
 
-## Invariants garantis
+## Guaranteed invariants
 
-| Invariant | Où il est tenu |
+| Invariant | Where it is enforced |
 | --- | --- |
 | `0 <= hp <= hpMax` | `applyHealTo` / `applyDamageTo` (clamps) |
 | `0 <= mana <= manaMax` | `regenerateMana`, `castSpell` |
-| aucun soin sur une cible morte | `applyHealTo`, `applySpellEffect` |
-| aucun sort lancé sous son niveau requis | `checkCast` (motif `level`) |
-| aucune dépense si le lancement est refusé | `castSpell` (branche de refus) |
-| aucun remboursement après interruption | `cancelActiveCast` |
-| Renew ne stacke jamais | `applyHot` (remplacement par `spellId`) |
-| aucune progression pendant la pause | garde d'entrée de `stepSimulation` |
-| même seed + mêmes actions = même partie | seed dans le state |
-| aucun timer réel dans la logique métier | aucune API temps dans `simulation/` |
-| aucun événement après le wipe | garde d'entrée de `stepSimulation` |
-| aucune fuite mémoire des feedbacks | `pruneFeedback` + plafond `maxEntries` |
+| no healing on a dead target | `applyHealTo`, `applySpellEffect` |
+| no spell cast below its required level | `checkCast` (`level` reason) |
+| nothing spent when a cast is refused | `castSpell` (refusal branch) |
+| no refund after an interruption | `cancelActiveCast` |
+| Renew never stacks | `applyHot` (replacement by `spellId`) |
+| no progress while paused | `stepSimulation` guard clause |
+| same seed + same actions = same fight | seed inside the state |
+| no real timer in the business logic | no time API under `simulation/` |
+| no event after the wipe | `stepSimulation` guard clause |
+| no feedback memory leak | `pruneFeedback` + the `maxEntries` cap |
 
-## Statistiques
+## Statistics
 
-`GameStats` accumule : soin brut, soin effectif, overheal, mana dépensée, dégâts
-encaissés (HP réellement perdus), casts commencés et complétés par sort, casts
-annulés, morts (identifiants, dans l'ordre).
+`GameStats` accumulates raw healing, effective healing, overhealing, mana spent,
+damage taken (health actually lost), casts started and completed per spell,
+casts cancelled, and deaths (ids, in order).
 
-`computeStatsSummary` en dérive :
+`computeStatsSummary` derives:
 
 ```
-HPS            = soin effectif / durée en secondes
-Overheal %     = overheal / soin brut × 100
-Efficacité     = soin effectif / mana dépensée
+HPS         = effective healing / duration in seconds
+Overheal %  = overhealing / raw healing × 100
+Efficiency  = effective healing / mana spent
 ```
 
-Les trois valeurs valent 0 quand leur dénominateur est nul.
+All three are 0 when their denominator is zero.

@@ -1,15 +1,15 @@
 /**
- * Types du moteur de simulation.
+ * Simulation engine types.
  *
- * Cette couche est totalement indépendante de React et du DOM : elle ne
- * contient que des données sérialisables et des fonctions pures.
+ * This layer is fully independent from React and the DOM: it only holds
+ * serializable data and pure functions.
  */
 
 import type { ClassId, RaceId } from '../config/classicData';
 
 export type Role = 'tank' | 'healer' | 'dps';
 
-/** Les cinq familles de soin du prêtre vanilla (rang 1). */
+/** The five vanilla priest healing families (rank 1). */
 export type SpellId = 'lesserHeal' | 'renew' | 'heal' | 'flashHeal' | 'prayerOfHealing';
 
 export type GameStatus = 'active' | 'paused' | 'over';
@@ -19,7 +19,7 @@ export interface HotEffect {
   healPerTick: number;
   intervalMs: number;
   ticksRemaining: number;
-  /** Temps restant avant le prochain tick, en millisecondes. */
+  /** Time left before the next tick, in milliseconds. */
   nextTickInMs: number;
 }
 
@@ -47,7 +47,7 @@ export type FeedbackKind = 'heal' | 'overheal' | 'damage' | 'death' | 'message';
 export interface FeedbackEvent {
   id: number;
   kind: FeedbackKind;
-  /** Membre concerné, ou `null` pour un message global. */
+  /** Member concerned, or `null` for a global message. */
   targetId: string | null;
   amount: number;
   text: string | null;
@@ -64,40 +64,40 @@ export interface GameStats {
   castsStartedBySpell: Record<string, number>;
   castsCompletedBySpell: Record<string, number>;
   castsCancelled: number;
-  /** Identifiants des membres morts, dans l'ordre chronologique. */
+  /** Ids of the dead members, in chronological order. */
   deaths: string[];
 }
 
 export interface GameTimers {
-  /** Temps restant avant le prochain palier de régénération de mana (2 s). */
+  /** Time left before the next mana regeneration tick (2 s). */
   manaTickMs: number;
-  /** Temps restant avant le prochain coup sur le tank. */
+  /** Time left before the next hit on the tank. */
   tankDamageMs: number;
-  /** Temps restant avant la prochaine AoE. */
+  /** Time left before the next AoE. */
   aoeMs: number;
-  /** Temps restant avant le prochain spike. */
+  /** Time left before the next spike. */
   spikeMs: number;
 }
 
 export interface GameState {
   status: GameStatus;
   /**
-   * Niveau du soigneur : conditionne les sorts disponibles.
-   * Les tables de stats ne couvrent aujourd'hui que le niveau 1.
+   * Healer level: gates which spells are available.
+   * The stat tables currently only cover level 1.
    */
   playerLevel: number;
-  /** Temps de simulation écoulé, en millisecondes. */
+  /** Simulated time elapsed, in milliseconds. */
   elapsedMs: number;
-  /** État du générateur pseudo-aléatoire (déterminisme). */
+  /** Pseudo-random generator state (determinism). */
   seed: number;
-  /** Seed d'origine de la partie, conservée pour l'affichage et la rejouabilité. */
+  /** Seed the fight started from, kept for display and replayability. */
   initialSeed: number;
   party: PartyMember[];
   selectedTargetId: string | null;
   mana: number;
   manaMax: number;
   gcdRemainingMs: number;
-  /** Temps écoulé depuis le lancement du dernier sort accepté. */
+  /** Time elapsed since the last accepted cast started. */
   msSinceLastCastStart: number;
   activeCast: ActiveCast | null;
   timers: GameTimers;

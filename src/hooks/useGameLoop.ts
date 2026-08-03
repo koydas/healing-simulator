@@ -1,14 +1,14 @@
 /**
- * Boucle de jeu — seul endroit du projet où l'horloge réelle est utilisée.
+ * Game loop — the only place in the project that reads the real clock.
  *
- * Principe :
- *   - `requestAnimationFrame` fournit le temps réel ;
- *   - un accumulateur découpe ce temps en pas fixes de `TICK_MS` ;
- *   - le rattrapage est plafonné à `MAX_CATCHUP_MS` par frame ;
- *   - au-delà de `LONG_STALL_MS` (onglet en arrière-plan, mise en veille),
- *     le temps écoulé est purement et simplement jeté : aucun rattrapage.
+ * How it works:
+ *   - `requestAnimationFrame` provides real time;
+ *   - an accumulator slices that time into fixed `TICK_MS` steps;
+ *   - catch-up is capped at `MAX_CATCHUP_MS` per frame;
+ *   - beyond `LONG_STALL_MS` (background tab, sleep), the elapsed time is
+ *     simply discarded: no catch-up at all.
  *
- * Le rAF, les listeners et l'accumulateur sont nettoyés au démontage.
+ * The rAF handle, the listeners and the accumulator are cleaned up on unmount.
  */
 
 import { useEffect } from 'react';
@@ -35,7 +35,7 @@ export function useGameLoop(store: GameStore): void {
       let delta = timestamp - lastTimestamp;
       lastTimestamp = timestamp;
 
-      // Onglet inactif ou frame anormalement longue : aucun rattrapage.
+      // Inactive tab or abnormally long frame: no catch-up.
       if (delta > LONG_STALL_MS || delta < 0) {
         delta = 0;
         accumulator = 0;
@@ -55,7 +55,7 @@ export function useGameLoop(store: GameStore): void {
 
     const handleVisibilityChange = (): void => {
       if (document.hidden) {
-        // On repart d'une horloge propre au retour dans l'onglet.
+        // Restart from a clean clock when the tab comes back.
         lastTimestamp = null;
         accumulator = 0;
       }

@@ -1,6 +1,6 @@
 /* =========================================================================
-   Healing Simulator — feuille de style unique (CSS natif, aucune dépendance).
-   Mobile-first, orientation portrait, utilisable au clavier sur ordinateur.
+   Healing Simulator — single stylesheet (plain CSS, no dependency).
+   Mobile-first, portrait orientation, keyboard-usable on desktop.
    ========================================================================= */
 
 :root {
@@ -294,8 +294,8 @@ button {
 /* ------------------------------------------------------------- Feedback -- */
 
 .feedback {
-  /* Centré verticalement dans la frame : les nombres restent visibles malgré
-     `overflow: hidden` et la petite animation de montée. */
+  /* Vertically centred inside the frame: numbers stay visible despite
+     `overflow: hidden` and the small rise animation. */
   position: absolute;
   inset: 0;
   display: flex;
@@ -363,7 +363,7 @@ button {
   font-weight: 600;
 }
 
-/* ------------------------------------------------------------- Contrôles -- */
+/* -------------------------------------------------------------- Controls -- */
 
 .controls {
   display: flex;
@@ -453,7 +453,7 @@ button {
 }
 
 .controls__spells {
-  /* Cinq sorts : trois par ligne sur téléphone, davantage sur grand écran. */
+  /* Five spells: three per row on a phone, more on a wide screen. */
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(96px, 1fr));
   gap: var(--gap);
@@ -533,7 +533,7 @@ button {
   text-align: center;
 }
 
-/* -------------------------------------------------------------- Gameover -- */
+/* -------------------------------------------------------------- Game over -- */
 
 .gameover {
   position: absolute;
@@ -647,7 +647,7 @@ button {
   font-weight: 700;
 }
 
-/* ------------------------------------------------------------- Desktop --- */
+/* -------------------------------------------------------------- Desktop -- */
 
 @media (min-width: 720px) and (orientation: landscape) {
   .app {

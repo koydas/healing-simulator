@@ -15,22 +15,22 @@ import {
 } from '../src/simulation/selectors';
 import { advance, isolateTimers, memberOf, patchMember, unlockAllSpells } from './helpers';
 
-describe('sélecteurs', () => {
-  it('formate une durée', () => {
+describe('selectors', () => {
+  it('formats a duration', () => {
     expect(formatDuration(0)).toBe('0:00.0');
     expect(formatDuration(1500)).toBe('0:01.5');
     expect(formatDuration(65_400)).toBe('1:05.4');
     expect(formatDuration(-10)).toBe('0:00.0');
   });
 
-  it('retrouve un membre et gère l’identifiant nul', () => {
+  it('finds a member and handles a null id', () => {
     const state = createInitialState(1);
     expect(getMember(state, 'tank')?.name).toBe('Thorgrim');
     expect(getMember(state, null)).toBeUndefined();
-    expect(getMember(state, 'inconnu')).toBeUndefined();
+    expect(getMember(state, 'unknown')).toBeUndefined();
   });
 
-  it('liste les membres vivants', () => {
+  it('lists the living members', () => {
     let state = createInitialState(1);
     expect(getAliveMembers(state)).toHaveLength(5);
 
@@ -38,7 +38,7 @@ describe('sélecteurs', () => {
     expect(getAliveMembers(state)).toHaveLength(4);
   });
 
-  it('calcule les ratios HP et mana', () => {
+  it('computes the health and mana ratios', () => {
     let state = createInitialState(1);
     expect(getHpRatio(memberOf(state, 'tank'))).toBe(1);
     expect(getManaRatio(state)).toBe(1);
@@ -50,7 +50,7 @@ describe('sélecteurs', () => {
     expect(getManaRatio(state)).toBe(0.25);
   });
 
-  it('calcule la progression du cast', () => {
+  it('computes cast progress', () => {
     let state = isolateTimers(createInitialState(1));
     expect(getCastProgress(state)).toBe(0);
 
@@ -61,7 +61,7 @@ describe('sélecteurs', () => {
     expect(getCastProgress(state)).toBeCloseTo(0.4, 6);
   });
 
-  it('calcule la progression du GCD', () => {
+  it('computes GCD progress', () => {
     let state = isolateTimers(createInitialState(1));
     expect(getGcdProgress(state)).toBe(1);
 
@@ -75,7 +75,7 @@ describe('sélecteurs', () => {
     expect(getGcdProgress(state)).toBe(1);
   });
 
-  it('expose le Renew actif', () => {
+  it('exposes the active Renew', () => {
     let state = unlockAllSpells(isolateTimers(createInitialState(1)));
     state = selectTarget(state, 'dps3');
     state = patchMember(state, 'dps3', { hp: 10 });
@@ -85,7 +85,7 @@ describe('sélecteurs', () => {
     expect(getRenewEffect(memberOf(state, 'tank'))).toBeUndefined();
   });
 
-  it('sépare les feedbacks par cible et les messages globaux', () => {
+  it('separates per-target feedback from global messages', () => {
     let state = isolateTimers(createInitialState(1));
     state = patchMember(state, 'tank', { hp: 10 });
     state = castSpell(state, 'lesserHeal');
@@ -94,12 +94,12 @@ describe('sélecteurs', () => {
     expect(getMemberFeedback(state, 'tank').length).toBeGreaterThan(0);
     expect(getMemberFeedback(state, 'dps1')).toHaveLength(0);
 
-    // Sort instantané puis second lancement : refusé pour cause de GCD.
+    // Instant spell then a second cast: refused because of the GCD.
     const refused = castSpell(castSpell(unlockAllSpells(state), 'renew'), 'lesserHeal');
-    expect(getGlobalMessages(refused).at(-1)?.text).toBe('GCD actif');
+    expect(getGlobalMessages(refused).at(-1)?.text).toBe('Global cooldown');
   });
 
-  it('purge les feedbacks expirés', () => {
+  it('prunes expired feedback', () => {
     let state = unlockAllSpells(isolateTimers(createInitialState(1)));
     state = patchMember(state, 'healer', { hp: 10 });
     state = selectTarget(state, 'healer');
@@ -108,7 +108,7 @@ describe('sélecteurs', () => {
     expect(getMemberFeedback(state, 'healer').length).toBeGreaterThan(0);
 
     state = advance(state, 3000);
-    // Le tick suivant a produit un nouveau feedback, mais l'ancien a expiré.
+    // The next tick produced fresh feedback, but the old entry expired.
     expect(state.feedback.every((event) => event.expiresAtMs > state.elapsedMs)).toBe(true);
   });
 });

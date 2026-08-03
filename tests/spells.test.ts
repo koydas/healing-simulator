@@ -14,9 +14,9 @@ import {
 } from './helpers';
 
 /**
- * Partie isolée de la timeline, avec un membre blessé pour observer les soins.
- * Le tank (90 PV) sert de cible par défaut : à 10 PV, un Lesser Heal (46-56)
- * est intégralement effectif.
+ * A fight isolated from the timeline, with one wounded member so healing is
+ * observable. The tank (90 HP) is the default target: at 10 HP a Lesser Heal
+ * (46-56) lands in full.
  */
 function woundedGame(seed = 1, targetId = 'tank', hp = 10): GameState {
   let state = isolateTimers(createInitialState(seed));
@@ -24,8 +24,8 @@ function woundedGame(seed = 1, targetId = 'tank', hp = 10): GameState {
   return selectTarget(state, targetId);
 }
 
-describe('disponibilité des sorts au niveau 1', () => {
-  it('n’autorise que Lesser Heal', () => {
+describe('spell availability at level 1', () => {
+  it('only allows Lesser Heal', () => {
     const state = woundedGame();
 
     expect(checkCast(state, 'lesserHeal').allowed).toBe(true);
@@ -34,7 +34,7 @@ describe('disponibilité des sorts au niveau 1', () => {
     }
   });
 
-  it('refuse un sort non appris sans rien dépenser', () => {
+  it('refuses an untrained spell without spending anything', () => {
     const state = woundedGame();
     const refused = castSpell(state, 'flashHeal');
 
@@ -42,10 +42,10 @@ describe('disponibilité des sorts au niveau 1', () => {
     expect(refused.gcdRemainingMs).toBe(0);
     expect(refused.stats.manaSpent).toBe(0);
     expect(refused.stats.castsStartedBySpell.flashHeal).toBe(0);
-    expect(refused.feedback.at(-1)?.text).toBe('Niveau insuffisant');
+    expect(refused.feedback.at(-1)?.text).toBe('Level too low');
   });
 
-  it('débloque les sorts dès que le niveau requis est atteint', () => {
+  it('unlocks spells as soon as the required level is reached', () => {
     const state = patchState(woundedGame(), { playerLevel: 20, mana: 500 });
 
     expect(checkCast(state, 'renew').allowed).toBe(true);
@@ -55,8 +55,8 @@ describe('disponibilité des sorts au niveau 1', () => {
   });
 });
 
-describe('coût et GCD', () => {
-  it('dépense la mana au lancement et déclenche le GCD', () => {
+describe('cost and global cooldown', () => {
+  it('spends mana on cast start and triggers the GCD', () => {
     const state = castSpell(woundedGame(), 'lesserHeal');
 
     expect(state.mana).toBe(MANA.initial - SPELLS.lesserHeal.manaCost);
@@ -65,7 +65,7 @@ describe('coût et GCD', () => {
     expect(state.stats.castsStartedBySpell.lesserHeal).toBe(1);
   });
 
-  it('applique immédiatement un sort instantané et le compte comme complété', () => {
+  it('applies an instant spell right away and counts it as completed', () => {
     const state = castSpell(unlockAllSpells(woundedGame()), 'renew');
 
     expect(state.activeCast).toBeNull();
@@ -73,27 +73,27 @@ describe('coût et GCD', () => {
     expect(memberOf(state, 'tank').hots).toHaveLength(1);
   });
 
-  it('refuse un second sort pendant le GCD, sans rien dépenser', () => {
+  it('refuses a second spell during the GCD, without spending anything', () => {
     const first = castSpell(unlockAllSpells(woundedGame()), 'renew');
     const second = castSpell(first, 'lesserHeal');
 
     expect(second.mana).toBe(first.mana);
     expect(second.gcdRemainingMs).toBe(first.gcdRemainingMs);
     expect(second.stats.castsStartedBySpell.lesserHeal).toBe(0);
-    expect(second.feedback.at(-1)?.text).toBe('GCD actif');
+    expect(second.feedback.at(-1)?.text).toBe('Global cooldown');
   });
 
-  it('refuse un sort pendant un cast en cours', () => {
-    let state = castSpell(unlockAllSpells(woundedGame()), 'heal'); // 3 s d’incantation
+  it('refuses a spell while another cast is in progress', () => {
+    let state = castSpell(unlockAllSpells(woundedGame()), 'heal'); // 3 s cast
     state = advance(state, GCD_MS);
     const refused = castSpell(state, 'lesserHeal');
 
     expect(refused.activeCast?.spellId).toBe('heal');
     expect(refused.mana).toBe(state.mana);
-    expect(refused.feedback.at(-1)?.text).toBe('Cast déjà en cours');
+    expect(refused.feedback.at(-1)?.text).toBe('Already casting');
   });
 
-  it('refuse le lancement sans mana suffisante', () => {
+  it('refuses the cast without enough mana', () => {
     const state = patchState(woundedGame(), { mana: 10 });
     const refused = castSpell(state, 'lesserHeal');
 
@@ -101,28 +101,28 @@ describe('coût et GCD', () => {
     expect(refused.gcdRemainingMs).toBe(0);
     expect(refused.activeCast).toBeNull();
     expect(refused.stats.manaSpent).toBe(0);
-    expect(refused.feedback.at(-1)?.text).toBe('Mana insuffisante');
+    expect(refused.feedback.at(-1)?.text).toBe('Not enough mana');
   });
 
-  it('refuse le lancement sans cible sélectionnée', () => {
+  it('refuses the cast without a selected target', () => {
     const state = patchState(woundedGame(), { selectedTargetId: null });
     const refused = castSpell(state, 'lesserHeal');
 
     expect(refused.mana).toBe(MANA.initial);
-    expect(refused.feedback.at(-1)?.text).toBe('Cible requise');
+    expect(refused.feedback.at(-1)?.text).toBe('Target required');
   });
 
-  it('refuse le lancement sur une cible morte', () => {
+  it('refuses the cast on a dead target', () => {
     let state = woundedGame(1, 'dps1', 50);
     state = selectTarget(state, 'dps1');
     state = patchMember(state, 'dps1', { alive: false, hp: 0 });
     const refused = castSpell(state, 'lesserHeal');
 
-    expect(refused.feedback.at(-1)?.text).toBe('Cible morte');
+    expect(refused.feedback.at(-1)?.text).toBe('Target is dead');
     expect(refused.stats.manaSpent).toBe(0);
   });
 
-  it('accepte Prayer of Healing sans cible sélectionnée', () => {
+  it('accepts Prayer of Healing with no selected target', () => {
     const state = patchState(unlockAllSpells(woundedGame()), { selectedTargetId: null });
     const cast = castSpell(state, 'prayerOfHealing');
 
@@ -131,17 +131,17 @@ describe('coût et GCD', () => {
     expect(cast.activeCast?.targetId).toBeNull();
   });
 
-  it('refuse tout lancement une fois la partie terminée', () => {
+  it('refuses every cast once the fight is over', () => {
     const state = patchState(woundedGame(), { status: 'over' });
     const refused = castSpell(state, 'lesserHeal');
 
     expect(refused.mana).toBe(MANA.initial);
-    expect(refused.feedback.at(-1)?.text).toBe('Partie terminée');
+    expect(refused.feedback.at(-1)?.text).toBe('Fight is over');
   });
 });
 
-describe('résolution des casts', () => {
-  it('applique le soin à la fin du temps d’incantation, pas avant', () => {
+describe('cast resolution', () => {
+  it('applies healing when the cast finishes, not before', () => {
     let state = castSpell(woundedGame(), 'lesserHeal');
     state = advance(state, 1400);
     expect(memberOf(state, 'tank').hp).toBe(10);
@@ -152,7 +152,7 @@ describe('résolution des casts', () => {
     expect(state.stats.castsCompletedBySpell.lesserHeal).toBe(1);
   });
 
-  it('tire le soin dans la fourchette Classic 46 – 56', () => {
+  it('rolls healing inside the Classic 46 – 56 range', () => {
     const amounts = new Set<number>();
 
     for (let seed = 1; seed <= 40; seed += 1) {
@@ -164,11 +164,11 @@ describe('résolution des casts', () => {
       expect(healed).toBeLessThanOrEqual(SPELLS.lesserHeal.healMax);
     }
 
-    // La fourchette est réellement parcourue, pas figée sur une valeur.
+    // The range is actually covered, not stuck on a single value.
     expect(amounts.size).toBeGreaterThan(3);
   });
 
-  it('soigne tous les membres vivants avec Prayer of Healing', () => {
+  it('heals every living member with Prayer of Healing', () => {
     let state = unlockAllSpells(isolateTimers(createInitialState(3)));
     state = patchMember(state, 'tank', { hp: 10 });
     state = patchMember(state, 'dps1', { hp: 5 });
@@ -177,8 +177,8 @@ describe('résolution des casts', () => {
     state = castSpell(state, 'prayerOfHealing');
     state = advance(state, SPELLS.prayerOfHealing.castTimeMs);
 
-    // Le soin (312-333) dépasse largement les PV de niveau 1 : tout le monde
-    // est au maximum, sauf le mort.
+    // The heal (312-333) far exceeds level 1 health pools: everyone is topped
+    // off, except the dead member.
     expect(memberOf(state, 'tank').hp).toBe(memberOf(state, 'tank').hpMax);
     expect(memberOf(state, 'dps1').hp).toBe(memberOf(state, 'dps1').hpMax);
     expect(memberOf(state, 'dps2').hp).toBe(0);
@@ -188,7 +188,7 @@ describe('résolution des casts', () => {
 describe('Renew', () => {
   const renewGame = (seed = 1) => unlockAllSpells(woundedGame(seed));
 
-  it('ne tick pas immédiatement et tick toutes les 3 s', () => {
+  it('does not tick immediately and ticks every 3 s', () => {
     let state = castSpell(renewGame(), 'renew');
     expect(memberOf(state, 'tank').hp).toBe(10);
 
@@ -202,7 +202,7 @@ describe('Renew', () => {
     expect(memberOf(state, 'tank').hp).toBe(28);
   });
 
-  it('applique exactement cinq ticks de 9 puis disparaît', () => {
+  it('applies exactly five ticks of 9 then falls off', () => {
     let state = castSpell(renewGame(), 'renew');
     state = advance(state, 15_000);
 
@@ -213,9 +213,9 @@ describe('Renew', () => {
     expect(memberOf(state, 'tank').hp).toBe(10 + 45);
   });
 
-  it('ne stacke pas : réappliquer réinitialise les ticks et le délai', () => {
+  it('never stacks: reapplying resets the ticks and the delay', () => {
     let state = castSpell(renewGame(), 'renew');
-    state = advance(state, 7000); // 2 ticks appliqués
+    state = advance(state, 7000); // 2 ticks applied
     expect(memberOf(state, 'tank').hp).toBe(28);
     expect(memberOf(state, 'tank').hots[0].ticksRemaining).toBe(3);
 
@@ -225,7 +225,7 @@ describe('Renew', () => {
     expect(hots[0].ticksRemaining).toBe(5);
     expect(hots[0].nextTickInMs).toBe(3000);
 
-    // Aucun tick immédiat.
+    // No immediate tick.
     expect(memberOf(state, 'tank').hp).toBe(28);
     state = advance(state, 2900);
     expect(memberOf(state, 'tank').hp).toBe(28);
@@ -233,7 +233,7 @@ describe('Renew', () => {
     expect(memberOf(state, 'tank').hp).toBe(37);
   });
 
-  it('disparaît à la mort du porteur', () => {
+  it('falls off when its carrier dies', () => {
     let state = unlockAllSpells(woundedGame(1, 'dps1', 20));
     state = selectTarget(state, 'dps1');
     state = castSpell(state, 'renew');
@@ -245,8 +245,8 @@ describe('Renew', () => {
   });
 });
 
-describe('annulation et interruption', () => {
-  it('conserve la mana et le GCD, n’applique aucun soin', () => {
+describe('cancellation and interruption', () => {
+  it('keeps the mana and the GCD, and applies no healing', () => {
     let state = castSpell(woundedGame(), 'lesserHeal');
     state = advance(state, 1000);
 
@@ -260,7 +260,7 @@ describe('annulation et interruption', () => {
     expect(cancelled.stats.castsCompletedBySpell.lesserHeal).toBe(0);
   });
 
-  it('ne rembourse jamais la mana', () => {
+  it('never refunds mana', () => {
     let state = castSpell(woundedGame(), 'lesserHeal');
     state = advance(state, 500);
     const cancelled = cancelCast(state);
@@ -269,7 +269,7 @@ describe('annulation et interruption', () => {
     expect(cancelled.mana).toBeLessThanOrEqual(MANA.initial - SPELLS.lesserHeal.manaCost);
   });
 
-  it('annule le cast lorsque la cible meurt', () => {
+  it('cancels the cast when its target dies', () => {
     let state = woundedGame(1, 'dps1', 40);
     state = selectTarget(state, 'dps1');
     state = castSpell(state, 'lesserHeal');
@@ -284,14 +284,14 @@ describe('annulation et interruption', () => {
     expect(after.selectedTargetId).toBeNull();
   });
 
-  it('ne fait rien si aucun cast n’est en cours', () => {
+  it('does nothing when no cast is in progress', () => {
     const state = woundedGame();
     expect(cancelCast(state)).toBe(state);
   });
 });
 
-describe('régénération de mana (règle des cinq secondes)', () => {
-  /** Partie isolée, mais avec le palier de régénération actif. */
+describe('mana regeneration (five-second rule)', () => {
+  /** An isolated fight, but with the regeneration tick running. */
   function regenGame(mana = 0, msSinceLastCastStart: number = MANA.fiveSecondRuleMs): GameState {
     const base = isolateTimers(createInitialState(9));
     return patchState(base, {
@@ -301,7 +301,7 @@ describe('régénération de mana (règle des cinq secondes)', () => {
     });
   }
 
-  it('régénère par paliers de 2 secondes hors des cinq secondes', () => {
+  it('regenerates in 2-second ticks outside the five-second window', () => {
     let state = regenGame();
 
     state = advance(state, 1900);
@@ -314,18 +314,18 @@ describe('régénération de mana (règle des cinq secondes)', () => {
     expect(state.mana).toBeCloseTo(2 * MANA.perTick, 6);
   });
 
-  it('ne régénère rien pendant les cinq secondes qui suivent une dépense', () => {
+  it('regenerates nothing during the five seconds after a mana spend', () => {
     let state = regenGame(0, 0);
 
     state = advance(state, 4900);
     expect(state.mana).toBe(0);
 
-    // Le palier de 6 s survient alors que 5 s se sont écoulées : il compte.
+    // The 6 s tick lands once 5 s have elapsed: it counts.
     state = advance(state, 1100);
     expect(state.mana).toBeCloseTo(MANA.perTick, 6);
   });
 
-  it('relance la règle des cinq secondes à chaque lancement accepté', () => {
+  it('restarts the five-second rule on every accepted cast', () => {
     let state = regenGame(MANA.max);
     state = castSpell(state, 'lesserHeal');
     expect(state.msSinceLastCastStart).toBe(0);
@@ -335,7 +335,7 @@ describe('régénération de mana (règle des cinq secondes)', () => {
     expect(state.mana).toBe(manaAfterCast);
   });
 
-  it('ne dépasse jamais la mana maximale', () => {
+  it('never exceeds maximum mana', () => {
     const state = advance(regenGame(MANA.max), 20_000);
     expect(state.mana).toBe(MANA.max);
   });

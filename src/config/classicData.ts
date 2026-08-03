@@ -1,24 +1,24 @@
 /**
- * Données brutes de WoW Classic (patch 1.12) — niveau 1.
+ * Raw WoW Classic (patch 1.12) data — level 1.
  *
- * Ce fichier ne contient QUE des valeurs sourcées et les formules officielles
- * qui les combinent. Les choix de game design (profil du boss, cadence des
- * événements) vivent dans `gameConfig.ts`, jamais ici.
+ * This file holds ONLY sourced values and the official formulas that combine
+ * them. Game-design choices (boss profile, event cadence) live in
+ * `gameConfig.ts`, never here.
  *
- * Sources — voir `docs/classic-stats.md` pour le détail et les liens :
- *   - PV / mana de base par classe : table `player_classlevelstats`
- *     (MaNGOS Zero, base de données vanilla 1.12).
- *   - Attributs par race/classe : table `player_levelstats` (même source).
- *   - Formules attribut → PV / mana : `Player::GetHealthBonusFromStamina` et
- *     `Player::GetManaBonusFromIntellect` (mangoszero/server, StatSystem.cpp).
- *   - Sorts de soin du prêtre : valeurs de rang 1 (wowclassicdb / EZDownRank).
- *   - Créatures de niveau 1 : table `creature_template` (même base vanilla).
+ * Sources — see `docs/classic-stats.md` for details and links:
+ *   - base health / mana per class: `player_classlevelstats` table
+ *     (MaNGOS Zero, vanilla 1.12 database).
+ *   - attributes per race/class: `player_levelstats` table (same source).
+ *   - attribute → health / mana formulas: `Player::GetHealthBonusFromStamina`
+ *     and `Player::GetManaBonusFromIntellect` (mangoszero/server, StatSystem.cpp).
+ *   - priest healing spells: rank 1 values (wowclassicdb / EZDownRank).
+ *   - level 1 creatures: `creature_template` table (same vanilla database).
  */
 
-/** Classes de personnage (identifiants Blizzard). */
+/** Character classes (Blizzard identifiers). */
 export type ClassId = 'warrior' | 'paladin' | 'hunter' | 'rogue' | 'priest' | 'mage';
 
-/** Races jouables utilisées par le groupe. */
+/** Playable races used by the party. */
 export type RaceId = 'human' | 'dwarf' | 'nightElf' | 'gnome';
 
 export interface Attributes {
@@ -30,12 +30,12 @@ export interface Attributes {
 }
 
 /* -------------------------------------------------------------------------- */
-/* PV et mana de base par classe, au niveau 1                                  */
+/* Base health and mana per class, at level 1                                  */
 /* -------------------------------------------------------------------------- */
 
 /**
  * `player_classlevelstats` (class, level=1, basehp, basemana).
- * Warrior et Rogue n'utilisent pas de mana (rage / énergie).
+ * Warriors and rogues use no mana (rage / energy).
  */
 export const CLASS_BASE_LEVEL_1: Record<ClassId, { baseHealth: number; baseMana: number }> = {
   warrior: { baseHealth: 20, baseMana: 0 },
@@ -47,14 +47,11 @@ export const CLASS_BASE_LEVEL_1: Record<ClassId, { baseHealth: number; baseMana:
 };
 
 /* -------------------------------------------------------------------------- */
-/* Attributs de départ par race et classe, au niveau 1                         */
+/* Starting attributes per race and class, at level 1                          */
 /* -------------------------------------------------------------------------- */
 
 /** `player_levelstats` (race, class, level=1, str, agi, sta, inte, spi). */
-export const RACE_CLASS_ATTRIBUTES_LEVEL_1: Record<
-  string,
-  Attributes
-> = {
+export const RACE_CLASS_ATTRIBUTES_LEVEL_1: Record<string, Attributes> = {
   'human/warrior': { strength: 23, agility: 20, stamina: 22, intellect: 20, spirit: 21 },
   'human/paladin': { strength: 22, agility: 20, stamina: 22, intellect: 20, spirit: 22 },
   'human/rogue': { strength: 21, agility: 23, stamina: 21, intellect: 20, spirit: 20 },
@@ -78,18 +75,18 @@ export function getAttributes(race: RaceId, classId: ClassId): Attributes {
   const key = `${race}/${classId}`;
   const attributes = RACE_CLASS_ATTRIBUTES_LEVEL_1[key];
   if (!attributes) {
-    throw new Error(`Combinaison race/classe inconnue au niveau 1 : ${key}`);
+    throw new Error(`Unknown race/class combination at level 1: ${key}`);
   }
   return attributes;
 }
 
 /* -------------------------------------------------------------------------- */
-/* Formules officielles vanilla                                                */
+/* Official vanilla formulas                                                   */
 /* -------------------------------------------------------------------------- */
 
 /**
- * Bonus de PV apporté par l'endurance.
- * Les 20 premiers points donnent 1 PV, les suivants 10 PV.
+ * Health granted by stamina.
+ * The first 20 points give 1 health each, every point beyond gives 10.
  * (`Player::GetHealthBonusFromStamina`)
  */
 export function healthBonusFromStamina(stamina: number): number {
@@ -98,8 +95,8 @@ export function healthBonusFromStamina(stamina: number): number {
 }
 
 /**
- * Bonus de mana apporté par l'intelligence.
- * Les 20 premiers points donnent 1 mana, les suivants 15.
+ * Mana granted by intellect.
+ * The first 20 points give 1 mana each, every point beyond gives 15.
  * (`Player::GetManaBonusFromIntellect`)
  */
 export function manaBonusFromIntellect(intellect: number): number {
@@ -107,12 +104,12 @@ export function manaBonusFromIntellect(intellect: number): number {
   return base + (intellect - base) * 15;
 }
 
-/** PV maximum d'un personnage de niveau 1. */
+/** Maximum health of a level 1 character. */
 export function maxHealthAtLevel1(classId: ClassId, attributes: Attributes): number {
   return CLASS_BASE_LEVEL_1[classId].baseHealth + healthBonusFromStamina(attributes.stamina);
 }
 
-/** Mana maximum d'un personnage de niveau 1 (0 pour les classes sans mana). */
+/** Maximum mana of a level 1 character (0 for classes without mana). */
 export function maxManaAtLevel1(classId: ClassId, attributes: Attributes): number {
   const base = CLASS_BASE_LEVEL_1[classId].baseMana;
   if (base <= 0) return 0;
@@ -120,24 +117,24 @@ export function maxManaAtLevel1(classId: ClassId, attributes: Attributes): numbe
 }
 
 /* -------------------------------------------------------------------------- */
-/* Régénération de mana                                                        */
+/* Mana regeneration                                                           */
 /* -------------------------------------------------------------------------- */
 
 /**
- * Régénération hors combat de mana, en vanilla :
- *   - elle tombe par paliers de 2 secondes ;
- *   - la « règle des cinq secondes » (5SR) suspend totalement la part liée à
- *     l'esprit pendant 5 secondes après une dépense de mana.
+ * Vanilla out-of-combat mana regeneration:
+ *   - it lands in 2-second ticks;
+ *   - the "five-second rule" (5SR) fully suspends the spirit-based part for
+ *     5 seconds after any mana expenditure.
  *
- * Le coefficient exact vit dans le DBC `gtRegenMPPerSpt` (non public) et dépend
- * de la classe ET du niveau. On utilise ici la formule prêtre communément
- * documentée — c'est la seule valeur *approchée* du fichier, signalée comme
- * telle dans `docs/classic-stats.md`.
+ * The exact coefficient lives in the `gtRegenMPPerSpt` DBC (not public) and
+ * depends on both class AND level. We use the commonly documented priest
+ * formula — the only *approximated* value in this file, flagged as such in
+ * `docs/classic-stats.md`.
  */
 export const MANA_REGEN_VANILLA = {
   tickMs: 2000,
   fiveSecondRuleMs: 5000,
-  /** mana par palier de 2 s = esprit / 4 + 12,5 (prêtre) */
+  /** mana per 2s tick = spirit / 4 + 12.5 (priest) */
   spiritDivisor: 4,
   flatBonus: 12.5,
 } as const;
@@ -147,33 +144,33 @@ export function manaPerTickFromSpirit(spirit: number): number {
 }
 
 /* -------------------------------------------------------------------------- */
-/* Sorts de soin du prêtre — valeurs de rang 1                                 */
+/* Priest healing spells — rank 1 values                                       */
 /* -------------------------------------------------------------------------- */
 
 export interface PriestHealRank {
-  /** Identifiant de sort Blizzard, pour retrouver la source. */
+  /** Blizzard spell id, so the source can be looked up. */
   spellId: number;
   name: string;
   rank: number;
-  /** Niveau auquel le prêtre apprend ce rang. */
+  /** Level at which the priest learns this rank. */
   requiredLevel: number;
   manaCost: number;
   castTimeMs: number;
-  /** Soin direct minimum / maximum (0 pour un HoT). */
+  /** Minimum / maximum direct healing (0 for a HoT). */
   healMin: number;
   healMax: number;
-  /** Soin total du HoT et cadence de ses ticks (0 pour un soin direct). */
+  /** Total HoT healing and its tick cadence (0 for a direct heal). */
   hotTotalHeal: number;
   hotTicks: number;
   hotIntervalMs: number;
-  /** Cible unique ou groupe entier. */
+  /** Single target or whole party. */
   targetsParty: boolean;
 }
 
 /**
- * Les cinq familles de soin du prêtre vanilla, au rang 1.
- * `requiredLevel` est le vrai niveau d'apprentissage : au niveau 1, seul
- * Lesser Heal est disponible (voir ADR-0008).
+ * The five vanilla priest healing families, at rank 1.
+ * `requiredLevel` is the real training level: at level 1 only Lesser Heal is
+ * available (see ADR-0008).
  */
 export const PRIEST_HEALS_RANK_1: Record<string, PriestHealRank> = {
   lesserHeal: {
@@ -248,23 +245,23 @@ export const PRIEST_HEALS_RANK_1: Record<string, PriestHealRank> = {
   },
 };
 
-/** Global cooldown vanilla, identique pour tous les sorts de soin. */
+/** Vanilla global cooldown, identical for every healing spell. */
 export const GLOBAL_COOLDOWN_MS = 1500;
 
 /* -------------------------------------------------------------------------- */
-/* Créatures de niveau 1                                                       */
+/* Level 1 creatures                                                           */
 /* -------------------------------------------------------------------------- */
 
 /**
- * Relevé sur les 597 créatures de niveau 1 « réelles » de `creature_template`
- * (déclencheurs et formes de métamorphose exclus) :
- *   - dégâts de mêlée : médiane 2, troisième quartile 9-10 ;
- *   - PV : médiane 64 ;
- *   - vitesse d'attaque : 2000 ms.
+ * Measured over the 597 "real" level 1 creatures of `creature_template`
+ * (triggers and shapeshift forms excluded):
+ *   - melee damage: median 2, third quartile 9-10;
+ *   - health: median 64;
+ *   - attack speed: 2000 ms.
  *
- * Facteur élite mesuré sur la même base, en comparant rang 0 et rang 1 à niveau
- * égal : ×1,2 au niveau 20 puis ×3 environ à partir du niveau 30 (les PV, eux,
- * font ×1,6 à ×3).
+ * Elite factor measured on the same data, comparing rank 0 and rank 1 at equal
+ * level: ×1.2 at level 20, then roughly ×3 from level 30 upwards (health goes
+ * ×1.6 to ×3).
  */
 export const CREATURE_LEVEL_1 = {
   meleeDamageMedian: 2,

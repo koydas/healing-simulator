@@ -5,10 +5,10 @@ import { createInitialState } from '../src/simulation/initialState';
 import { computeStatsSummary } from '../src/simulation/selectors';
 import { advance, isolateTimers, memberOf, patchMember, unlockAllSpells } from './helpers';
 
-describe('comptabilité des soins', () => {
-  it('sépare soin effectif et overheal', () => {
-    // Renew tick pour 9 exactement : aucun tirage aléatoire, donc un overheal
-    // parfaitement prévisible sur une cible à 5 PV du maximum.
+describe('healing accounting', () => {
+  it('separates effective healing from overhealing', () => {
+    // Renew ticks for exactly 9: no random roll, so the overheal on a target
+    // sitting 5 HP below maximum is perfectly predictable.
     let state = unlockAllSpells(isolateTimers(createInitialState(21)));
     const tankHpMax = memberOf(state, 'tank').hpMax;
     state = patchMember(state, 'tank', { hp: tankHpMax - 5 });
@@ -23,7 +23,7 @@ describe('comptabilité des soins', () => {
     expect(state.stats.overhealing).toBe(4);
   });
 
-  it('ne dépasse jamais hpMax', () => {
+  it('never exceeds hpMax', () => {
     let state = isolateTimers(createInitialState(22));
     const hpMax = memberOf(state, 'tank').hpMax;
     state = patchMember(state, 'tank', { hp: hpMax - 2 });
@@ -40,7 +40,7 @@ describe('comptabilité des soins', () => {
     );
   });
 
-  it('ne soigne jamais un membre mort', () => {
+  it('never heals a dead member', () => {
     let state = unlockAllSpells(isolateTimers(createInitialState(23)));
     state = patchMember(state, 'dps2', { alive: false, hp: 0 });
     state = patchMember(state, 'tank', { hp: 10 });
@@ -49,21 +49,21 @@ describe('comptabilité des soins', () => {
     state = advance(state, SPELLS.prayerOfHealing.castTimeMs);
 
     expect(memberOf(state, 'dps2').hp).toBe(0);
-    // Quatre membres vivants soignés, aucun soin gaspillé sur le mort.
+    // Four living members healed, nothing wasted on the dead one.
     const roll = state.stats.rawHealing / 4;
     expect(Number.isInteger(roll)).toBe(true);
     expect(roll).toBeGreaterThanOrEqual(SPELLS.prayerOfHealing.healMin);
     expect(roll).toBeLessThanOrEqual(SPELLS.prayerOfHealing.healMax);
   });
 
-  it('calcule HPS, pourcentage d’overheal et efficacité mana', () => {
+  it('computes HPS, overheal percentage and mana efficiency', () => {
     let state = unlockAllSpells(isolateTimers(createInitialState(24)));
     const tankHpMax = memberOf(state, 'tank').hpMax;
     state = patchMember(state, 'tank', { hp: tankHpMax - 5 });
     state = selectTarget(state, 'tank');
 
     state = castSpell(state, 'renew');
-    state = advance(state, 10_000); // 3 ticks de 9 : 5 effectifs, 22 en overheal
+    state = advance(state, 10_000); // 3 ticks of 9: 5 effective, 22 overhealed
 
     const summary = computeStatsSummary(state);
 
@@ -76,7 +76,7 @@ describe('comptabilité des soins', () => {
     expect(summary.casts.find((cast) => cast.spellId === 'renew')?.completed).toBe(1);
   });
 
-  it('renvoie des valeurs neutres quand rien ne s’est passé', () => {
+  it('returns neutral values when nothing happened', () => {
     const summary = computeStatsSummary(createInitialState(25));
     expect(summary.hps).toBe(0);
     expect(summary.overhealPct).toBe(0);

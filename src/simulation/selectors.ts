@@ -1,6 +1,6 @@
 /**
- * Sélecteurs purs — lecture dérivée du `GameState`.
- * Aucun de ces helpers ne mute l'état ni ne touche au DOM.
+ * Pure selectors — derived reads over the `GameState`.
+ * None of these helpers mutate state or touch the DOM.
  */
 
 import { GCD_MS, SPELLS, SPELL_ORDER } from '../config/gameConfig';
@@ -25,36 +25,36 @@ export function getManaRatio(state: GameState): number {
   return Math.max(0, Math.min(1, state.mana / state.manaMax));
 }
 
-/** Progression du cast en cours, dans [0, 1]. */
+/** Progress of the active cast, in [0, 1]. */
 export function getCastProgress(state: GameState): number {
   const cast = state.activeCast;
   if (!cast || cast.castTimeMs <= 0) return 0;
   return Math.max(0, Math.min(1, cast.elapsedMs / cast.castTimeMs));
 }
 
-/** Progression du GCD, dans [0, 1] — 1 signifie « GCD terminé ». */
+/** Progress of the GCD, in [0, 1] — 1 means "GCD finished". */
 export function getGcdProgress(state: GameState): number {
   if (state.gcdRemainingMs <= 0) return 1;
   return Math.max(0, Math.min(1, 1 - state.gcdRemainingMs / GCD_MS));
 }
 
-/** Renew actif sur un membre, ou `undefined`. */
+/** Renew currently on a member, or `undefined`. */
 export function getRenewEffect(member: PartyMember) {
   return member.hots.find((hot) => hot.spellId === 'renew');
 }
 
-/** Feedbacks flottants attachés à un membre. */
+/** Floating feedback attached to a member. */
 export function getMemberFeedback(state: GameState, memberId: string): FeedbackEvent[] {
   return state.feedback.filter((event) => event.targetId === memberId && event.kind !== 'message');
 }
 
-/** Messages globaux (refus de lancement, annulation, morts). */
+/** Global messages (cast refusals, cancellations, deaths). */
 export function getGlobalMessages(state: GameState): FeedbackEvent[] {
   return state.feedback.filter((event) => event.kind === 'message' || event.kind === 'death');
 }
 
 /* -------------------------------------------------------------------------- */
-/* Statistiques dérivées                                                       */
+/* Derived statistics                                                          */
 /* -------------------------------------------------------------------------- */
 
 export interface SpellCastSummary {
@@ -67,15 +67,15 @@ export interface SpellCastSummary {
 export interface StatsSummary {
   durationMs: number;
   durationLabel: string;
-  /** Soin effectif par seconde. */
+  /** Effective healing per second. */
   hps: number;
   rawHealing: number;
   effectiveHealing: number;
   overhealing: number;
-  /** Pourcentage d'overheal sur le soin brut. */
+  /** Overhealing as a percentage of raw healing. */
   overhealPct: number;
   manaSpent: number;
-  /** Soin effectif par point de mana dépensé. */
+  /** Effective healing per point of mana spent. */
   manaEfficiency: number;
   damageTaken: number;
   casts: SpellCastSummary[];
@@ -83,7 +83,7 @@ export interface StatsSummary {
   deaths: { id: string; name: string }[];
 }
 
-/** Formate une durée en `m:ss.d`. */
+/** Formats a duration as `m:ss.d`. */
 export function formatDuration(ms: number): string {
   const totalSeconds = Math.max(0, ms) / 1000;
   const minutes = Math.floor(totalSeconds / 60);

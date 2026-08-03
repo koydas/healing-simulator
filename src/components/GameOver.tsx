@@ -1,4 +1,4 @@
-/** Écran de fin de partie : statistiques complètes et relance. */
+/** End-of-fight screen: full statistics and restart. */
 
 import { memo } from 'react';
 import { useHeaderSnapshot, useSummarySnapshot } from '../hooks/useGameStore';
@@ -7,8 +7,8 @@ interface GameOverProps {
   onRestart: () => void;
 }
 
-const integer = new Intl.NumberFormat('fr-FR', { maximumFractionDigits: 0 });
-const decimal = new Intl.NumberFormat('fr-FR', { maximumFractionDigits: 2 });
+const integer = new Intl.NumberFormat('en-US', { maximumFractionDigits: 0 });
+const decimal = new Intl.NumberFormat('en-US', { maximumFractionDigits: 2 });
 
 export const GameOver = memo(function GameOver({ onRestart }: GameOverProps) {
   const summary = useSummarySnapshot();
@@ -17,11 +17,11 @@ export const GameOver = memo(function GameOver({ onRestart }: GameOverProps) {
   if (!summary) return null;
 
   return (
-    <div className="gameover" role="dialog" aria-modal="true" aria-label="Fin de partie">
+    <div className="gameover" role="dialog" aria-modal="true" aria-label="Fight over">
       <div className="gameover__panel">
         <h2 className="gameover__title">Wipe</h2>
         <p className="gameover__duration">
-          Survie : <strong>{summary.durationLabel}</strong>
+          Survived: <strong>{summary.durationLabel}</strong>
         </p>
 
         <dl className="gameover__grid">
@@ -30,44 +30,44 @@ export const GameOver = memo(function GameOver({ onRestart }: GameOverProps) {
             <dd>{decimal.format(summary.hps)}</dd>
           </div>
           <div className="gameover__row">
-            <dt>Soin effectif</dt>
+            <dt>Effective healing</dt>
             <dd>{integer.format(summary.effectiveHealing)}</dd>
           </div>
           <div className="gameover__row">
-            <dt>Soin brut</dt>
+            <dt>Raw healing</dt>
             <dd>{integer.format(summary.rawHealing)}</dd>
           </div>
           <div className="gameover__row">
-            <dt>Overheal</dt>
+            <dt>Overhealing</dt>
             <dd>
-              {integer.format(summary.overhealing)} ({decimal.format(summary.overhealPct)} %)
+              {integer.format(summary.overhealing)} ({decimal.format(summary.overhealPct)}%)
             </dd>
           </div>
           <div className="gameover__row">
-            <dt>Mana dépensée</dt>
+            <dt>Mana spent</dt>
             <dd>{integer.format(summary.manaSpent)}</dd>
           </div>
           <div className="gameover__row">
-            <dt>Soin / mana</dt>
+            <dt>Healing per mana</dt>
             <dd>{decimal.format(summary.manaEfficiency)}</dd>
           </div>
           <div className="gameover__row">
-            <dt>Dégâts encaissés</dt>
+            <dt>Damage taken</dt>
             <dd>{integer.format(summary.damageTaken)}</dd>
           </div>
           <div className="gameover__row">
-            <dt>Casts annulés</dt>
+            <dt>Casts cancelled</dt>
             <dd>{summary.castsCancelled}</dd>
           </div>
         </dl>
 
-        <h3 className="gameover__subtitle">Sorts</h3>
+        <h3 className="gameover__subtitle">Spells</h3>
         <table className="gameover__table">
           <thead>
             <tr>
-              <th scope="col">Sort</th>
-              <th scope="col">Commencés</th>
-              <th scope="col">Complétés</th>
+              <th scope="col">Spell</th>
+              <th scope="col">Started</th>
+              <th scope="col">Completed</th>
             </tr>
           </thead>
           <tbody>
@@ -81,17 +81,17 @@ export const GameOver = memo(function GameOver({ onRestart }: GameOverProps) {
           </tbody>
         </table>
 
-        <h3 className="gameover__subtitle">Morts</h3>
+        <h3 className="gameover__subtitle">Deaths</h3>
         <p className="gameover__deaths">
           {summary.deaths.length > 0
             ? summary.deaths.map((death) => death.name).join(', ')
-            : 'Aucune'}
+            : 'None'}
         </p>
 
-        <p className="gameover__seed">Seed : {header.seed}</p>
+        <p className="gameover__seed">Seed: {header.seed}</p>
 
         <button type="button" className="gameover__restart" onClick={onRestart}>
-          Nouvelle partie
+          New fight
         </button>
       </div>
     </div>

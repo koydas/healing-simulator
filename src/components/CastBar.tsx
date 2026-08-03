@@ -1,9 +1,9 @@
 /**
- * Barre de cast.
+ * Cast bar.
  *
- * La progression est écrite directement dans une variable CSS à chaque frame :
- * l'animation ne déclenche aucun rendu React. Seuls le nom du sort et
- * l'apparition/disparition du bouton Cancel passent par un snapshot.
+ * Progress is written straight into a CSS variable on every frame: the
+ * animation triggers no React render. Only the spell name and the appearance
+ * of the Cancel button go through a snapshot.
  */
 
 import { memo, useCallback, useRef } from 'react';
@@ -32,7 +32,7 @@ export const CastBar = memo(function CastBar() {
       <div className="castbar__track">
         <div className="castbar__fill" />
         <span className="castbar__label">
-          {controls.casting ? controls.castSpellName : 'Prêt'}
+          {controls.casting ? controls.castSpellName : 'Ready'}
         </span>
       </div>
       <button

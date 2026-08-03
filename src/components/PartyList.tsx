@@ -1,4 +1,4 @@
-/** Liste des cinq frames du groupe. */
+/** The five party frames. */
 
 import { memo } from 'react';
 import { useMemberIds } from '../hooks/useGameStore';
@@ -8,7 +8,7 @@ export const PartyList = memo(function PartyList() {
   const memberIds = useMemberIds();
 
   return (
-    <section className="party" aria-label="Groupe">
+    <section className="party" aria-label="Party">
       {memberIds.map((id) => (
         <PartyFrame key={id} memberId={id} />
       ))}

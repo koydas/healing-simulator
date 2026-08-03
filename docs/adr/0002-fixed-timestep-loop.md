@@ -1,53 +1,52 @@
-# ADR-0002: Boucle à pas fixe de 100 ms avec accumulateur borné
+# ADR-0002: Fixed 100 ms timestep loop with a bounded accumulator
 
 - **Date:** 2026-08-02
 - **Status:** Accepted
 
 ## Context
 
-`requestAnimationFrame` fournit un delta variable (16 ms sur un écran 60 Hz,
-8 ms en 120 Hz, plusieurs secondes après un retour d'arrière-plan). Faire
-avancer la simulation de ce delta rendrait le jeu non reproductible : deux
-appareils ne verraient pas la même partie avec la même seed, et un onglet
-laissé en arrière-plan reviendrait avec un « rattrapage » de plusieurs minutes
-appliqué d'un coup, tuant le groupe instantanément.
+`requestAnimationFrame` delivers a variable delta (16 ms on a 60 Hz screen, 8 ms
+at 120 Hz, several seconds after coming back from the background). Advancing the
+simulation by that delta would make the game irreproducible: two devices would
+not see the same fight from the same seed, and a tab left in the background
+would come back with several minutes of "catch-up" applied at once, killing the
+party instantly.
 
 ## Decision
 
-La simulation n'avance **que** par pas fixes de `TICK_MS = 100`. `useGameLoop`
-accumule le temps réel et le découpe :
+The simulation only ever advances in fixed `TICK_MS = 100` steps.
+`useGameLoop` accumulates real time and slices it:
 
 ```
-delta = now - dernierTimestamp
-si delta > LONG_STALL_MS (1000)  → delta = 0, accumulateur = 0   (aucun rattrapage)
-accumulateur = min(accumulateur + delta, MAX_CATCHUP_MS = 500)
-tant que accumulateur >= 100 et pas < 5 :  store.advance(100)
+delta = now - lastTimestamp
+if delta > LONG_STALL_MS (1000)  → delta = 0, accumulator = 0   (no catch-up)
+accumulator = min(accumulator + delta, MAX_CATCHUP_MS = 500)
+while accumulator >= 100 and steps < 5:  store.advance(100)
 ```
 
-Un listener `visibilitychange` remet l'horloge et l'accumulateur à zéro dès que
-l'onglet passe en arrière-plan, ce qui évite de dépendre du seul seuil de 1 s.
+A `visibilitychange` listener resets the clock and the accumulator as soon as
+the tab goes to the background, so we do not rely on the 1 s threshold alone.
 
-Tous les intervalles de la timeline (1500, 12 000, 30 000 ms) sont des multiples
-de 100 ms : la résolution des événements est donc exacte, sans dérive.
+Every timeline interval (1500, 12,000, 30,000 ms) is a multiple of 100 ms:
+event resolution is therefore exact, with no drift.
 
 ## Alternatives Considered
 
-- **Pas variable (`stepSimulation(state, delta)`)** — rejeté : perte du
-  déterminisme et arrondis de dégâts dépendants de la fréquence d'écran.
-- **`setInterval(100)`** — rejeté : dérive du navigateur, throttling agressif en
-  arrière-plan (jusqu'à 1 Hz), et le cahier des charges interdit les timers
-  réels dans la logique métier.
-- **Rattrapage complet après un retour d'onglet** — rejeté explicitement : le
-  joueur perdrait la partie sans avoir pu agir.
+- **Variable step (`stepSimulation(state, delta)`)** — rejected: determinism is
+  lost and damage rounding would depend on the display refresh rate.
+- **`setInterval(100)`** — rejected: browser drift, aggressive background
+  throttling (down to 1 Hz), and the brief forbids real timers in the business
+  logic.
+- **Full catch-up after returning to the tab** — explicitly rejected: the player
+  would lose the fight without being able to act.
 
 ## Consequences
 
-- ✅ Même seed + mêmes actions ⇒ même partie, quel que soit le matériel.
-- ✅ Un onglet en arrière-plan gèle la partie au lieu de la perdre.
-- ✅ Les tests appellent `stepSimulation(state, 100)` directement, sans mock de
-  `requestAnimationFrame`.
-- ⚠️ La granularité des événements est de 100 ms : un cast de 1,55 s se
-  résoudrait à 1,6 s. Toutes les valeurs de balance doivent rester des
-  multiples de 100 ms.
-- ⚠️ Sur un appareil incapable de tenir 2 frames/s, la simulation prend un
-  retard permanent (plafond de rattrapage). C'est préférable à un pic de dégâts.
+- ✅ Same seed + same actions ⇒ same fight, whatever the hardware.
+- ✅ A backgrounded tab freezes the fight instead of losing it.
+- ✅ Tests call `stepSimulation(state, 100)` directly, with no
+  `requestAnimationFrame` mock.
+- ⚠️ Event granularity is 100 ms: a 1.55 s cast would resolve at 1.6 s. Every
+  balance value must stay a multiple of 100 ms.
+- ⚠️ On a device unable to hold 2 frames per second, the simulation falls
+  permanently behind (catch-up cap). That is preferable to a damage spike.

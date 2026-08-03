@@ -1,9 +1,8 @@
 /**
- * Feedback de combat : nombres flottants sur les frames et messages globaux.
+ * Combat feedback: floating numbers on the frames, and global messages.
  *
- * Les événements expirés sont supprimés par le moteur (`pruneFeedback`), donc
- * aucune accumulation n'est possible côté React : on se contente d'afficher la
- * liste courante.
+ * Expired events are pruned by the engine (`pruneFeedback`), so nothing can
+ * accumulate on the React side: we simply render the current list.
  */
 
 import { memo } from 'react';
@@ -27,7 +26,7 @@ function formatAmount(event: FeedbackEvent): string {
   }
 }
 
-/** Nombres flottants affichés sur une frame de groupe. */
+/** Floating numbers shown on a party frame. */
 export const MemberFeedback = memo(function MemberFeedback({ events }: MemberFeedbackProps) {
   if (events.length === 0) return null;
 
@@ -42,7 +41,7 @@ export const MemberFeedback = memo(function MemberFeedback({ events }: MemberFee
   );
 });
 
-/** Bandeau de messages : refus de lancement, annulations, morts. */
+/** Message strip: cast refusals, cancellations, deaths. */
 export const MessageFeed = memo(function MessageFeed() {
   const messages = useMessagesSnapshot();
   const visible = messages.slice(-3);

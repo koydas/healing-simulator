@@ -71,6 +71,12 @@ All notable changes to this project are recorded here, following
 - `docs/classic-stats.md`: sources, formulas, tables, and an explicit split
   between **sourced**, **derived**, **approximated** and **designed** values.
 - ADR-0007 through ADR-0010 documenting those four decisions.
+- **Six Claude Code skills** under `.claude/skills/` plus a root `CLAUDE.md`,
+  encoding the rules an agent needs when working here: `pure-engine`,
+  `classic-data`, `render-budget`, `test-protocol`, `new-adr` and
+  `pr-review-workflow`. They capture the invariants that review has actually
+  caught us breaking — a dead caster still acting, a non-uniform roll, a
+  clipped party on short viewports, an oversold deployment claim.
 - `tests/classicStats.test.ts`: 14 tests over the vanilla formulas, the derived
   party health, the spell values and the healing roll distribution (99 tests
   in total).

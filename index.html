@@ -2,9 +2,16 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
+    <!--
+      No `maximum-scale` or `user-scalable=no`: pinch-to-zoom stays available,
+      because the smallest text in the interface is 9px and someone with low
+      vision has no other way to read it. The reason a tapping game usually
+      locks zoom — accidental double-tap zoom during fast casting — is already
+      handled by `touch-action: manipulation` on `body` and `button`.
+    -->
     <meta
       name="viewport"
-      content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover"
+      content="width=device-width, initial-scale=1.0, viewport-fit=cover"
     />
     <meta name="theme-color" content="#0d1017" />
     <meta name="description" content="Party healer simulator — keep the group alive as long as you can." />

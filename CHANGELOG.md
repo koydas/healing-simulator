@@ -7,6 +7,17 @@ All notable changes to this project are recorded here, following
 
 ### Fixed
 
+- **Pinch-to-zoom works again.** The viewport meta carried `maximum-scale=1.0`
+  and `user-scalable=no`, which disables pinch zoom on browsers that honour it
+  (Android Chrome; iOS Safari has ignored it since iOS 10). The smallest text in
+  the interface is 9px, so a low-vision player had no way to enlarge health
+  numbers, spell costs or refusal messages — WCAG 1.4.4. Both directives are
+  gone. The gameplay reason for locking zoom, accidental double-tap zoom during
+  fast casting, is already covered by `touch-action: manipulation` on `body` and
+  `button`: measured at 390 × 844, 320 × 568 and 667 × 375, a fast double tap on
+  a spell button leaves `visualViewport.scale` at 1, while a pinch now reaches
+  2.5 (it stayed pinned at 1.0 before).
+
 - **Deep paths no longer serve a blank page.** The build used `base: './'`, so
   `index.html` referenced `./assets/…`; a page delivered by the SPA fallback for
   a path such as `/some/route` resolved that to `/some/assets/…`, which matches

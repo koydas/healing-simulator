@@ -68,6 +68,13 @@ message ("Not enough mana", "Level too low", …). Do not "fix" that into a real
 - Party frames: 64 px minimum height. Spell buttons: 72 × 72 px minimum.
 - `touch-action: manipulation` and `user-select: none` on interactive surfaces;
   respect `env(safe-area-inset-*)`.
+- **Never lock zoom.** `maximum-scale` and `user-scalable=no` in the viewport
+  meta break pinch-to-zoom, and the smallest text here is 9px — someone with
+  low vision has no other way to read it (WCAG 1.4.4). The reason a tapping
+  game reaches for that lock is accidental double-tap zoom, and
+  `touch-action: manipulation` already prevents it: measured at 390 × 844,
+  320 × 568 and 667 × 375, a fast double tap on a spell button leaves
+  `visualViewport.scale` at 1 while a pinch reaches 2.5.
 - `html`, `body` and `.app` are height-locked and the page cannot scroll. **Any
   region whose content can exceed the viewport must scroll itself**
   (`overflow-y: auto`), otherwise the content is drawn outside the visible area

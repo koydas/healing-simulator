@@ -1,12 +1,15 @@
 /**
  * Application root.
  *
- * `App` never re-renders during a fight: the store is held by a `useRef` and
- * every child subscribes to its own snapshot.
+ * Before any fight there is no `GameState` at all: `App` shows the enemy
+ * selection screen and only creates a store — inside `Fight` — once a choice
+ * is made. `Fight` never re-renders during a fight: the store is held by a
+ * `useRef` and every child subscribes to its own snapshot.
  */
 
-import { useCallback, useRef } from 'react';
+import { useCallback, useRef, useState } from 'react';
 import { Controls } from './components/Controls';
+import { EnemySelect } from './components/EnemySelect';
 import { GameOver } from './components/GameOver';
 import { Header } from './components/Header';
 import { MessageFeed } from './components/CombatFeedback';
@@ -14,6 +17,7 @@ import { PartyList } from './components/PartyList';
 import { DEFAULT_SEED } from './config/gameConfig';
 import { GameStoreContext } from './hooks/useGameStore';
 import { useGameLoop } from './hooks/useGameLoop';
+import type { EnemyId } from './simulation/types';
 import { createGameStore, type GameStore } from './store/gameStore';
 
 /**
@@ -28,18 +32,24 @@ function readInitialSeed(): number {
   return Number.isFinite(parsed) ? parsed : DEFAULT_SEED;
 }
 
-export default function App() {
+interface FightProps {
+  enemyId: EnemyId;
+  /** Back to the enemy selection screen — tears the store down entirely. */
+  onChangeEnemy: () => void;
+}
+
+function Fight({ enemyId, onChangeEnemy }: FightProps) {
   const storeRef = useRef<GameStore | null>(null);
   if (storeRef.current === null) {
-    storeRef.current = createGameStore(readInitialSeed());
+    storeRef.current = createGameStore(readInitialSeed(), enemyId);
   }
   const store = storeRef.current;
 
   useGameLoop(store);
 
   const handleRestart = useCallback(() => {
-    store.restart(Date.now() >>> 0);
-  }, [store]);
+    store.restart(Date.now() >>> 0, enemyId);
+  }, [store, enemyId]);
 
   return (
     <GameStoreContext.Provider value={store}>
@@ -53,8 +63,18 @@ export default function App() {
             rejected cast look like a dead button. */}
         <MessageFeed />
         <Controls />
-        <GameOver onRestart={handleRestart} />
+        <GameOver onRestart={handleRestart} onChangeEnemy={onChangeEnemy} />
       </div>
     </GameStoreContext.Provider>
   );
+}
+
+export default function App() {
+  const [enemyId, setEnemyId] = useState<EnemyId | null>(null);
+
+  if (enemyId === null) {
+    return <EnemySelect onSelect={setEnemyId} />;
+  }
+
+  return <Fight key={enemyId} enemyId={enemyId} onChangeEnemy={() => setEnemyId(null)} />;
 }

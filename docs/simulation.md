@@ -55,6 +55,15 @@ slicing. `tests/determinism.test.ts` verifies it.
 
 ## Damage timeline
 
+The three timers below (`state.timers.tankDamageMs` / `aoeMs` / `spikeMs`) are
+always driven by `state.encounter` — the profile of the enemy picked on the
+selection screen (ADR-0016), copied in at `createInitialState`. The table
+shows the default, Gorvath the Cavebreaker; Skarn the Swarmcaller and Threx
+the Impaler have their own amounts and cadences, listed in
+[balance.md](./balance.md#enemies--three-selectable-encounters). The melee
+cadence (2 s) is the one number every enemy shares — it is sourced, not
+designed.
+
 | Event | Amount | Interval | First hit |
 | --- | --- | --- | --- |
 | Melee on the tank | 8 | 2 s (vanilla cadence) | 2 s |

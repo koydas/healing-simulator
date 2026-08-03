@@ -1,7 +1,6 @@
 /** Header: boss, timer, damage multiplier, pause / resume. */
 
 import { memo, useCallback } from 'react';
-import { BOSS } from '../config/gameConfig';
 import { useHeaderSnapshot, useStore } from '../hooks/useGameStore';
 
 export const Header = memo(function Header() {
@@ -21,7 +20,7 @@ export const Header = memo(function Header() {
         <h1 className="header__name">
           {header.bossName} <span className="header__level">lv. {header.bossLevel}</span>
         </h1>
-        <p className="header__subtitle">{BOSS.subtitle}</p>
+        <p className="header__subtitle">{header.bossSubtitle}</p>
       </div>
 
       <div className="header__stats">

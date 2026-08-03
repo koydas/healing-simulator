@@ -544,6 +544,91 @@ button {
   text-align: center;
 }
 
+/* ----------------------------------------------------------- Enemy select -- */
+
+.enemy-select {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  min-height: 100dvh;
+  padding: 16px env(safe-area-inset-right) env(safe-area-inset-bottom)
+    env(safe-area-inset-left);
+  overflow-y: auto;
+}
+
+.enemy-select__panel {
+  width: 100%;
+  max-width: 420px;
+  max-height: 100%;
+  margin: 0 auto;
+  padding: 18px;
+}
+
+.enemy-select__title {
+  margin: 0;
+  font-size: 22px;
+  font-weight: 700;
+}
+
+.enemy-select__intro {
+  margin: 4px 0 18px;
+  font-size: 13px;
+  color: var(--text-dim);
+}
+
+.enemy-select__list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.enemy-select__card {
+  width: 100%;
+  min-height: 64px;
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  text-align: left;
+  background: var(--bg-panel);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius);
+}
+
+.enemy-select__card:active {
+  transform: scale(0.98);
+}
+
+.enemy-select__card:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.enemy-select__name {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.enemy-select__level {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-dim);
+  white-space: nowrap;
+}
+
+.enemy-select__subtitle {
+  font-size: 12px;
+  color: var(--text-dim);
+}
+
 /* -------------------------------------------------------------- Game over -- */
 
 .gameover {
@@ -656,6 +741,18 @@ button {
   color: #06202c;
   font-size: 15px;
   font-weight: 700;
+}
+
+.gameover__change-enemy {
+  width: 100%;
+  min-height: 44px;
+  margin-top: 8px;
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius);
+  background: transparent;
+  color: var(--text-dim);
+  font-size: 13px;
+  font-weight: 600;
 }
 
 /* -------------------------------------------------------------- Desktop -- */

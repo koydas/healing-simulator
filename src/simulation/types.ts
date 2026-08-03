@@ -14,6 +14,36 @@ export type SpellId = 'lesserHeal' | 'renew' | 'heal' | 'flashHeal' | 'prayerOfH
 
 export type GameStatus = 'active' | 'paused' | 'over';
 
+export type EnemyId = 'gorvath' | 'skarn' | 'threx';
+
+export interface DamageEvent {
+  amount: number;
+  intervalMs: number;
+  firstAtMs: number;
+}
+
+export interface SpikeEvent {
+  amount: number;
+  minIntervalMs: number;
+  maxIntervalMs: number;
+}
+
+/**
+ * One enemy's damage profile — copied into `GameState.encounter` at fight
+ * creation so the engine can read it without importing a fixed constant. The
+ * ramp stays a single shared constant (`RAMP` in `gameConfig.ts`): it is the
+ * game mode's mechanic, not a property of the enemy.
+ */
+export interface EncounterProfile {
+  id: EnemyId;
+  name: string;
+  subtitle: string;
+  level: number;
+  tankDamage: DamageEvent;
+  aoeDamage: DamageEvent;
+  spikeDamage: SpikeEvent;
+}
+
 export interface HotEffect {
   spellId: SpellId;
   healPerTick: number;
@@ -92,6 +122,8 @@ export interface GameState {
   seed: number;
   /** Seed the fight started from, kept for display and replayability. */
   initialSeed: number;
+  /** Damage profile of the enemy picked on the selection screen. */
+  encounter: EncounterProfile;
   party: PartyMember[];
   selectedTargetId: string | null;
   mana: number;

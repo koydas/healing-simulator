@@ -60,20 +60,32 @@ Changing a member's race or class is enough to recompute their health: you edit
 At level 1 only Lesser Heal is castable; the others appear locked with their
 required level (ADR-0008). No per-spell cooldown, no haste, no spell queue.
 
-## Boss timeline
+## Enemies — three selectable encounters
+
+Picked on the opening selection screen (`EnemySelect`) and carried in
+`GameState.encounter` (ADR-0016); `ENEMY_ORDER` lists them in the order shown.
+The melee cadence (2000 ms) is sourced — every level 1 creature swings at that
+rate — and identical across all three; every amount is designed. The ramp
+(`RAMP`, ×1.15 every 30 000 ms) is a single shared constant, not per-enemy.
+
+| Enemy | Tank melee | AoE | Spike |
+| --- | --- | --- | --- |
+| Gorvath the Cavebreaker (`TANK_DAMAGE` / `AOE_DAMAGE` / `SPIKE_DAMAGE`) | 8 every 2000 ms | 6 per member every 12 000 ms | 18, uniform [6000, 10 000) ms |
+| Skarn the Swarmcaller (`SKARN_*`) | 6 every 2000 ms | 8 per member every 9000 ms | 14, uniform [8000, 12 000) ms |
+| Threx the Impaler (`THREX_*`) | 9 every 2000 ms | 4 per member every 16 000 ms | 26, uniform [5000, 8000) ms |
 
 | Constant | Value | Nature |
 | --- | --- | --- |
-| `TANK_DAMAGE` | 8 every 2000 ms | amount designed, cadence sourced |
-| `AOE_DAMAGE` | 6 per member every 12 000 ms | designed |
-| `SPIKE_DAMAGE` | 18, uniform interval [6000, 10 000) ms | designed |
-| `RAMP` | ×1.15 every 30 000 ms | designed |
 | `WIPE.maxDeaths` | 3 | designed |
 
-Where the amounts come from: [classic-stats.md](./classic-stats.md#the-boss)
-and [ADR-0010](./adr/0010-level-1-boss-profile.md).
+Where the amounts come from: [classic-stats.md](./classic-stats.md#the-enemies)
+and [ADR-0010](./adr/0010-level-1-boss-profile.md) (Gorvath),
+[ADR-0016](./adr/0016-selectable-enemy-encounters.md) (Skarn, Threx, and the
+selection screen itself).
 
 ## Orders of magnitude
+
+Gorvath — the reference profile:
 
 - Pressure on the tank: 8 / 2 s = **4.0 HP/s**; they fall in 22 s with no
   healing.
@@ -83,11 +95,17 @@ and [ADR-0010](./adr/0010-level-1-boss-profile.md).
 - **Burst** healing throughput: 51 HP every 1.5 s ≈ 34 HP/s.
 - **Sustainable** healing throughput: mana-limited to ≈ 15 HP/s (9.25 mana/s
   outside the five-second rule, 1.7 HP per point of mana).
-- Measured survival: 22 s with no healing, 48 to 97 s with a naive automated
-  healer.
 
-The ramp pushes pressure above sustainable healing after a few tiers: defeat is
-inevitable, only its timing changes.
+Measured survival, all three enemies, eight fixed seeds (ADR-0016):
+
+| Enemy | No healing | Naive automated healer |
+| --- | --- | --- |
+| Gorvath | 22 s | 48 – 63 s |
+| Skarn | 26 s | 40 – 63 s |
+| Threx | 20 s | 34 – 56 s |
+
+The ramp pushes pressure above sustainable healing after a few tiers, for
+every enemy: defeat is inevitable, only its timing changes.
 
 ## Feedback
 
@@ -99,15 +117,23 @@ inevitable, only its timing changes.
 
 ## Tuning the difficulty
 
-Do not touch the sourced values: the tuning room is on the boss side.
+Do not touch the sourced values: the tuning room is on the enemy side. Each
+enemy has its own set of constants (`TANK_DAMAGE` / `AOE_DAMAGE` /
+`SPIKE_DAMAGE` for Gorvath, `SKARN_*` and `THREX_*` for the other two) — pick
+the one you mean to retune.
 
-- **Easier**: lower `TANK_DAMAGE.amount` or `SPIKE_DAMAGE.amount`, lengthen
-  `RAMP.intervalMs`.
-- **Harder**: raise `SPIKE_DAMAGE.amount`, shorten
-  `SPIKE_DAMAGE.minIntervalMs`, or lower `RAMP.intervalMs`.
+- **Easier**: lower an enemy's `tankDamage.amount` or `spikeDamage.amount`, or
+  lengthen `RAMP.intervalMs` (shared by all three).
+- **Harder**: raise `spikeDamage.amount`, shorten `spikeDamage.minIntervalMs`,
+  or lower `RAMP.intervalMs`.
 - **Change scale**: raise `PLAYER_LEVEL` — that unlocks spells, but the stat
   tables currently only cover level 1 (see
   [classic-stats.md](./classic-stats.md#levelling-up-later)).
+- **Add a fourth enemy**: give it an `EnemyId`, an `EncounterProfile` entry in
+  `ENEMIES`, and a slot in `ENEMY_ORDER`. Calibrate it the way ADR-0016 did —
+  the no-heal and naive-healer survival windows — before committing the
+  numbers.
 
 After any change, run `npm test`: several tests rely on the nominal values
-(90 / 51 / 55 / 50 / 46 health, 8 / 6 / 18 damage).
+(90 / 51 / 55 / 50 / 46 health, 8 / 6 / 18 damage for Gorvath — see
+`tests/encounter.test.ts` for the other two).

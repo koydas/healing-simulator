@@ -5,6 +5,15 @@ All notable changes to this project are recorded here, following
 
 ## [Unreleased]
 
+### Added
+
+- **Opening the app now offers a choice of three enemies, each showing its
+  level.** Gorvath the Cavebreaker (balanced), Skarn the Swarmcaller
+  (AoE-heavy) and Threx the Impaler (burst) are selectable encounters carried
+  in `GameState`, calibrated to a comparable difficulty band. The game-over
+  screen can return to the selection screen ("Choose another enemy") as well
+  as start a same-enemy rematch. See ADR-0016.
+
 ### Fixed
 
 - **All five party members now fit on an iPhone 13 mini without scrolling.**

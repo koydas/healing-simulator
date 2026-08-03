@@ -19,6 +19,7 @@ Architecture Decision Records for the Healing Simulator.
 - [ADR-0013: Dedicated MetalLB IP alongside the Ingress](./0013-dedicated-metallb-ip.md)
 - [ADR-0014: `main` ruleset activated — deploy pipeline switches to an auto-merged PR](./0014-branch-protection-deploy-pr.md)
 - [ADR-0015: Spell buttons drop to 64 px and pack into one row on mobile](./0015-spell-buttons-64px-single-row-mobile.md)
+- [ADR-0016: A selection screen and three enemy encounters, carried in `GameState`](./0016-selectable-enemy-encounters.md)
 
 ## Format
 

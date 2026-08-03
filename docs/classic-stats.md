@@ -108,10 +108,10 @@ A note on scale: Prayer of Healing costs 410 mana, 2.5 times a level 1 priest's
 pool. That is not an inconsistency — it is a level 30 spell, cast with a much
 larger pool.
 
-## The boss
+## The enemies
 
-The boss is level 1 as well. Measured over the 597 "real" level 1 creatures of
-`creature_template` (triggers and shapeshift forms excluded):
+Every enemy is level 1 as well. Measured over the 597 "real" level 1 creatures
+of `creature_template` (triggers and shapeshift forms excluded):
 
 | Measurement | Value |
 | --- | --- |
@@ -131,8 +131,15 @@ level:
 | 60 | 188 → 544.5 (×2.90) | ×3.11 |
 
 No level 1 creature is a real boss in the game (the rank 3 entries at level 1
-are shapeshift forms). The boss profile is therefore **built** from those
+are shapeshift forms). Every enemy profile is therefore **built** from those
 measurements — see the next section.
+
+The player picks one of three encounters on the opening selection screen
+(ADR-0016): **Gorvath the Cavebreaker** (the original profile, ADR-0010),
+**Skarn the Swarmcaller** (AoE-heavy) and **Threx the Impaler** (burst). All
+three share the sourced 2000 ms melee cadence; only the amounts differ, and
+all three stay inside the [6, 12] bracket those measurements define for a
+single swing.
 
 ## Sourced, derived, or designed
 
@@ -163,31 +170,44 @@ This is the section to read before quoting any number from this project.
 
 ### Designed — game design, not Classic
 
-- **Boss melee damage: 8 per swing.** Bracketed by the measurements (median 2 ×
-  elite factor 3 = 6; high end 10 × 1.2 = 12), but chosen.
-- **AoE: 6 per member every 12 s** and **spike: 18 on a non-tank every 6 to
-  10 s.** No level 1 creature has those abilities; the amounts are calibrated
-  against level 1 health pools (a spike removes about a third of a DPS's
-  health).
-- **Ramp ×1.15 every 30 s.** A mechanic of the game mode.
+- **Melee damage per enemy: Gorvath 8, Skarn 6, Threx 9 per swing.** Each is
+  bracketed by the measurements (median 2 × elite factor 3 = 6; high end
+  10 × 1.2 = 12), but chosen.
+- **AoE and spike per enemy** — no level 1 creature has those abilities; every
+  amount is calibrated against level 1 health pools:
+  - Gorvath: AoE 6 per member every 12 s, spike 18 on a non-tank every 6 to
+    10 s (removes about a third of a DPS's health).
+  - Skarn: AoE 8 per member every 9 s, spike 14 every 8 to 12 s — pressure
+    shifted from a single target onto the whole party.
+  - Threx: AoE 4 per member every 16 s, spike 26 every 5 to 8 s — over half of
+    a DPS's health in one hit.
+- **Ramp ×1.15 every 30 s.** A mechanic of the game mode, shared by every
+  enemy rather than a property of one.
 - **Wipe conditions** (tank death or three deaths).
-- **Party composition** and character names.
+- **Party composition**, character names, and the three enemies' names and
+  selection-screen descriptions.
 
 ## Resulting balance
 
 Verified by simulating an automated healer chaining Lesser Heal on the lowest
-member (eight seeds):
+member (eight seeds), against each of the three selectable enemies:
 
-| Scenario | Survival |
-| --- | --- |
-| No healing at all | 22 s |
-| Naive automated healer | 48 s to 97 s |
+| Enemy | No healing | Naive automated healer |
+| --- | --- | --- |
+| Gorvath | 22 s | 48 – 63 s |
+| Skarn | 26 s | 40 – 63 s |
+| Threx | 20 s | 34 – 56 s |
 
-Initial pressure is about 8.8 HP/s (melee 4.0 + AoE 2.5 + spike 2.2) against
-roughly 15 HP/s sustainable: the fight is holdable at first, then the ramp
-overtakes the healer's throughput. With a single spell available, the difficulty
-comes mostly from **triage** — one Lesser Heal every 1.5 s cannot follow two low
-targets at once.
+Gorvath's initial pressure is about 8.8 HP/s (melee 4.0 + AoE 2.5 + spike 2.2)
+against roughly 15 HP/s sustainable: the fight is holdable at first, then the
+ramp overtakes the healer's throughput. Skarn and Threx land a little lower on
+the naive-healer end by design — spreading heals across a bleeding party, or
+reacting fast enough to a short-fuse burst, is harder for a bot that always
+targets the single lowest-HP ally than steady single-target pressure is. See
+[ADR-0016](./adr/0016-selectable-enemy-encounters.md).
+
+With a single spell available, the difficulty comes mostly from **triage** —
+one Lesser Heal every 1.5 s cannot follow two low targets at once.
 
 ## Levelling up later
 
@@ -210,4 +230,5 @@ health, mana and amounts.
 - [ADR-0008](./adr/0008-classic-spellbook-level-gating.md) — real spells and level gating
 - [ADR-0009](./adr/0009-vanilla-mana-regen-five-second-rule.md) — vanilla regeneration
 - [ADR-0010](./adr/0010-level-1-boss-profile.md) — level 1 boss profile
+- [ADR-0016](./adr/0016-selectable-enemy-encounters.md) — the selection screen and the other two enemies
 - [balance.md](./balance.md) — constant reference

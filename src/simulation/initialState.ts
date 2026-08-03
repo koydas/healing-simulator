@@ -6,17 +6,16 @@
  */
 
 import {
-  AOE_DAMAGE,
+  DEFAULT_ENEMY_ID,
   DEFAULT_SEED,
+  ENEMIES,
   MANA,
   PARTY_TEMPLATE,
   PLAYER_LEVEL,
   SPELL_ORDER,
-  SPIKE_DAMAGE,
-  TANK_DAMAGE,
 } from '../config/gameConfig';
 import { nextRange, normalizeSeed } from './random';
-import type { GameStats, GameState, PartyMember } from './types';
+import type { EnemyId, GameStats, GameState, PartyMember } from './types';
 
 /**
  * Starting party: health comes from the vanilla formulas (see `classicData.ts`),
@@ -65,9 +64,15 @@ export function createEmptyStats(): GameStats {
 export function createInitialState(
   seed: number = DEFAULT_SEED,
   playerLevel: number = PLAYER_LEVEL,
+  enemyId: EnemyId = DEFAULT_ENEMY_ID,
 ): GameState {
+  const encounter = ENEMIES[enemyId];
   const initialSeed = normalizeSeed(seed);
-  const firstSpike = nextRange(initialSeed, SPIKE_DAMAGE.minIntervalMs, SPIKE_DAMAGE.maxIntervalMs);
+  const firstSpike = nextRange(
+    initialSeed,
+    encounter.spikeDamage.minIntervalMs,
+    encounter.spikeDamage.maxIntervalMs,
+  );
 
   return {
     status: 'active',
@@ -75,6 +80,7 @@ export function createInitialState(
     elapsedMs: 0,
     seed: firstSpike.seed,
     initialSeed,
+    encounter,
     party: createParty(),
     selectedTargetId: PARTY_TEMPLATE[0].id,
     mana: MANA.initial,
@@ -85,8 +91,8 @@ export function createInitialState(
     activeCast: null,
     timers: {
       manaTickMs: MANA.tickMs,
-      tankDamageMs: TANK_DAMAGE.firstAtMs,
-      aoeMs: AOE_DAMAGE.firstAtMs,
+      tankDamageMs: encounter.tankDamage.firstAtMs,
+      aoeMs: encounter.aoeDamage.firstAtMs,
       spikeMs: firstSpike.value,
     },
     damageMultiplier: 1,

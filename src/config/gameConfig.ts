@@ -22,7 +22,7 @@ import {
   type ClassId,
   type RaceId,
 } from './classicData';
-import type { Role, SpellId } from '../simulation/types';
+import type { EncounterProfile, EnemyId, Role, SpellId } from '../simulation/types';
 
 /** Level of every character and of the boss. Everything else follows from it. */
 export const PLAYER_LEVEL = 1;
@@ -218,52 +218,132 @@ export function isSpellUnlocked(spell: SpellDefinition, level: number = PLAYER_L
 }
 
 /* -------------------------------------------------------------------------- */
-/* Boss — level 1, elite                                                       */
+/* Enemies — level 1, elite                                                    */
 /* -------------------------------------------------------------------------- */
 
-export const BOSS = {
-  name: 'Gorvath the Cavebreaker',
-  subtitle: 'Level 1 elite — stay alive',
-  level: PLAYER_LEVEL,
-} as const;
-
 /**
- * Melee on the tank.
+ * Melee on the tank, shared cadence.
  *
  * A level 1 creature hits for 2 (median) to 10 (high end of the distribution);
- * the measured elite factor ranges from ×1.2 to ×3. We use 8 per swing, inside
- * the [6, 12] range those two bounds define.
+ * the measured elite factor ranges from ×1.2 to ×3. Every profile below picks
+ * its amount inside the [6, 12] range those two bounds define.
  *
  * The cadence is the vanilla one: one swing every 2 s
- * (`MeleeBaseAttackTime` = 2000 for every level 1 creature).
+ * (`MeleeBaseAttackTime` = 2000 for every level 1 creature) — sourced, and
+ * therefore identical across every enemy.
+ */
+const MELEE_INTERVAL_MS = CREATURE_LEVEL_1.meleeAttackTimeMs;
+
+/**
+ * Gorvath the Cavebreaker — the original level 1 elite profile (ADR-0010):
+ * steady pressure on the tank, a moderate AoE and an occasional spike.
  */
 export const TANK_DAMAGE = {
   amount: 8,
-  intervalMs: CREATURE_LEVEL_1.meleeAttackTimeMs,
-  firstAtMs: CREATURE_LEVEL_1.meleeAttackTimeMs,
+  intervalMs: MELEE_INTERVAL_MS,
+  firstAtMs: MELEE_INTERVAL_MS,
 } as const;
 
-/** Boss area ability — game design, calibrated against level 1 health pools. */
 export const AOE_DAMAGE = {
   amount: 6,
   intervalMs: 12_000,
   firstAtMs: 12_000,
 } as const;
 
-/**
- * Damage spike on a non-tank member — game design.
- * 18 damage removes roughly a third of a level 1 DPS's health.
- */
 export const SPIKE_DAMAGE = {
   amount: 18,
   minIntervalMs: 6000,
   maxIntervalMs: 10_000,
 } as const;
 
+/**
+ * Skarn the Swarmcaller — the AoE-heavy profile: lighter melee, but the whole
+ * party bleeds twice as often as under Gorvath (12 s → 8 s), so a single
+ * target rarely needs a spike-sized heal but everyone drifts down together.
+ * Calibrated — see ADR-0016 — to land in the same survival range as Gorvath.
+ */
+export const SKARN_TANK_DAMAGE = {
+  amount: 6,
+  intervalMs: MELEE_INTERVAL_MS,
+  firstAtMs: MELEE_INTERVAL_MS,
+} as const;
+
+export const SKARN_AOE_DAMAGE = {
+  amount: 8,
+  intervalMs: 9000,
+  firstAtMs: 9000,
+} as const;
+
+export const SKARN_SPIKE_DAMAGE = {
+  amount: 14,
+  minIntervalMs: 8000,
+  maxIntervalMs: 12_000,
+} as const;
+
+/**
+ * Threx the Impaler — the burst profile: harder melee, a rare AoE, and a
+ * spike heavy enough to remove over half of a level 1 DPS's health, on a
+ * shorter fuse than Gorvath's. Triage under Threx means reacting fast to one
+ * target rather than spreading heals — see ADR-0016.
+ */
+export const THREX_TANK_DAMAGE = {
+  amount: 9,
+  intervalMs: MELEE_INTERVAL_MS,
+  firstAtMs: MELEE_INTERVAL_MS,
+} as const;
+
+export const THREX_AOE_DAMAGE = {
+  amount: 4,
+  intervalMs: 16_000,
+  firstAtMs: 16_000,
+} as const;
+
+export const THREX_SPIKE_DAMAGE = {
+  amount: 26,
+  minIntervalMs: 5000,
+  maxIntervalMs: 8000,
+} as const;
+
+/** Cumulative ramp: a mechanic of the game mode, shared by every enemy. */
 export const RAMP = {
   intervalMs: 30_000,
   factor: 1.15,
 } as const;
+
+export const DEFAULT_ENEMY_ID: EnemyId = 'gorvath';
+
+/** The three selectable enemies, in the order shown on the selection screen. */
+export const ENEMIES: Record<EnemyId, EncounterProfile> = {
+  gorvath: {
+    id: 'gorvath',
+    name: 'Gorvath the Cavebreaker',
+    subtitle: 'Balanced pressure — steady melee, an occasional spike',
+    level: PLAYER_LEVEL,
+    tankDamage: TANK_DAMAGE,
+    aoeDamage: AOE_DAMAGE,
+    spikeDamage: SPIKE_DAMAGE,
+  },
+  skarn: {
+    id: 'skarn',
+    name: 'Skarn the Swarmcaller',
+    subtitle: 'AoE-heavy — the whole party bleeds together',
+    level: PLAYER_LEVEL,
+    tankDamage: SKARN_TANK_DAMAGE,
+    aoeDamage: SKARN_AOE_DAMAGE,
+    spikeDamage: SKARN_SPIKE_DAMAGE,
+  },
+  threx: {
+    id: 'threx',
+    name: 'Threx the Impaler',
+    subtitle: 'Burst — rare AoE, a spike that can drop a DPS in one hit',
+    level: PLAYER_LEVEL,
+    tankDamage: THREX_TANK_DAMAGE,
+    aoeDamage: THREX_AOE_DAMAGE,
+    spikeDamage: THREX_SPIKE_DAMAGE,
+  },
+} as const;
+
+export const ENEMY_ORDER: readonly EnemyId[] = ['gorvath', 'skarn', 'threx'] as const;
 
 /* -------------------------------------------------------------------------- */
 /* End of fight                                                                */

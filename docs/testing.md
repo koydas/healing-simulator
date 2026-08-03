@@ -17,7 +17,8 @@ time mocking is needed — `stepSimulation` takes the delta as a parameter.
 | `tests/classicStats.test.ts` | vanilla formulas, party health and mana, rank 1 spell values |
 | `tests/random.test.ts` | PRNG purity, `nextRange` / `nextInt` bounds, seed normalisation |
 | `tests/determinism.test.ts` | seed + action replayability, non-mutation, time slicing |
-| `tests/damage.test.ts` | tank damage, AoE, spike selection and rescheduling, ramp |
+| `tests/damage.test.ts` | tank damage, AoE, spike selection and rescheduling, ramp (Gorvath, the default enemy) |
+| `tests/encounter.test.ts` | enemy selection: `ENEMY_ORDER`/`ENEMIES` shape, `state.encounter` per enemy, per-enemy damage applied, `restartGame` with an explicit enemy, determinism per enemy |
 | `tests/spells.test.ts` | level gating, cost, GCD, refusals, cast resolution, Renew, cancellation, five-second rule |
 | `tests/healing.test.ts` | effective healing vs overhealing, `hpMax` clamp, dead targets, HPS / efficiency |
 | `tests/wipe.test.ts` | wipe conditions, freeze after a wipe, pause, invariants over a full fight |
@@ -67,6 +68,8 @@ The React layer has no automated tests. To verify it:
 npm run build && npm run preview
 ```
 
-Things to check: selecting a frame, the refusal message shown when tapping an
+Things to check: the enemy selection screen on load (three cards, each with a
+level), selecting a frame, the refusal message shown when tapping an
 unavailable spell, the cast bar and `Cancel` button, GCD progress across the
-five buttons, the end screen and then "New fight".
+five buttons, the end screen, "New fight" (same enemy, new seed), and "Choose
+another enemy" (back to the selection screen).

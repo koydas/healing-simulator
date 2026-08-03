@@ -22,6 +22,7 @@ time mocking is needed — `stepSimulation` takes the delta as a parameter.
 | `tests/healing.test.ts` | effective healing vs overhealing, `hpMax` clamp, dead targets, HPS / efficiency |
 | `tests/wipe.test.ts` | wipe conditions, freeze after a wipe, pause, invariants over a full fight |
 | `tests/selectors.test.ts` | ratios, cast / GCD progress, feedback, duration formatting |
+| `tests/assetBase.test.ts` | the build base stays root-relative, so the SPA fallback boots on any path (ADR-0011) |
 
 ## Techniques used
 

@@ -83,36 +83,41 @@ All three probes target `/health` on the named `http` port:
 
 ## Serving under a sub-path
 
-The build uses `base: './'`, so `index.html` references `./assets/…`. The
-browser resolves that against the page URL, which decides what the container
-actually receives:
+The build uses `base: '/'` (ADR-0011), so `index.html` references `/assets/…`
+absolutely — the same URL whatever page carried it, which is what makes the SPA
+fallback boot instead of showing a blank page. The prefix the **browser** is on
+therefore has to match the prefix the **container** serves:
 
-| Setup | Browser requests | Works? |
-| --- | --- | --- |
-| Domain root (`https://host/`) | `/assets/…` | ✅ |
-| Ingress that **strips** the prefix (`rewrite-target: /`) | `/assets/…` | ✅ |
-| Ingress that **forwards** `/sim/` intact | `/sim/assets/…` | ❌ |
+| Setup | Build | Browser requests | Works? |
+| --- | --- | --- | --- |
+| Domain root (`https://host/`) | default | `/assets/…` | ✅ |
+| Ingress **strips** `/sim/` (`rewrite-target: /`) | `--base=/sim/` | `/sim/assets/…` → `/assets/…` | ✅ |
+| Ingress **strips** `/sim/` | default | `/assets/…` — matches no Ingress rule | ❌ |
+| Ingress **forwards** `/sim/` intact | any | container has no `/sim/…` | ❌ |
 
-The third row is the trap: nothing under `location /assets/` matches
-`/sim/assets/index-abc.js`, so the SPA catch-all answers with `index.html`. The
-browser then receives HTML where it expected a JavaScript module and the
-application never boots — with no obvious error beyond a MIME-type complaint in
-the console.
+Measured against servers replicating `nginx/default.conf` and each Ingress
+shape:
 
-Two ways out, pick one:
+```
+base /      root deploy       /some/route                    -> boots (5 party frames)
+base /      stripping /sim/   /assets/index-*.js             -> 404 text/plain
+base /sim/  stripping /sim/   /sim/assets/index-*.js         -> 200 text/javascript
+base /sim/  forwarding /sim/  /sim/assets/index-*.js         -> 200 text/html   (never boots)
+```
 
-1. **Strip the prefix at the Ingress** (what `k8s/ingress.yaml` assumes).
-   With ingress-nginx that is `nginx.ingress.kubernetes.io/rewrite-target: /`
-   plus a capture group in the path. Nothing to rebuild.
-2. **Build for the prefix**: `npm run build -- --base=/sim/`. The emitted
-   `index.html` then points at `/sim/assets/…` absolutely, which survives any
-   forwarding Ingress. Verified: that command rewrites
-   `src="./assets/index-*.js"` into `src="/sim/assets/index-*.js"`.
+The failure mode is always the same and always quiet: the SPA catch-all answers
+a JavaScript request with `index.html`, and the browser refuses it with a
+MIME-type complaint in the console. Nothing else is logged.
 
-A third option — teaching Nginx to map `/<prefix>/assets/…` back onto
-`/assets/…` with a regex `location` — also works, but it makes the container
-silently accept any prefix, which hides misconfigured Ingresses instead of
-surfacing them.
+So, to serve under a sub-path: **build for the prefix and strip it at the
+Ingress** — `npm run build -- --base=/sim/`, plus
+`nginx.ingress.kubernetes.io/rewrite-target: /` with a capture group in the
+path. Both halves are required; either one alone lands on a ❌ row above.
+
+An Ingress that forwards the prefix intact is not supported by this container.
+Teaching Nginx to map `/<prefix>/assets/…` back onto `/assets/…` with a regex
+`location` would work, but it makes the container silently accept any prefix,
+which hides a misconfigured Ingress instead of surfacing it.
 
 ## No external dependency
 

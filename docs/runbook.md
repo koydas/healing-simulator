@@ -104,11 +104,31 @@ curl -i http://localhost:8080/health
 If that returns `200 OK` directly, the problem is the probe port (it must be the
 named `http` port, i.e. 8080), not the application.
 
-### 404 when reloading a deep route
+### Blank page when reloading a deep route
 
-The SPA fallback is handled by `try_files ... /index.html`. If an Ingress
-rewrites paths (`rewrite-target`), make sure the rewrite does not break asset
-resolution under `/assets/`.
+The SPA fallback is handled by `try_files ... /index.html`, so the *page*
+always arrives with `200`. A blank screen means the page arrived but its assets
+did not. Check the console for:
+
+```
+Failed to load module script: Expected a JavaScript-or-Wasm module script
+but the server responded with a MIME type of "text/html".
+```
+
+That line means a request for `…/assets/index-*.js` fell through to the SPA
+catch-all and got `index.html` back. The asset prefix the browser asks for does
+not match what the container serves — see the table in
+[deployment.md](./deployment.md#serving-under-a-sub-path). Confirm it with:
+
+```bash
+curl -s -o /dev/null -w '%{http_code} %{content_type}\n' https://host/assets/index-<hash>.js
+# 200 text/javascript  -> correct
+# 200 text/html        -> caught by the fallback, wrong prefix or wrong --base
+# 404                  -> the URL never reached the container (Ingress rule)
+```
+
+Serving under a sub-path requires **both** `--base=/<prefix>/` at build time
+and an Ingress that strips the prefix (ADR-0011).
 
 ### Assets do not update after a deployment
 

@@ -12,8 +12,10 @@ spec:
       http:
         paths:
           # Requests must reach the container at `/`. Serving under a sub-path
-          # requires either an Ingress that strips the prefix, or a build made
-          # with `vite build --base=/<prefix>/` — see docs/deployment.md.
+          # requires BOTH a build made with `vite build --base=/<prefix>/` and
+          # an Ingress that strips the prefix; either one alone leaves the
+          # browser asking for assets the container does not serve.
+          # See docs/deployment.md and docs/adr/0011-root-relative-asset-base.md.
           - path: /
             pathType: Prefix
             backend:

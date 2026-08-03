@@ -54,6 +54,10 @@ hit `/health`.
 - ✅ The container satisfies the "restricted" Pod Security Standards.
 - ✅ A final image of a few dozen megabytes, with no Node or npm.
 - ✅ Deep routes and reloads work (SPA fallback).
+  > Update (ADR-0011): this was only true of the Nginx response, not of the
+  > page. The build used `base: './'`, so a fallback page served for
+  > `/some/route` resolved its assets to `/some/assets/…` and never booted.
+  > The base is now `/`; the fallback delivers a working application.
 - ✅ Tests run inside the build chain: a regression blocks the image.
 - ⚠️ The read-only filesystem requires mounting three volumes; forgetting them
   makes Nginx fail to start.

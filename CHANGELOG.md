@@ -7,6 +7,18 @@ All notable changes to this project are recorded here, following
 
 ### Fixed
 
+- **Deep paths no longer serve a blank page.** The build used `base: './'`, so
+  `index.html` referenced `./assets/…`; a page delivered by the SPA fallback for
+  a path such as `/some/route` resolved that to `/some/assets/…`, which matches
+  no `location /assets/`, so the catch-all returned `index.html` and the browser
+  refused the HTML as a module script. Measured in Chromium at 390 × 844: `/`
+  rendered five party frames, `/some/route` rendered none, with a single
+  MIME-type line in the console. The base is now `/` (ADR-0011), and both URLs
+  render identically. Serving under a sub-path now requires **both**
+  `--base=/<prefix>/` and an Ingress that strips the prefix — `docs/deployment.md`
+  has the measured matrix, which also corrects an earlier claim that
+  `--base=/sim/` survives an Ingress forwarding the prefix intact (it does not).
+
 - **A dead healer can no longer heal.** When Elowen died from an AoE or a spike
   while the tank was still holding, the fight stayed active and the controls
   kept accepting casts: mana was spent, healing landed, and an in-flight cast

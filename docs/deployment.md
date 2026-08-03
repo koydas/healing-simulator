@@ -82,7 +82,14 @@ DNS pointed at ingress-nginx's `192.168.1.243`).
 
 1. `k8s/deployment.yaml` → `image:` (your own registry and tag);
 2. `k8s/ingress.yaml` → the cluster's `host:` and `ingressClassName:`;
-3. the namespace, if you are not using `default`
+3. `k8s/service.yaml` → either drop the `metallb.io/loadBalancerIPs:
+   "192.168.1.247"` annotation and `type: LoadBalancer` back to `ClusterIP`
+   (Ingress-only access), or replace `192.168.1.247` with an address actually
+   free in *your* MetalLB pool (ADR-0013). `192.168.1.247` is specific to this
+   homelab's pool; on a cluster where that address is outside the configured
+   range or already allocated, the Service never gets an external IP and sits
+   `<pending>`;
+4. the namespace, if you are not using `default`
    (`kubectl apply -n <ns> -f k8s/`).
 
 ### Probes

@@ -89,7 +89,8 @@ that is easy to get subtly wrong, so they are spelled out in
   build.** Previously `./assets/…` resolved to `/sim/assets/…` and survived the
   strip; now the browser requests `/assets/…`, which matches no Ingress rule
   and hits the default backend. Measured: `404 text/plain`. Sub-path
-  deployments must build with `--base=/<prefix>/`, which is verified to work
-  against a stripping Ingress (`200 text/javascript`).
+  deployments must build the **image** for the prefix
+  (`--build-arg BASE_PATH=/<prefix>/`) and strip it with `rewrite-target: /$2`,
+  which together are verified to work (`200 text/javascript`).
 - ⚠️ The built `dist/` is no longer portable to an arbitrary sub-directory of a
   static host without rebuilding.

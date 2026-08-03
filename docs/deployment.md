@@ -88,12 +88,18 @@ absolutely — the same URL whatever page carried it, which is what makes the SP
 fallback boot instead of showing a blank page. The prefix the **browser** is on
 therefore has to match the prefix the **container** serves:
 
-| Setup | Build | Browser requests | Works? |
+| Setup | Image built with | Container receives | Works? |
 | --- | --- | --- | --- |
 | Domain root (`https://host/`) | default | `/assets/…` | ✅ |
-| Ingress **strips** `/sim/` (`rewrite-target: /`) | `--base=/sim/` | `/sim/assets/…` → `/assets/…` | ✅ |
-| Ingress **strips** `/sim/` | default | `/assets/…` — matches no Ingress rule | ❌ |
-| Ingress **forwards** `/sim/` intact | any | container has no `/sim/…` | ❌ |
+| Ingress **strips** `/sim/`, `rewrite-target: /$2` | `--build-arg BASE_PATH=/sim/` | `/assets/…` | ✅ |
+| Ingress **strips** `/sim/`, `rewrite-target: /$2` | default | nothing — the browser asks for `/assets/…`, which matches no Ingress rule | ❌ |
+| Ingress **strips** `/sim/`, `rewrite-target: /` | any | `/` for every request, assets included | ❌ |
+| Ingress **forwards** `/sim/` intact | any | `/sim/…`, which the container does not serve | ❌ |
+
+Row 4 is the easy mistake: `rewrite-target: /` without the `$2` reference is
+what most rewrite examples show, and it collapses `/sim/assets/index-*.js` onto
+`/`. Row 3 is the other half — the Ingress is right but the image was not built
+for the prefix.
 
 Measured against servers replicating `nginx/default.conf` and each Ingress
 shape:

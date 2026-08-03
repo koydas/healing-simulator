@@ -7,6 +7,16 @@ All notable changes to this project are recorded here, following
 
 ### Fixed
 
+- **The wipe screen now takes keyboard focus.** It carried `role="dialog"` and
+  `aria-modal="true"`, but neither moves focus nor blocks Tab: measured at a
+  wipe, focus stayed on `<body>` and six consecutive Tab presses landed on party
+  frames and spell buttons behind the overlay, so a keyboard or screen-reader
+  user got no announcement and could keep operating controls hidden by the
+  modal. The dialog now focuses itself on mount (announcing its title and the
+  statistics) and marks its siblings `inert` while it is open, restoring them on
+  restart — verified that all four regions recover and the game is fully
+  playable again after "New fight".
+
 - **The sub-path deployment recipe now works end to end.** Both halves
   documented alongside ADR-0011 were wrong in practice. The image ignored a
   host-side `npm run build -- --base=/sim/`, because `dist/` is in

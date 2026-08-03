@@ -1,7 +1,8 @@
 /** End-of-fight screen: full statistics and restart. */
 
-import { memo } from 'react';
+import { memo, useEffect, useRef } from 'react';
 import { useHeaderSnapshot, useSummarySnapshot } from '../hooks/useGameStore';
+import type { StatsSummary } from '../simulation/selectors';
 
 interface GameOverProps {
   onRestart: () => void;
@@ -10,16 +11,71 @@ interface GameOverProps {
 const integer = new Intl.NumberFormat('en-US', { maximumFractionDigits: 0 });
 const decimal = new Intl.NumberFormat('en-US', { maximumFractionDigits: 2 });
 
+/**
+ * `GameOver` only subscribes; the dialog is a separate component so that its
+ * focus effect runs on mount — which is exactly when the wipe happens — instead
+ * of being skipped by an early `return null`.
+ */
 export const GameOver = memo(function GameOver({ onRestart }: GameOverProps) {
   const summary = useSummarySnapshot();
-  const header = useHeaderSnapshot();
 
   if (!summary) return null;
+  return <GameOverDialog summary={summary} onRestart={onRestart} />;
+});
+
+const GameOverDialog = memo(function GameOverDialog({
+  summary,
+  onRestart,
+}: GameOverProps & { summary: StatsSummary }) {
+  const header = useHeaderSnapshot();
+  const dialogRef = useRef<HTMLDivElement>(null);
+
+  /**
+   * `aria-modal` tells assistive technology the rest of the page is out of
+   * play, but it does not move focus and it does not stop Tab: measured before
+   * this effect existed, a wipe left focus on `<body>` and six consecutive Tabs
+   * all landed on party frames and spell buttons *behind* the overlay.
+   *
+   * So do both things the attribute only claims: take focus into the dialog,
+   * and mark the siblings `inert` so the obscured controls leave the tab order
+   * entirely. Marking siblings rather than wrapping them keeps the flex layout
+   * of `.app` untouched — that layout has been fragile enough already.
+   */
+  useEffect(() => {
+    const dialog = dialogRef.current;
+    if (!dialog) return;
+
+    const siblings = Array.from(dialog.parentElement?.children ?? []).filter(
+      (child): child is HTMLElement => child instanceof HTMLElement && child !== dialog,
+    );
+    const alreadyInert = siblings.filter((child) => child.hasAttribute('inert'));
+    siblings.forEach((child) => child.setAttribute('inert', ''));
+
+    // Focus the dialog itself, not the button: a screen reader then announces
+    // the label and the statistics the player is here to read, rather than
+    // jumping straight to "New fight".
+    dialog.focus();
+
+    return () => {
+      siblings
+        .filter((child) => !alreadyInert.includes(child))
+        .forEach((child) => child.removeAttribute('inert'));
+    };
+  }, []);
 
   return (
-    <div className="gameover" role="dialog" aria-modal="true" aria-label="Fight over">
+    <div
+      className="gameover"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="gameover-title"
+      tabIndex={-1}
+      ref={dialogRef}
+    >
       <div className="gameover__panel">
-        <h2 className="gameover__title">Wipe</h2>
+        <h2 className="gameover__title" id="gameover-title">
+          Wipe
+        </h2>
         <p className="gameover__duration">
           Survived: <strong>{summary.durationLabel}</strong>
         </p>

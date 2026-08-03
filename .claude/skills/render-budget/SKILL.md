@@ -56,6 +56,28 @@ Clean up everything you subscribe: `useFrame` returns the store's unsubscribe
 function, `useGameLoop` cancels its `requestAnimationFrame` and removes its
 `visibilitychange` listener.
 
+### A modal has to take focus, not just claim to be modal
+
+`role="dialog"` and `aria-modal="true"` describe the intent; they move no
+focus and stop no Tab. Measured on the wipe screen before it was fixed: focus
+stayed on `<body>` and six consecutive Tabs landed on party frames and spell
+buttons *behind* the overlay, so a keyboard user could keep operating controls
+they could not see.
+
+A dialog in this project therefore does three things itself:
+
+- `tabIndex={-1}` on the dialog container and `.focus()` on mount — focus the
+  container rather than the button, so the label and the content get announced
+  instead of jumping to the last control;
+- `inert` on the dialog's siblings, so the obscured controls leave the tab
+  order, removed again on unmount (a leaked `inert` freezes the whole game —
+  verify the restart path, not just the open path);
+- `aria-labelledby` pointing at the visible title.
+
+Set `inert` on siblings rather than wrapping the app in a new element: the
+`.app` flex layout has caused three separate regressions already, and a wrapper
+is a layout change disguised as an accessibility fix.
+
 ### Refusals stay clickable
 
 Spell buttons use `aria-disabled`, not the `disabled` attribute, because a tap

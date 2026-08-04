@@ -24,6 +24,14 @@ no DOM, no jsdom, no React testing library — the engine is pure, so tests
 exercise it directly. Import from `vitest` explicitly (`describe`, `it`,
 `expect`); globals are not enabled.
 
+The store (`tests/gameStore.test.ts`) and the profile (`tests/profile.test.ts`)
+run in that same environment, and they have to keep doing so. That is why
+`createGameStore` takes its callbacks as options and the storage functions take
+their `Storage` as an argument: **inject the dependency, do not mock a global**.
+A persistence test builds a plain object with `getItem` / `setItem` /
+`removeItem` — plus one that throws on every call, standing in for a browser
+that refuses storage.
+
 ### Build the situation, do not play towards it
 
 `tests/helpers.ts` exists so a test can jump straight to the interesting state
@@ -35,8 +43,12 @@ instead of simulating minutes of fight:
 | `isolateTimers(state)` | push tank / AoE / spike / mana ticks far away to isolate one behaviour |
 | `patchMember(state, id, patch)` | put a member at a chosen health, or kill them |
 | `patchState(state, patch)` | force any field — `elapsedMs`, a timer, `status`, `mana` |
-| `unlockAllSpells(state)` | raise `playerLevel` and mana to reach the spells gated above level 1 |
+| `unlockAllSpells(state)` | raise `playerLevel` and mana to reach the spells gated above level 1, leaving health and regeneration where the fight built them |
 | `memberOf`, `totalHp` | read helpers |
+
+To fight *as* a higher-level party — the Classic tables applied to everyone —
+build the state with `createInitialState(seed, 60)` instead; `unlockAllSpells`
+only moves the gate.
 
 A typical isolation: `isolateTimers`, then set exactly the one timer you care
 about to `TICK_MS`, then step once.
@@ -76,6 +88,15 @@ what makes the review reply convincing.
 
 Then keep the test: bugs that reached review are exactly the ones worth pinning.
 
+### Pin a consequence you decided to live with
+
+When a change knowingly leaves the game in a state you are not fixing yet, the
+assertion is the honest place to say so — `tests/gameStore.test.ts` asserts
+that a level 60 party wins with no healing, because the encounters stayed level
+1 designs. A test like that is documentation with a build failure attached: it
+breaks the day someone scales the bosses, which is exactly when it should.
+Never delete one to tidy up a suite.
+
 ## Constraints
 
 - No test may need a DOM, a browser, or a timer mock.
@@ -92,3 +113,7 @@ Then keep the test: bugs that reached review are exactly the ones worth pinning.
 - `tests/helpers.ts` — the toolkit described above
 - `tests/spells.test.ts` — refusals, cancellation, five-second rule
 - `tests/classicStats.test.ts` — formulas and distribution checks
+- `tests/profile.test.ts` — injected storage, corrupt saves, a storage that
+  throws
+- `tests/gameStore.test.ts` — the store's callbacks, and the balance
+  consequence of levelling, asserted rather than left implicit

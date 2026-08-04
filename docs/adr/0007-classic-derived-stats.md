@@ -3,6 +3,13 @@
 - **Date:** 2026-08-02
 - **Status:** Accepted
 
+> Update (ADR-0019): the tables now cover every level up to 60 and are indexed
+> by it — `CLASS_BASE_LEVEL_1` became `CLASS_BASE_BY_LEVEL` (read through
+> `getClassBase(classId, level)`) and `RACE_CLASS_ATTRIBUTES_LEVEL_1` became
+> `RACE_CLASS_ATTRIBUTES` (`getAttributes(race, classId, level)`). The decision
+> itself is unchanged: stats are still computed by the vanilla formulas, never
+> copied, and a missing row still throws instead of being interpolated.
+
 ## Context
 
 The first version used invented values: 4000 health per character, 8000 for the

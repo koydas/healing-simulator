@@ -50,7 +50,16 @@ All notable changes to this project are recorded here, following
   screen can return to the selection screen ("Choose another enemy") as well
   as start a same-enemy rematch. See ADR-0016.
 
-### Fixed
+### Changed
+
+- **Contributor guides follow the new shape.** A `player-progression` skill
+  covers the saved profile, the experience rules and the storage boundary;
+  `classic-data` now describes the level-indexed tables and the sourced /
+  designed split of experience; `pure-engine`, `render-budget` and
+  `test-protocol` gained the level-carried state field, the props-driven home
+  screen with its measured layout budget, and the injected-storage testing
+  rule. ADR-0007 and ADR-0008 carry update notes pointing at ADR-0019.
+
 
 - **A shared `?seed=` URL now replays against the right enemy, stays accurate
   through a rematch, and stops recycling randomness across "Choose another

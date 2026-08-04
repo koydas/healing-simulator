@@ -3,6 +3,12 @@
 - **Date:** 2026-08-02
 - **Status:** Accepted
 
+> Update (ADR-0019): the level is no longer a constant. `PLAYER_LEVEL` is now
+> `STARTING_LEVEL` (still 1), and `state.playerLevel` comes from the saved
+> profile, so the "when the time comes" of this ADR has come: Renew, Heal,
+> Flash Heal and Prayer of Healing unlock by playing. The gating rule and its
+> refusal message are untouched. Only rank 1 of each family exists so far.
+
 ## Context
 
 The four original spells (Renew, Flash Heal, Greater Heal, Group Heal) were

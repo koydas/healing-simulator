@@ -120,7 +120,9 @@ const GameOverDialog = memo(function GameOverDialog({
           <p className="gameover__xp">
             {reward.xpGained > 0
               ? `Experience gained: +${integer.format(reward.xpGained)}`
-              : 'No experience — the boss has to die for that'}
+              : victory
+                ? 'No experience — already at the level cap'
+                : 'No experience — the boss has to die for that'}
             {reward.levelAfter > reward.levelBefore ? (
               <strong className="gameover__levelup">
                 {' '}

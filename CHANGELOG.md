@@ -120,6 +120,13 @@ All notable changes to this project are recorded here, following
   screen says so instead of silently granting nothing. Caught by Codex review
   on #9, one round after the fix above. See ADR-0005.
 
+- **A level 60 victory no longer reads like a wipe.** `bossXpReward` correctly
+  grants 0 experience at the level cap, but the end screen picked its wording
+  from `xpGained === 0` alone, so a capped character's win showed "No
+  experience — the boss has to die for that" directly under a "Victory"
+  title. The message now also checks the outcome and says "already at the
+  level cap" for a win. Caught by Codex review on #9.
+
 - **The wipe screen now takes keyboard focus.** It carried `role="dialog"` and
   `aria-modal="true"`, but neither moves focus nor blocks Tab: measured at a
   wipe, focus stayed on `<body>` and six consecutive Tab presses landed on party

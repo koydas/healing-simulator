@@ -86,8 +86,10 @@ Things to check: the home screen on load (character sheet with the experience
 bar, record table, three enemy cards), the options dialog (focus lands in it,
 Tab cannot reach the screen behind, `Escape` closes it, "Delete saved game"
 asks twice then resets the sheet to level 1), the experience line on the end
-screen after a victory, and the sheet showing the new level once you come back.
-Then: `?seed=1&enemy=skarn&level=30` skipping straight to that fight, at the
+screen after a victory, a level 60 profile's victory saying "already at the
+level cap" rather than the wipe wording, and the sheet showing the new level
+once you come back. Then: `?seed=1&enemy=skarn&level=30` skipping straight to
+that fight, at the
 level the link pins rather than whatever the current profile is; opening the
 same kind of link at a level *different* from the current profile's and
 confirming the end screen shows the "not recorded" note instead of an

@@ -40,7 +40,15 @@ import {
   type StatsSummary,
 } from '../simulation/selectors';
 import { stepSimulation } from '../simulation/simulation';
-import type { EnemyId, FeedbackEvent, GameState, GameStatus, Role, SpellId } from '../simulation/types';
+import type {
+  EnemyId,
+  FeedbackEvent,
+  GameOutcome,
+  GameState,
+  GameStatus,
+  Role,
+  SpellId,
+} from '../simulation/types';
 
 export interface MemberSnapshot {
   id: string;
@@ -107,7 +115,7 @@ export interface GameStore {
   cast(spellId: SpellId): void;
   cancel(): void;
   toggle(): void;
-  restart(seed: number, enemyId: EnemyId): void;
+  restart(seed: number, enemyId: EnemyId, playerLevel?: number): void;
   getMemberIds(): string[];
   getMemberSnapshot(memberId: string): MemberSnapshot;
   getHeaderSnapshot(): HeaderSnapshot;
@@ -148,8 +156,25 @@ function castLabel(castTimeMs: number): string {
   return castTimeMs <= 0 ? 'Instant' : `${(castTimeMs / 1000).toFixed(1)} s`;
 }
 
-export function createGameStore(initialSeed: number, enemyId: EnemyId): GameStore {
-  let state: GameState = createInitialState(initialSeed, undefined, enemyId);
+export interface GameStoreOptions {
+  /** Level the fight is fought at — the saved profile's, 1 without one. */
+  playerLevel?: number;
+  /**
+   * Called once, on the step that ends the fight. The store is the only place
+   * that sees every state transition, so it is where "this fight is over"
+   * can be detected exactly once — a `useEffect` watching the summary would
+   * fire again on every re-render of the end screen.
+   */
+  onFightEnd?: (outcome: GameOutcome, enemyId: EnemyId) => void;
+}
+
+export function createGameStore(
+  initialSeed: number,
+  enemyId: EnemyId,
+  options: GameStoreOptions = {},
+): GameStore {
+  let state: GameState = createInitialState(initialSeed, options.playerLevel, enemyId);
+  let currentEnemyId: EnemyId = enemyId;
 
   const listeners = new Set<() => void>();
   const frameListeners = new Set<(state: GameState) => void>();
@@ -283,9 +308,13 @@ export function createGameStore(initialSeed: number, enemyId: EnemyId): GameStor
 
   function setState(next: GameState): void {
     if (next === state) return;
+    const wasOver = state.status === 'over';
     state = next;
     if (refreshSnapshots()) {
       for (const listener of listeners) listener();
+    }
+    if (!wasOver && state.status === 'over') {
+      options.onFightEnd?.(state.outcome, currentEnemyId);
     }
   }
 
@@ -334,8 +363,9 @@ export function createGameStore(initialSeed: number, enemyId: EnemyId): GameStor
       setState(togglePause(state));
     },
 
-    restart(seed, enemyId) {
-      const next = restartGame(seed, enemyId);
+    restart(seed, enemyId, playerLevel) {
+      const next = restartGame(seed, enemyId, playerLevel ?? state.playerLevel);
+      currentEnemyId = enemyId;
       memberIds = next.party.map((member) => member.id);
       memberSnapshots = new Map();
       setState(next);

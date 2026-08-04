@@ -3,6 +3,13 @@
 - **Date:** 2026-08-02
 - **Status:** Accepted
 
+> Update (ADR-0018): the "no `localStorage`" half of this decision no longer
+> holds. The player profile — level, experience and the record against each
+> boss — is stored under `healing-simulator.profile.v1` and can be deleted from
+> the options menu. Everything else below still applies: a fight in progress is
+> not saved, its statistics die with the tab, and the seed remains the only way
+> to replay one.
+
 ## Context
 
 The brief forbids any backend, any database and any local persistence. Yet two

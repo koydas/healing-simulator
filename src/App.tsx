@@ -1,23 +1,32 @@
 /**
  * Application root.
  *
- * Before any fight there is no `GameState` at all: `App` shows the enemy
- * selection screen and only creates a store — inside `Fight` — once a choice
- * is made. `Fight` never re-renders during a fight: the store is held by a
- * `useRef` and every child subscribes to its own snapshot.
+ * Before any fight there is no `GameState` at all: `App` shows the home screen
+ * (character sheet, records, enemy selection) and only creates a store —
+ * inside `Fight` — once a choice is made. `Fight` never re-renders during a
+ * fight: the store is held by a `useRef` and every child subscribes to its own
+ * snapshot. The player profile lives here, above the store, because it
+ * outlives every fight and is written to `localStorage` (ADR-0018).
  */
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Controls } from './components/Controls';
-import { EnemySelect } from './components/EnemySelect';
 import { GameOver } from './components/GameOver';
 import { Header } from './components/Header';
+import { HomeScreen } from './components/HomeScreen';
 import { MessageFeed } from './components/CombatFeedback';
 import { PartyList } from './components/PartyList';
 import { DEFAULT_SEED, ENEMY_ORDER } from './config/gameConfig';
 import { GameStoreContext } from './hooks/useGameStore';
 import { useGameLoop } from './hooks/useGameLoop';
-import type { EnemyId } from './simulation/types';
+import {
+  applyFightOutcome,
+  createEmptyProfile,
+  type FightReward,
+  type PlayerProfile,
+} from './profile/playerProfile';
+import { clearProfile, loadProfile, saveProfile } from './profile/profileStorage';
+import type { EnemyId, GameOutcome } from './simulation/types';
 import { createGameStore, type GameStore } from './store/gameStore';
 
 /**
@@ -78,14 +87,27 @@ function clearFightUrl(): void {
 
 interface FightProps {
   enemyId: EnemyId;
-  /** Back to the enemy selection screen — tears the store down entirely. */
+  /** Level the fight is fought at, from the saved profile. */
+  playerLevel: number;
+  /** Experience and level gained by the fight that just ended, if any. */
+  reward: FightReward | null;
+  /** Back to the home screen — tears the store down entirely. */
   onChangeEnemy: () => void;
+  onFightEnd: (outcome: GameOutcome, enemyId: EnemyId) => void;
+  onNewFight: () => void;
 }
 
-function Fight({ enemyId, onChangeEnemy }: FightProps) {
+function Fight({
+  enemyId,
+  playerLevel,
+  reward,
+  onChangeEnemy,
+  onFightEnd,
+  onNewFight,
+}: FightProps) {
   const storeRef = useRef<GameStore | null>(null);
   if (storeRef.current === null) {
-    storeRef.current = createGameStore(readInitialSeed(), enemyId);
+    storeRef.current = createGameStore(readInitialSeed(), enemyId, { playerLevel, onFightEnd });
   }
   const store = storeRef.current;
 
@@ -105,11 +127,14 @@ function Fight({ enemyId, onChangeEnemy }: FightProps) {
 
   const handleRestart = useCallback(() => {
     const seed = Date.now() >>> 0;
-    store.restart(seed, enemyId);
+    onNewFight();
+    // A level gained on the previous fight applies to the rematch: the profile
+    // is already updated by the time this runs.
+    store.restart(seed, enemyId, playerLevel);
     // A rematch rolls a fresh seed: without this the address bar would keep
     // pointing at the fight that just ended instead of the one on screen.
     syncFightUrl(seed, enemyId);
-  }, [store, enemyId]);
+  }, [store, enemyId, playerLevel, onNewFight]);
 
   return (
     <GameStoreContext.Provider value={store}>
@@ -123,23 +148,68 @@ function Fight({ enemyId, onChangeEnemy }: FightProps) {
             rejected cast look like a dead button. */}
         <MessageFeed />
         <Controls />
-        <GameOver onRestart={handleRestart} onChangeEnemy={onChangeEnemy} />
+        <GameOver reward={reward} onRestart={handleRestart} onChangeEnemy={onChangeEnemy} />
       </div>
     </GameStoreContext.Provider>
   );
 }
 
 export default function App() {
+  const [profile, setProfile] = useState<PlayerProfile>(loadProfile);
   const [enemyId, setEnemyId] = useState<EnemyId | null>(readInitialEnemyId);
+  const [reward, setReward] = useState<FightReward | null>(null);
+
+  // The store calls `onFightEnd` from outside React, so the callback reads the
+  // current profile from a ref rather than closing over a stale render.
+  const profileRef = useRef(profile);
+  profileRef.current = profile;
+
+  const persist = useCallback((next: PlayerProfile) => {
+    profileRef.current = next;
+    setProfile(next);
+    saveProfile(next);
+  }, []);
+
+  const handleFightEnd = useCallback(
+    (outcome: GameOutcome, foughtEnemyId: EnemyId) => {
+      const next = applyFightOutcome(profileRef.current, foughtEnemyId, outcome);
+      persist(next.profile);
+      setReward(next);
+    },
+    [persist],
+  );
+
+  const handleNewFight = useCallback(() => setReward(null), []);
+
+  const handleChangeEnemy = useCallback(() => {
+    clearFightUrl();
+    setReward(null);
+    setEnemyId(null);
+  }, []);
+
+  const handleResetProfile = useCallback(() => {
+    clearProfile();
+    const fresh = createEmptyProfile();
+    profileRef.current = fresh;
+    setProfile(fresh);
+    setReward(null);
+  }, []);
 
   if (enemyId === null) {
-    return <EnemySelect onSelect={setEnemyId} />;
+    return (
+      <HomeScreen profile={profile} onSelect={setEnemyId} onResetProfile={handleResetProfile} />
+    );
   }
 
-  const handleChangeEnemy = () => {
-    clearFightUrl();
-    setEnemyId(null);
-  };
-
-  return <Fight key={enemyId} enemyId={enemyId} onChangeEnemy={handleChangeEnemy} />;
+  return (
+    <Fight
+      key={enemyId}
+      enemyId={enemyId}
+      playerLevel={profile.level}
+      reward={reward}
+      onChangeEnemy={handleChangeEnemy}
+      onFightEnd={handleFightEnd}
+      onNewFight={handleNewFight}
+    />
+  );
 }

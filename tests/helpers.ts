@@ -48,8 +48,10 @@ export function patchState(state: GameState, patch: Partial<GameState>): GameSta
 
 /**
  * Unlocks the higher-level spells and grants enough mana to cast them.
- * Since the stat tables only cover level 1, only spell gating changes: health
- * and regeneration stay at their level 1 values.
+ * Only spell gating changes: health and regeneration keep the values the
+ * fight was built with, so a test written around level 1 pools stays valid.
+ * To fight *as* a level 60 party instead, build the state with
+ * `createInitialState(seed, 60)`.
  */
 export function unlockAllSpells(state: GameState, mana = 1000): GameState {
   return patchState(state, { playerLevel: 60, mana, manaMax: Math.max(mana, MANA.max) });

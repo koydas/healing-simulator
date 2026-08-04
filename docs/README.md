@@ -4,7 +4,7 @@
 | --- | --- |
 | [architecture.md](./architecture.md) | layering, data flow, rendering strategy |
 | [simulation.md](./simulation.md) | engine contract: fixed timestep, event order, invariants |
-| [classic-stats.md](./classic-stats.md) | WoW Classic level 1 stats: sources, formulas, and what is sourced / derived / designed |
+| [classic-stats.md](./classic-stats.md) | WoW Classic stats from level 1 to 60: sources, formulas, experience, and what is sourced / derived / designed |
 | [balance.md](./balance.md) | every balance value and where it lives in the code |
 | [testing.md](./testing.md) | how the Vitest suite is organised and what it must cover |
 | [deployment.md](./deployment.md) | Docker image, Nginx, Kubernetes manifests, probes |

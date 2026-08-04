@@ -9,21 +9,21 @@ import {
   DEFAULT_ENEMY_ID,
   DEFAULT_SEED,
   ENEMIES,
-  MANA,
   PARTY_DAMAGE,
-  PARTY_TEMPLATE,
-  PLAYER_LEVEL,
   SPELL_ORDER,
+  STARTING_LEVEL,
+  manaProfileAtLevel,
+  partyTemplateAtLevel,
 } from '../config/gameConfig';
 import { nextRange, normalizeSeed } from './random';
 import type { EnemyId, GameStats, GameState, PartyMember } from './types';
 
 /**
- * Starting party: health comes from the vanilla formulas (see `classicData.ts`),
- * never written by hand.
+ * Starting party at the given level: health comes from the vanilla formulas
+ * (see `classicData.ts`), never written by hand.
  */
-function createParty(): PartyMember[] {
-  return PARTY_TEMPLATE.map((template) => ({
+function createParty(level: number): PartyMember[] {
+  return partyTemplateAtLevel(level).map((template) => ({
     id: template.id,
     name: template.name,
     role: template.role,
@@ -64,7 +64,7 @@ export function createEmptyStats(): GameStats {
  */
 export function createInitialState(
   seed: number = DEFAULT_SEED,
-  playerLevel: number = PLAYER_LEVEL,
+  playerLevel: number = STARTING_LEVEL,
   enemyId: EnemyId = DEFAULT_ENEMY_ID,
 ): GameState {
   const encounter = ENEMIES[enemyId];
@@ -74,6 +74,8 @@ export function createInitialState(
     encounter.spikeDamage.minIntervalMs,
     encounter.spikeDamage.maxIntervalMs,
   );
+  const party = partyTemplateAtLevel(playerLevel);
+  const mana = manaProfileAtLevel(playerLevel);
 
   return {
     status: 'active',
@@ -84,16 +86,17 @@ export function createInitialState(
     initialSeed,
     encounter,
     bossHp: encounter.hpMax,
-    party: createParty(),
-    selectedTargetId: PARTY_TEMPLATE[0].id,
-    mana: MANA.initial,
-    manaMax: MANA.max,
+    party: createParty(playerLevel),
+    selectedTargetId: party[0].id,
+    mana: mana.initial,
+    manaMax: mana.max,
+    manaRegenPerTick: mana.perTick,
     gcdRemainingMs: 0,
     // No mana spent yet: the five-second rule does not apply.
-    msSinceLastCastStart: MANA.fiveSecondRuleMs,
+    msSinceLastCastStart: mana.fiveSecondRuleMs,
     activeCast: null,
     timers: {
-      manaTickMs: MANA.tickMs,
+      manaTickMs: mana.tickMs,
       tankDamageMs: encounter.tankDamage.firstAtMs,
       aoeMs: encounter.aoeDamage.firstAtMs,
       spikeMs: firstSpike.value,

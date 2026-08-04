@@ -7,6 +7,34 @@ All notable changes to this project are recorded here, following
 
 ### Added
 
+- **A character sheet on the home screen, with levels and an experience bar up
+  to 60.** The healer's health, mana, regeneration, attributes and known spells
+  are read from the WoW Classic tables at the current level — the full
+  `player_classlevelstats`, `player_levelstats` and `player_xp_for_level`
+  tables are now sourced, not just their level 1 row. The whole party levels
+  along: 90 → 2639 HP on the tank, 51 → 1707 HP and 160 → 2956 mana on the
+  priest, and the real spellbook unlocks on the way (Renew at 8, Heal at 16,
+  Flash Heal at 20, Prayer of Healing at 30). See ADR-0019.
+
+- **Killing a boss grants experience.** A victory is worth 34% of the current
+  level's requirement — three victories per level, 136 experience at level 1,
+  71,332 at level 59 — while a wipe grants none. The thresholds are Classic's
+  (4,084,700 experience from 1 to 60); the share is our own pacing choice,
+  because vanilla's kill formula would take about 8,000 boss kills. The end
+  screen reports what the fight paid and any level gained. See ADR-0019.
+  ⚠️ The encounters are still level 1 designs and the spellbook is still rank 1
+  only, so fights get easier as you level.
+
+- **A win/loss counter per boss**, shown on the home screen with a total row,
+  counted the moment a fight ends.
+
+- **Progress is saved in the browser, and can be deleted.** Level, experience
+  and records live in `localStorage` under `healing-simulator.profile.v1`;
+  `Options → Delete saved game` erases them behind a confirmation and resets
+  the character to level 1. A corrupt or hand-edited save is clamped rather
+  than trusted, and a browser that refuses storage simply plays unsaved. This
+  reverses the "no local persistence" half of ADR-0005 — see ADR-0018.
+
 - **The boss now has a health bar, and the fight can be won.** The tank and
   the three DPS chip away at the boss automatically over the fight; a dead
   contributor's share is not picked up by the survivors. The health bar sits

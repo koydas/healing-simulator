@@ -21,6 +21,8 @@ Architecture Decision Records for the Healing Simulator.
 - [ADR-0015: Spell buttons drop to 64 px and pack into one row on mobile](./0015-spell-buttons-64px-single-row-mobile.md)
 - [ADR-0016: A selection screen and three enemy encounters, carried in `GameState`](./0016-selectable-enemy-encounters.md)
 - [ADR-0017: The boss has a health bar, and the fight can now be won](./0017-boss-health-and-victory.md)
+- [ADR-0018: Persistent player profile in localStorage](./0018-persistent-player-profile-localstorage.md)
+- [ADR-0019: Levelling to 60 on Classic tables, with a designed boss reward](./0019-levelling-to-60-and-boss-experience.md)
 
 ## Format
 

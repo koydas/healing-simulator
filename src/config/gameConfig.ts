@@ -2,10 +2,12 @@
  * Game balance constants.
  *
  * Two kinds of values live here, and the distinction is deliberate:
- *   - values **derived from WoW Classic** (health, mana, spells, regeneration)
- *     are computed from `classicData.ts` — never written by hand;
- *   - **game design** values (boss profile, event cadence, ramp) are set here,
- *     and documented as such in `docs/classic-stats.md`.
+ *   - values **derived from WoW Classic** (health, mana, spells, regeneration,
+ *     experience thresholds) are computed from `classicData.ts` — never
+ *     written by hand;
+ *   - **game design** values (boss profile, event cadence, ramp, the
+ *     experience a boss kill is worth) are set here, and documented as such in
+ *     `docs/classic-stats.md`.
  *
  * No other layer of the project contains a magic number.
  */
@@ -14,18 +16,31 @@ import {
   CREATURE_LEVEL_1,
   GLOBAL_COOLDOWN_MS,
   MANA_REGEN_VANILLA,
+  MAX_LEVEL,
   PRIEST_HEALS_RANK_1,
   getAttributes,
   manaPerTickFromSpirit,
-  maxHealthAtLevel1,
-  maxManaAtLevel1,
+  maxHealthAtLevel,
+  maxManaAtLevel,
+  xpToNextLevel,
+  type Attributes,
   type ClassId,
   type RaceId,
 } from './classicData';
 import type { EncounterProfile, EnemyId, Role, SpellId } from '../simulation/types';
 
-/** Level of every character and of the boss. Everything else follows from it. */
-export const PLAYER_LEVEL = 1;
+/** Level a character starts at, and the level of a fight with no saved profile. */
+export const STARTING_LEVEL = 1;
+
+/** Vanilla level cap — re-exported so the game layer never imports it twice. */
+export { MAX_LEVEL };
+
+/**
+ * Level of every enemy. The three encounters are level 1 designs (ADR-0010):
+ * they keep that level as the healer climbs, so the fight gets easier with
+ * every level rather than scaling — see `docs/balance.md`.
+ */
+export const ENEMY_LEVEL = 1;
 
 /** Fixed simulation step, in milliseconds. */
 export const TICK_MS = 100;
@@ -73,24 +88,34 @@ const PARTY_SLOTS: readonly PartySlot[] = [
 ] as const;
 
 /**
- * Full party, health and mana computed by the vanilla formulas.
- * At level 1: Thorgrim 90 HP, Elowen 51 HP / 160 mana, Kaelan 55 HP,
- * Fizzwick 50 HP, Sylandra 46 HP.
+ * Full party at a given level, health and mana computed by the vanilla
+ * formulas. At level 1: Thorgrim 90 HP, Elowen 51 HP / 160 mana, Kaelan 55 HP,
+ * Fizzwick 50 HP, Sylandra 46 HP. At level 60: 2639 / 1707 / 2093 / 1620 /
+ * 2177 HP — the whole party levels with the player, not the healer alone.
  */
-export const PARTY_TEMPLATE: readonly PartyMemberTemplate[] = PARTY_SLOTS.map((slot) => {
-  const attributes = getAttributes(slot.race, slot.classId);
-  return {
-    ...slot,
-    hpMax: maxHealthAtLevel1(slot.classId, attributes),
-    manaMax: maxManaAtLevel1(slot.classId, attributes),
-  };
-});
+export function partyTemplateAtLevel(level: number): readonly PartyMemberTemplate[] {
+  return PARTY_SLOTS.map((slot) => {
+    const attributes = getAttributes(slot.race, slot.classId, level);
+    return {
+      ...slot,
+      hpMax: maxHealthAtLevel(slot.classId, attributes, level),
+      manaMax: maxManaAtLevel(slot.classId, attributes, level),
+    };
+  });
+}
+
+/** The party as it starts out, at level 1. */
+export const PARTY_TEMPLATE: readonly PartyMemberTemplate[] = partyTemplateAtLevel(STARTING_LEVEL);
 
 /** The player controls this party member. */
 export const PLAYER_MEMBER_ID = 'healer';
 
 const PLAYER_SLOT = PARTY_SLOTS.find((slot) => slot.id === PLAYER_MEMBER_ID)!;
-const PLAYER_ATTRIBUTES = getAttributes(PLAYER_SLOT.race, PLAYER_SLOT.classId);
+
+/** Attributes of the player's character at the given level. */
+export function playerAttributesAtLevel(level: number): Attributes {
+  return getAttributes(PLAYER_SLOT.race, PLAYER_SLOT.classId, level);
+}
 
 export const ROLE_LABELS: Record<Role, string> = {
   tank: 'Tank',
@@ -118,20 +143,36 @@ export const RACE_LABELS: Record<RaceId, string> = {
 /* Healer mana                                                                 */
 /* -------------------------------------------------------------------------- */
 
+export interface ManaProfile {
+  max: number;
+  initial: number;
+  tickMs: number;
+  perTick: number;
+  fiveSecondRuleMs: number;
+}
+
 /**
- * Priest pool and regeneration, derived from level 1 attributes
- * (intellect 22 → 160 mana, spirit 24 → 18.5 mana per 2s tick).
+ * Priest pool and regeneration at a given level, derived from that level's
+ * attributes (level 1: intellect 22 → 160 mana, spirit 24 → 18.5 mana per 2s
+ * tick; level 60: intellect 120 → 2956 mana, spirit 131 → 45.25 per tick).
  *
  * The behaviour is vanilla's: regeneration lands in 2-second ticks and the
  * **five-second rule** fully suspends it for 5 s after every mana expenditure.
  */
-export const MANA = {
-  max: maxManaAtLevel1(PLAYER_SLOT.classId, PLAYER_ATTRIBUTES),
-  initial: maxManaAtLevel1(PLAYER_SLOT.classId, PLAYER_ATTRIBUTES),
-  tickMs: MANA_REGEN_VANILLA.tickMs,
-  perTick: manaPerTickFromSpirit(PLAYER_ATTRIBUTES.spirit),
-  fiveSecondRuleMs: MANA_REGEN_VANILLA.fiveSecondRuleMs,
-} as const;
+export function manaProfileAtLevel(level: number): ManaProfile {
+  const attributes = playerAttributesAtLevel(level);
+  const max = maxManaAtLevel(PLAYER_SLOT.classId, attributes, level);
+  return {
+    max,
+    initial: max,
+    tickMs: MANA_REGEN_VANILLA.tickMs,
+    perTick: manaPerTickFromSpirit(attributes.spirit),
+    fiveSecondRuleMs: MANA_REGEN_VANILLA.fiveSecondRuleMs,
+  };
+}
+
+/** The healer's mana as the game starts, at level 1. */
+export const MANA: ManaProfile = manaProfileAtLevel(STARTING_LEVEL);
 
 /** Cap of the "time since the last mana expenditure" counter. */
 export const CAST_IDLE_CAP_MS = 10_000;
@@ -213,8 +254,15 @@ export const SPELL_ORDER: readonly SpellId[] = [
 ] as const;
 
 /** Spells actually usable at the given level. */
-export function isSpellUnlocked(spell: SpellDefinition, level: number = PLAYER_LEVEL): boolean {
+export function isSpellUnlocked(spell: SpellDefinition, level: number = STARTING_LEVEL): boolean {
   return spell.requiredLevel <= level;
+}
+
+/** The spells a priest of that level has trained, in learning order. */
+export function spellsKnownAtLevel(level: number): readonly SpellDefinition[] {
+  return SPELL_ORDER.map((spellId) => SPELLS[spellId]).filter((spell) =>
+    isSpellUnlocked(spell, level),
+  );
 }
 
 /* -------------------------------------------------------------------------- */
@@ -331,7 +379,7 @@ export const ENEMIES: Record<EnemyId, EncounterProfile> = {
     id: 'gorvath',
     name: 'Gorvath the Cavebreaker',
     subtitle: 'Balanced pressure — steady melee, an occasional spike',
-    level: PLAYER_LEVEL,
+    level: ENEMY_LEVEL,
     hpMax: 600,
     tankDamage: TANK_DAMAGE,
     aoeDamage: AOE_DAMAGE,
@@ -341,7 +389,7 @@ export const ENEMIES: Record<EnemyId, EncounterProfile> = {
     id: 'skarn',
     name: 'Skarn the Swarmcaller',
     subtitle: 'AoE-heavy — the whole party bleeds together',
-    level: PLAYER_LEVEL,
+    level: ENEMY_LEVEL,
     hpMax: 550,
     tankDamage: SKARN_TANK_DAMAGE,
     aoeDamage: SKARN_AOE_DAMAGE,
@@ -351,7 +399,7 @@ export const ENEMIES: Record<EnemyId, EncounterProfile> = {
     id: 'threx',
     name: 'Threx the Impaler',
     subtitle: 'Burst — rare AoE, a spike that can drop a DPS in one hit',
-    level: PLAYER_LEVEL,
+    level: ENEMY_LEVEL,
     hpMax: 460,
     tankDamage: THREX_TANK_DAMAGE,
     aoeDamage: THREX_AOE_DAMAGE,
@@ -369,6 +417,76 @@ export const WIPE = {
   /** Number of deaths that ends the fight. */
   maxDeaths: 3,
 } as const;
+
+/* -------------------------------------------------------------------------- */
+/* Experience — designed reward over a sourced level table                     */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * How much of a level a boss kill is worth.
+ *
+ * The level thresholds themselves are Classic's (`XP_TO_NEXT_LEVEL`), but the
+ * reward is **designed**, not sourced: vanilla's own kill formula pays a
+ * same-level elite `2 × (5 × level + 45)` experience — 100 at level 1 against
+ * a 400-point level, 690 at level 59 against a 209,800-point one. Reaching 60
+ * that way would take about 8,000 boss kills, so the reward is expressed as a
+ * share of the current level instead: three victories per level, at every
+ * level. See ADR-0019.
+ */
+export const BOSS_XP = {
+  /** Fraction of the current level's requirement granted by a victory. */
+  victoryShare: 0.34,
+  /** A wipe teaches nothing: the fight has to be won. */
+  wipeShare: 0,
+} as const;
+
+/** Experience granted for defeating a boss at that level (0 at the cap). */
+export function bossXpReward(level: number): number {
+  const required = xpToNextLevel(level);
+  if (required === null) return 0;
+  return Math.round(required * BOSS_XP.victoryShare);
+}
+
+/* -------------------------------------------------------------------------- */
+/* Character sheet                                                             */
+/* -------------------------------------------------------------------------- */
+
+export interface CharacterSheet {
+  name: string;
+  raceLabel: string;
+  classLabel: string;
+  level: number;
+  attributes: Attributes;
+  hpMax: number;
+  manaMax: number;
+  /** Spirit-based regeneration, per 2 s tick, outside the five-second rule. */
+  manaPerTick: number;
+  spellsKnown: readonly SpellDefinition[];
+  spellsLocked: readonly SpellDefinition[];
+}
+
+/**
+ * Everything the home screen shows about the player's character, derived from
+ * the Classic tables at that level — nothing here is stored or written by hand.
+ */
+export function playerCharacterAtLevel(level: number): CharacterSheet {
+  const attributes = playerAttributesAtLevel(level);
+  const mana = manaProfileAtLevel(level);
+  return {
+    name: PLAYER_SLOT.name,
+    raceLabel: RACE_LABELS[PLAYER_SLOT.race],
+    classLabel: CLASS_LABELS[PLAYER_SLOT.classId],
+    level,
+    attributes,
+    hpMax: maxHealthAtLevel(PLAYER_SLOT.classId, attributes, level),
+    manaMax: mana.max,
+    manaPerTick: mana.perTick,
+    spellsKnown: spellsKnownAtLevel(level),
+    spellsLocked: SPELL_ORDER.map((spellId) => SPELLS[spellId]).filter(
+      (spell) => !isSpellUnlocked(spell, level),
+    ),
+  };
+}
 
 /* -------------------------------------------------------------------------- */
 /* Feedback                                                                    */

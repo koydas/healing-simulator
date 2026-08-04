@@ -2,9 +2,12 @@
 
 import { memo, useEffect, useRef } from 'react';
 import { useHeaderSnapshot, useSummarySnapshot } from '../hooks/useGameStore';
+import type { FightReward } from '../profile/playerProfile';
 import type { StatsSummary } from '../simulation/selectors';
 
 interface GameOverProps {
+  /** What the fight did to the profile — `null` until it has been recorded. */
+  reward: FightReward | null;
   onRestart: () => void;
   onChangeEnemy: () => void;
 }
@@ -17,15 +20,27 @@ const decimal = new Intl.NumberFormat('en-US', { maximumFractionDigits: 2 });
  * focus effect runs on mount — which is exactly when the wipe happens — instead
  * of being skipped by an early `return null`.
  */
-export const GameOver = memo(function GameOver({ onRestart, onChangeEnemy }: GameOverProps) {
+export const GameOver = memo(function GameOver({
+  reward,
+  onRestart,
+  onChangeEnemy,
+}: GameOverProps) {
   const summary = useSummarySnapshot();
 
   if (!summary) return null;
-  return <GameOverDialog summary={summary} onRestart={onRestart} onChangeEnemy={onChangeEnemy} />;
+  return (
+    <GameOverDialog
+      summary={summary}
+      reward={reward}
+      onRestart={onRestart}
+      onChangeEnemy={onChangeEnemy}
+    />
+  );
 });
 
 const GameOverDialog = memo(function GameOverDialog({
   summary,
+  reward,
   onRestart,
   onChangeEnemy,
 }: GameOverProps & { summary: StatsSummary }) {
@@ -83,6 +98,20 @@ const GameOverDialog = memo(function GameOverDialog({
         <p className="gameover__duration">
           {victory ? 'Boss defeated in' : 'Survived'}: <strong>{summary.durationLabel}</strong>
         </p>
+
+        {reward ? (
+          <p className="gameover__xp">
+            {reward.xpGained > 0
+              ? `Experience gained: +${integer.format(reward.xpGained)}`
+              : 'No experience — the boss has to die for that'}
+            {reward.levelAfter > reward.levelBefore ? (
+              <strong className="gameover__levelup">
+                {' '}
+                Level {reward.levelBefore} → {reward.levelAfter}
+              </strong>
+            ) : null}
+          </p>
+        ) : null}
 
         <dl className="gameover__grid">
           <div className="gameover__row">

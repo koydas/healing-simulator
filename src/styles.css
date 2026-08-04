@@ -587,12 +587,13 @@ button {
   text-align: center;
 }
 
-/* ----------------------------------------------------------- Enemy select -- */
+/* ------------------------------------------------------------ Home screen -- */
 
-.enemy-select {
-  display: flex;
-  align-items: center;
-  justify-content: center;
+/* The home screen carries a character sheet, a record table and three enemy
+   cards: it overflows a 320 x 568 phone by design, so it scrolls itself —
+   `html`, `body` and `.app` are height-locked and the page never does. */
+.home {
+  position: relative;
   height: 100%;
   min-height: 100dvh;
   padding: 16px env(safe-area-inset-right) env(safe-area-inset-bottom)
@@ -600,25 +601,207 @@ button {
   overflow-y: auto;
 }
 
-.enemy-select__panel {
+.home__panel {
   width: 100%;
   max-width: 420px;
-  max-height: 100%;
   margin: 0 auto;
   padding: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
 }
 
-.enemy-select__title {
+.home__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--gap);
+}
+
+.home__title {
   margin: 0;
   font-size: 22px;
   font-weight: 700;
 }
 
-.enemy-select__intro {
-  margin: 4px 0 18px;
+.home__options-button {
+  min-height: 44px;
+  padding: 0 14px;
   font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+  background: var(--bg-panel);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+
+.home__options-button:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* ------------------------------------------------------- Character sheet -- */
+
+.sheet {
+  padding: 14px;
+  background: var(--bg-panel);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius);
+}
+
+.sheet__header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 10px;
+}
+
+.sheet__title {
+  margin: 0;
+  font-size: 17px;
+  font-weight: 700;
+}
+
+.sheet__identity,
+.sheet__level {
+  margin: 0;
+  font-size: 12px;
   color: var(--text-dim);
 }
+
+.sheet__level strong {
+  color: var(--accent);
+  font-size: 14px;
+}
+
+.sheet__xp {
+  margin-top: 12px;
+}
+
+.sheet__xp-track {
+  height: 10px;
+  background: var(--bg-panel-alt);
+  border: 1px solid var(--border-soft);
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.sheet__xp-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #7c3aed, #b98cff);
+  border-radius: 999px;
+}
+
+.sheet__xp-label {
+  margin: 4px 0 0;
+  font-size: 11px;
+  color: var(--text-dim);
+  text-align: right;
+}
+
+.sheet__stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(84px, 1fr));
+  gap: 6px;
+  margin: 12px 0 0;
+}
+
+.sheet__stat {
+  padding: 6px 8px;
+  background: var(--bg-panel-alt);
+  border-radius: 8px;
+}
+
+.sheet__stat dt {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-dim);
+}
+
+.sheet__stat dd {
+  margin: 2px 0 0;
+  font-size: 14px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.sheet__spells {
+  margin: 12px 0 0;
+  font-size: 12px;
+  color: var(--text);
+}
+
+.sheet__spells-label {
+  display: block;
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-dim);
+}
+
+.sheet__spells-next {
+  color: var(--text-dim);
+}
+
+/* ---------------------------------------------------------------- Records -- */
+
+.records__title,
+.enemy-select__title {
+  margin: 0 0 8px;
+  font-size: 13px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-dim);
+}
+
+.records__table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+}
+
+.records__table th,
+.records__table td {
+  padding: 6px 4px;
+  text-align: left;
+  border-bottom: 1px solid var(--border-soft);
+}
+
+.records__table thead th {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-dim);
+}
+
+.records__table tbody th,
+.records__table tfoot th {
+  font-weight: 600;
+}
+
+.records__table td {
+  width: 56px;
+  text-align: right;
+}
+
+.records__wins {
+  color: var(--hp-full);
+}
+
+.records__losses {
+  color: var(--danger);
+}
+
+.records__table tfoot th,
+.records__table tfoot td {
+  border-bottom: none;
+  font-weight: 700;
+}
+
+/* ----------------------------------------------------------- Enemy select -- */
 
 .enemy-select__list {
   display: flex;
@@ -672,6 +855,85 @@ button {
   color: var(--text-dim);
 }
 
+/* ---------------------------------------------------------------- Options -- */
+
+.options {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  background: rgba(6, 9, 15, 0.88);
+  overflow-y: auto;
+  z-index: 10;
+}
+
+.options__panel {
+  width: 100%;
+  max-width: 420px;
+  max-height: 100%;
+  overflow-y: auto;
+  padding: 18px;
+  background: var(--bg-panel);
+  border: 1px solid var(--border-soft);
+  border-radius: 14px;
+}
+
+.options__title {
+  margin: 0 0 10px;
+  font-size: 18px;
+  font-weight: 700;
+}
+
+.options__text {
+  margin: 0 0 14px;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--text-dim);
+}
+
+.options__key {
+  font-size: 11px;
+  word-break: break-all;
+  color: var(--text);
+}
+
+.options__delete,
+.options__close {
+  width: 100%;
+  min-height: 48px;
+  margin-top: 8px;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text);
+  background: var(--bg-panel-alt);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+
+.options__delete {
+  color: var(--danger);
+  border-color: var(--danger);
+}
+
+.options__delete--confirming {
+  color: #fff;
+  background: var(--danger);
+}
+
+.options__warning {
+  margin: 8px 0 0;
+  font-size: 12px;
+  color: var(--danger);
+}
+
+.options__delete:focus-visible,
+.options__close:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
 /* -------------------------------------------------------------- Game over -- */
 
 .gameover {
@@ -713,6 +975,16 @@ button {
 .gameover__duration {
   margin: 4px 0 14px;
   font-size: 15px;
+}
+
+.gameover__xp {
+  margin: -8px 0 14px;
+  font-size: 13px;
+  color: var(--text-dim);
+}
+
+.gameover__levelup {
+  color: var(--cast);
 }
 
 .gameover__grid {

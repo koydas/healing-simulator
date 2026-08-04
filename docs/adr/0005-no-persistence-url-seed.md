@@ -10,6 +10,14 @@
 > not saved, its statistics die with the tab, and the seed remains the only way
 > to replay one.
 
+> Update (ADR-0019): once the party's stats came from `playerLevel`, `?seed=`
+> and `?enemy=` stopped fully identifying a fight — the same URL opened from a
+> level 1 and a level 60 profile built a different party, with different
+> health, mana and spellbook, and could resolve to a different outcome.
+> `?level=` now pins it the same way, read by `readInitialLevel()` and written
+> by `syncFightUrl` alongside the other two; absent, it falls back to the
+> current profile's level exactly as before. Caught by Codex review on #9.
+
 ## Context
 
 The brief forbids any backend, any database and any local persistence. Yet two

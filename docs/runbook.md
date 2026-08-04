@@ -181,8 +181,11 @@ for 18.5 points.
 
 ### Replaying the exact same fight
 
-Add `?seed=<value>` to the URL. The current seed is displayed at the bottom of
-the end screen.
+Add `?seed=<value>` to the URL — the current one is displayed at the bottom of
+the end screen, and `?enemy=` / `?level=` are filled in automatically once the
+fight starts. All three matter: since the party's stats and spellbook come
+from the level, the same seed and enemy opened without `?level=` falls back to
+*your own* profile's level, not the one the link was generated from.
 
 ### "My level and my record are gone"
 

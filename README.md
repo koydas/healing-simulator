@@ -86,8 +86,9 @@ Every accepted cast triggers a 1.5 s global cooldown. The fight ends when the
 tank dies or when three members are dead. Elowen can die too: from that point
 casting is refused and you watch the party fall.
 
-A fight is **exactly replayable**: `?seed=1337` in the URL fixes the seed of the
-pseudo-random generator (the current seed is shown on the end screen).
+A fight is **exactly replayable**: `?seed=1337&enemy=gorvath&level=1` in the
+URL fixes the seed, the enemy and the level the party is fought at (all three
+are shown, and filled in automatically once a fight starts).
 
 ## Layout
 

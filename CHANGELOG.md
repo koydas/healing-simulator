@@ -99,6 +99,16 @@ All notable changes to this project are recorded here, following
 
 ### Fixed
 
+- **A replay URL now pins the level the party is fought at.** `?seed=` and
+  `?enemy=` stopped fully identifying a fight once the whole party's health,
+  mana and spellbook started coming from `playerLevel`: the same link opened
+  from a level 1 and a level 60 profile built a different party — 51 HP versus
+  817 HP on the healer for the identical seed and enemy in one measured case —
+  and could resolve to a different outcome. `?level=` now pins it exactly like
+  the other two, read by `readInitialLevel()` and written back by
+  `syncFightUrl`; without it, a fight still falls back to the current profile's
+  level as before. Caught by Codex review on #9. See ADR-0005.
+
 - **The wipe screen now takes keyboard focus.** It carried `role="dialog"` and
   `aria-modal="true"`, but neither moves focus nor blocks Tab: measured at a
   wipe, focus stayed on `<body>` and six consecutive Tab presses landed on party

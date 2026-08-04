@@ -17,6 +17,16 @@
 > `?level=` now pins it the same way, read by `readInitialLevel()` and written
 > by `syncFightUrl` alongside the other two; absent, it falls back to the
 > current profile's level exactly as before. Caught by Codex review on #9.
+>
+> That fix opened a second problem, caught by the same review one round later:
+> pinning `?level=` lets a fight be played at a level different from the
+> profile that opens it — a level 59 profile replaying an easy `?level=1` link
+> could otherwise bank the full level-59 reward for a trivial fight, and a
+> level 1 profile replaying `?level=60` could claim a win its character never
+> earned. `App.handleFightEnd` now compares the level the fight actually ran at
+> (`state.playerLevel`, passed through the store's `onFightEnd`) against the
+> live profile's level and skips the reward and the record entirely on a
+> mismatch; the end screen says so instead of silently doing nothing.
 
 ## Context
 

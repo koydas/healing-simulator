@@ -114,9 +114,12 @@ interface FightProps {
   playerLevel: number;
   /** Experience and level gained by the fight that just ended, if any. */
   reward: FightReward | null;
+  /** True when the fight just ended was played at a level the URL pinned,
+   * different from the current profile — its result was not credited. */
+  levelMismatch: boolean;
   /** Back to the home screen — tears the store down entirely. */
   onChangeEnemy: () => void;
-  onFightEnd: (outcome: GameOutcome, enemyId: EnemyId) => void;
+  onFightEnd: (outcome: GameOutcome, enemyId: EnemyId, fightLevel: number) => void;
   onNewFight: () => void;
 }
 
@@ -124,6 +127,7 @@ function Fight({
   enemyId,
   playerLevel,
   reward,
+  levelMismatch,
   onChangeEnemy,
   onFightEnd,
   onNewFight,
@@ -180,7 +184,12 @@ function Fight({
             rejected cast look like a dead button. */}
         <MessageFeed />
         <Controls />
-        <GameOver reward={reward} onRestart={handleRestart} onChangeEnemy={onChangeEnemy} />
+        <GameOver
+          reward={reward}
+          levelMismatch={levelMismatch}
+          onRestart={handleRestart}
+          onChangeEnemy={onChangeEnemy}
+        />
       </div>
     </GameStoreContext.Provider>
   );
@@ -190,6 +199,9 @@ export default function App() {
   const [profile, setProfile] = useState<PlayerProfile>(loadProfile);
   const [enemyId, setEnemyId] = useState<EnemyId | null>(readInitialEnemyId);
   const [reward, setReward] = useState<FightReward | null>(null);
+  // Set instead of `reward` when a replay URL pinned a level different from
+  // the current profile: the fight still plays out, but it is not credited.
+  const [levelMismatch, setLevelMismatch] = useState(false);
 
   // The store calls `onFightEnd` from outside React, so the callback reads the
   // current profile from a ref rather than closing over a stale render.
@@ -203,7 +215,19 @@ export default function App() {
   }, []);
 
   const handleFightEnd = useCallback(
-    (outcome: GameOutcome, foughtEnemyId: EnemyId) => {
+    (outcome: GameOutcome, foughtEnemyId: EnemyId, fightLevel: number) => {
+      // A shared `?level=` link can pin a fight at a level different from the
+      // profile that opens it (ADR-0005). Crediting it anyway would let a
+      // low-level profile bank a high-level reward for a fight it never
+      // really had the character to face, or a high-level profile farm an
+      // easy low-level replay for full credit — caught by Codex review on #9.
+      // The fight still plays out for viewing; it just changes nothing.
+      if (fightLevel !== profileRef.current.level) {
+        setReward(null);
+        setLevelMismatch(true);
+        return;
+      }
+      setLevelMismatch(false);
       const next = applyFightOutcome(profileRef.current, foughtEnemyId, outcome);
       persist(next.profile);
       setReward(next);
@@ -211,11 +235,15 @@ export default function App() {
     [persist],
   );
 
-  const handleNewFight = useCallback(() => setReward(null), []);
+  const handleNewFight = useCallback(() => {
+    setReward(null);
+    setLevelMismatch(false);
+  }, []);
 
   const handleChangeEnemy = useCallback(() => {
     clearFightUrl();
     setReward(null);
+    setLevelMismatch(false);
     setEnemyId(null);
   }, []);
 
@@ -225,6 +253,7 @@ export default function App() {
     profileRef.current = fresh;
     setProfile(fresh);
     setReward(null);
+    setLevelMismatch(false);
   }, []);
 
   if (enemyId === null) {
@@ -239,6 +268,7 @@ export default function App() {
       enemyId={enemyId}
       playerLevel={profile.level}
       reward={reward}
+      levelMismatch={levelMismatch}
       onChangeEnemy={handleChangeEnemy}
       onFightEnd={handleFightEnd}
       onNewFight={handleNewFight}

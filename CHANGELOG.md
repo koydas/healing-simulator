@@ -109,6 +109,17 @@ All notable changes to this project are recorded here, following
   `syncFightUrl`; without it, a fight still falls back to the current profile's
   level as before. Caught by Codex review on #9. See ADR-0005.
 
+- **A replay URL pinned at a level different from the current profile no
+  longer touches that profile.** Pinning `?level=` (previous entry) opened a
+  second problem: a profile could still play the pinned fight and have it
+  scored as its own — a level 59 profile replaying a shared `?level=1` link
+  could win trivially and bank the full level-59 reward, and a level 1 profile
+  replaying `?level=60` could claim a win it never earned. `App.handleFightEnd`
+  now compares the level the fight actually ran at against the live profile
+  and refuses the experience and the win/loss record on a mismatch; the end
+  screen says so instead of silently granting nothing. Caught by Codex review
+  on #9, one round after the fix above. See ADR-0005.
+
 - **The wipe screen now takes keyboard focus.** It carried `role="dialog"` and
   `aria-modal="true"`, but neither moves focus nor blocks Tab: measured at a
   wipe, focus stayed on `<body>` and six consecutive Tab presses landed on party

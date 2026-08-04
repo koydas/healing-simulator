@@ -51,6 +51,28 @@ describe('createGameStore', () => {
     expect(calls).toHaveLength(1);
   });
 
+  /**
+   * `onFightEnd`'s third argument is `state.playerLevel` — the level the
+   * fight was actually built and fought with — not merely an echo of
+   * `options.playerLevel`. `App` compares it against the current saved
+   * profile to refuse crediting a replay URL that pinned a different level
+   * (ADR-0005) — see the Codex finding on #9.
+   */
+  it("reports the level the fight was actually built with, on every restart", () => {
+    const levels: number[] = [];
+    const store = createGameStore(1337, 'skarn', {
+      playerLevel: 45,
+      onFightEnd: (_outcome, _enemyId, playerLevel) => levels.push(playerLevel),
+    });
+
+    playOut(store);
+    expect(levels).toEqual([45]);
+
+    store.restart(99, 'skarn', 12);
+    playOut(store);
+    expect(levels).toEqual([45, 12]);
+  });
+
   it('reports the next fight too, at the level the rematch is started with', () => {
     const calls: GameOutcome[] = [];
     const store = createGameStore(1337, 'skarn', { onFightEnd: (outcome) => calls.push(outcome) });

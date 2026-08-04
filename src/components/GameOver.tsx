@@ -6,8 +6,17 @@ import type { FightReward } from '../profile/playerProfile';
 import type { StatsSummary } from '../simulation/selectors';
 
 interface GameOverProps {
-  /** What the fight did to the profile — `null` until it has been recorded. */
+  /**
+   * What the fight did to the profile — `null` until it has been recorded,
+   * and permanently `null` when `levelMismatch` is true.
+   */
   reward: FightReward | null;
+  /**
+   * True when this fight was played at a level a replay URL pinned, different
+   * from the current profile: it is not credited (ADR-0005) — the numbers
+   * below still describe what actually happened in the fight itself.
+   */
+  levelMismatch: boolean;
   onRestart: () => void;
   onChangeEnemy: () => void;
 }
@@ -22,6 +31,7 @@ const decimal = new Intl.NumberFormat('en-US', { maximumFractionDigits: 2 });
  */
 export const GameOver = memo(function GameOver({
   reward,
+  levelMismatch,
   onRestart,
   onChangeEnemy,
 }: GameOverProps) {
@@ -32,6 +42,7 @@ export const GameOver = memo(function GameOver({
     <GameOverDialog
       summary={summary}
       reward={reward}
+      levelMismatch={levelMismatch}
       onRestart={onRestart}
       onChangeEnemy={onChangeEnemy}
     />
@@ -41,6 +52,7 @@ export const GameOver = memo(function GameOver({
 const GameOverDialog = memo(function GameOverDialog({
   summary,
   reward,
+  levelMismatch,
   onRestart,
   onChangeEnemy,
 }: GameOverProps & { summary: StatsSummary }) {
@@ -99,7 +111,12 @@ const GameOverDialog = memo(function GameOverDialog({
           {victory ? 'Boss defeated in' : 'Survived'}: <strong>{summary.durationLabel}</strong>
         </p>
 
-        {reward ? (
+        {levelMismatch ? (
+          <p className="gameover__xp gameover__xp--mismatch">
+            Fought at a level your saved character isn't — not recorded, no
+            experience gained.
+          </p>
+        ) : reward ? (
           <p className="gameover__xp">
             {reward.xpGained > 0
               ? `Experience gained: +${integer.format(reward.xpGained)}`

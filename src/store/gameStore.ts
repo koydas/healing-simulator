@@ -164,8 +164,13 @@ export interface GameStoreOptions {
    * that sees every state transition, so it is where "this fight is over"
    * can be detected exactly once — a `useEffect` watching the summary would
    * fire again on every re-render of the end screen.
+   *
+   * `playerLevel` is the level the party was actually built and fought at —
+   * `state.playerLevel`, not `options.playerLevel` — so the caller can tell a
+   * normal fight from a replay URL that pinned a level different from the
+   * current profile (ADR-0005) and refuse to credit the wrong character.
    */
-  onFightEnd?: (outcome: GameOutcome, enemyId: EnemyId) => void;
+  onFightEnd?: (outcome: GameOutcome, enemyId: EnemyId, playerLevel: number) => void;
 }
 
 export function createGameStore(
@@ -314,7 +319,7 @@ export function createGameStore(
       for (const listener of listeners) listener();
     }
     if (!wasOver && state.status === 'over') {
-      options.onFightEnd?.(state.outcome, currentEnemyId);
+      options.onFightEnd?.(state.outcome, currentEnemyId, state.playerLevel);
     }
   }
 

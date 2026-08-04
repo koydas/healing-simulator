@@ -117,8 +117,11 @@ The chain is:
 
 ```
 stepSimulation → status becomes 'over'
-  → gameStore.setState detects the transition → onFightEnd(outcome, enemyId)
-    → App.applyFightOutcome → saveProfile → setProfile
+  → gameStore.setState detects the transition
+    → onFightEnd(outcome, enemyId, playerLevel)
+      → App.handleFightEnd: playerLevel === profile.level ?
+          → applyFightOutcome → saveProfile → setProfile
+          : refused — see below
 ```
 
 The store is the right place to detect it because it sees every state
@@ -130,6 +133,30 @@ The level applies from the *next* fight: `GameState.playerLevel` is fixed when
 the fight is created, and nothing levels a character mid-fight. Keep it that
 way — a health pool changing under a running simulation breaks the invariants
 in `docs/simulation.md`.
+
+### A fight is only ever credited to the profile it was fought at
+
+`onFightEnd`'s third argument is `state.playerLevel` — the level the party was
+actually built and fought with — not an echo of whatever `App` asked for. A
+`?level=` replay URL (ADR-0005) can pin that to something other than the
+current saved profile, and `handleFightEnd` compares the two before touching
+anything:
+
+```ts
+if (fightLevel !== profileRef.current.level) {
+  setReward(null);
+  setLevelMismatch(true);
+  return; // no applyFightOutcome, no saveProfile
+}
+```
+
+Skipping this check is a real exploit, not just a display glitch: a level 59
+profile replaying a shared `?level=1` link would win trivially and still bank
+the full level-59 reward, and a level 1 profile replaying `?level=60` would
+claim a win its own character never earned. The fight still plays out and its
+statistics still show on the end screen — only the profile update and the
+win/loss record are refused, and the screen says so (`levelMismatch`) instead
+of silently granting nothing, which would look like a bug.
 
 ### The balance consequence stays visible
 

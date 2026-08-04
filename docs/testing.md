@@ -88,9 +88,13 @@ Tab cannot reach the screen behind, `Escape` closes it, "Delete saved game"
 asks twice then resets the sheet to level 1), the experience line on the end
 screen after a victory, and the sheet showing the new level once you come back.
 Then: `?seed=1&enemy=skarn&level=30` skipping straight to that fight, at the
-level the link pins rather than whatever the current profile is; picking an
-enemy from the screen rewriting the URL to `?seed=…&enemy=…&level=…` afterwards,
-selecting a frame, the refusal message shown when tapping an unavailable
+level the link pins rather than whatever the current profile is; opening the
+same kind of link at a level *different* from the current profile's and
+confirming the end screen shows the "not recorded" note instead of an
+experience line, and that the profile's level and record are unchanged
+afterwards; picking an enemy from the screen rewriting the URL to
+`?seed=…&enemy=…&level=…` afterwards, selecting a frame, the refusal message
+shown when tapping an unavailable
 spell, the cast bar and `Cancel` button, GCD progress across the five
 buttons, the boss health bar draining over the fight, the end screen titled
 "Victory" or "Wipe" depending on which happened, "New fight" (same enemy, new

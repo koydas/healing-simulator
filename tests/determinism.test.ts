@@ -16,10 +16,10 @@ function playScriptedGame(seed: number, steps = 600): GameState {
     if (step === 4) state = castSpell(state, 'heal');
     if (step === 40) state = castSpell(state, 'renew');
     if (step === 60) state = selectTarget(state, 'dps2');
-    if (step === 61) state = castSpell(state, 'flashHeal');
-    if (step === 120) state = castSpell(state, 'lesserHeal');
+    if (step === 61) state = castSpell(state, 'shield');
+    if (step === 120) state = castSpell(state, 'renew');
     if (step === 200) state = selectTarget(state, 'healer');
-    if (step === 201) state = castSpell(state, 'lesserHeal');
+    if (step === 201) state = castSpell(state, 'shield');
     state = stepSimulation(state, TICK_MS);
   }
 

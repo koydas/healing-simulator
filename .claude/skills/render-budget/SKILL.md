@@ -32,8 +32,8 @@ Ask one question: **does it change on most 100 ms steps?**
   }, []));
   ```
 
-- **No** (health, alive state, Renew stacks, selection, spell availability,
-  timer in whole seconds) → it belongs in a snapshot built by
+- **No** (health, alive state, HoT ticks, shield amount, selection, spell
+  availability, timer in whole seconds) → it belongs in a snapshot built by
   `src/store/gameStore.ts`, consumed with a `useSyncExternalStore` hook.
 
 The store rebuilds snapshots after every step and **reuses the previous

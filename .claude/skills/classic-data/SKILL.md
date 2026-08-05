@@ -61,10 +61,12 @@ per race/class, index 0 being level 1, and the accessors are
 **throw** for a row they do not have — a missing level is a table to extend,
 never a value to interpolate.
 
-Only the five race/class combinations the party is built from carry a full
-1 – 60 column; the other twelve keep their level 1 row. Putting a new race or
-class in `PARTY_SLOTS` therefore starts with extending its column from the same
-SQL file, `curl` + `grep`, not with a plausible-looking guess.
+Seven race/class combinations carry a full 1 – 60 column: the five the party
+is built from, plus `human/paladin` and `nightElf/druid` (added for ADR-0021,
+the other two playable classes) — the other ten keep their level 1 row.
+Putting a new race or class in `PARTY_SLOTS` or `PLAYABLE_CLASSES` therefore
+starts with extending its column from the same SQL file, `curl` + `grep`, not
+with a plausible-looking guess.
 
 Rows that look wrong in the source (warrior base health 101 → 100 at level 11,
 paladin 28 → 26 at level 2) are copied as they are. Smoothing them would make
@@ -119,13 +121,13 @@ applied to level 1.
 
 Two things did **not** follow the party up:
 
-- the spellbook is rank 1 only, at every level;
+- every class's spellbook is rank 1 only, at every level;
 - the encounters keep `ENEMY_LEVEL` (1) and their level 1 damage.
 
 Both are known and documented (ADR-0019, `docs/balance.md`), so a fight gets
-easier as the party levels. If you take that on, source the priest's spell
-ranks from EZDownRank first and scale the bosses second — the other order makes
-every fight unwinnable instead of easy.
+easier as the party levels. If you take that on, source each class's spell
+ranks from EZDownRank first and scale the bosses second — the other order
+makes every fight unwinnable instead of easy.
 
 ## Constraints
 
@@ -150,3 +152,7 @@ every fight unwinnable instead of easy.
 - `docs/adr/0010-level-1-boss-profile.md` — how the designed boss was bracketed
 - `docs/adr/0019-levelling-to-60-and-boss-experience.md` — the per-level tables,
   and why the experience reward is designed rather than sourced
+- `docs/adr/0021-per-class-spellbooks-and-absorb-shields.md` — druid and
+  paladin's sourced tables, and what to do when a value cannot be reached
+- `class-spellbooks` skill — the per-class spell data model
+  (`ClassSpellRank`) this skill's four buckets apply to spell by spell

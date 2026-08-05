@@ -15,11 +15,13 @@
 import type { ClassId } from '../config/classicData';
 import {
   CLASS_LABELS,
+  DEFAULT_PLAYER_CLASS,
   PLAYER_MEMBER_ID,
   RACE_LABELS,
   ROLE_LABELS,
   SPELLS,
   SPELL_ORDER,
+  isPlayableClass,
   isSpellUnlocked,
   type CastRefusalReason,
   type PlayerIdentity,
@@ -35,11 +37,11 @@ import {
 import { createInitialState } from '../simulation/initialState';
 import {
   computeStatsSummary,
+  getActiveHotEffect,
   getBossHpRatio,
   getGlobalMessages,
   getHpRatio,
   getMemberFeedback,
-  getRenewEffect,
   type StatsSummary,
 } from '../simulation/selectors';
 import { stepSimulation } from '../simulation/simulation';
@@ -65,7 +67,10 @@ export interface MemberSnapshot {
   hpRatio: number;
   hpPercent: number;
   alive: boolean;
-  renewTicks: number;
+  /** Ticks left on the active HoT (Renew, Rejuvenation, …), 0 if none. */
+  hotTicks: number;
+  /** Absorb pool remaining from a shield spell, 0 if none is active. */
+  shieldAmount: number;
   selected: boolean;
   feedback: FeedbackEvent[];
 }
@@ -246,7 +251,7 @@ export function createGameStore(
 
   function buildMemberSnapshot(memberId: string): MemberSnapshot {
     const member = state.party.find((entry) => entry.id === memberId)!;
-    const renew = getRenewEffect(member);
+    const hot = getActiveHotEffect(member);
     const ratio = getHpRatio(member);
     return {
       id: member.id,
@@ -259,7 +264,8 @@ export function createGameStore(
       hpRatio: ratio,
       hpPercent: Math.round(ratio * 100),
       alive: member.alive,
-      renewTicks: renew ? renew.ticksRemaining : 0,
+      hotTicks: hot ? hot.ticksRemaining : 0,
+      shieldAmount: Math.round(member.shieldAmount),
       selected: state.selectedTargetId === member.id,
       feedback: getMemberFeedback(state, member.id),
     };
@@ -290,7 +296,10 @@ export function createGameStore(
   }
 
   function buildControlsSnapshot(): ControlsSnapshot {
-    const spells: SpellSnapshot[] = SPELL_ORDER.map((spellId) => {
+    const healer = state.party.find((member) => member.id === PLAYER_MEMBER_ID);
+    const classId =
+      healer && isPlayableClass(healer.classId) ? healer.classId : DEFAULT_PLAYER_CLASS;
+    const spells: SpellSnapshot[] = SPELL_ORDER[classId].map((spellId) => {
       const spell = SPELLS[spellId];
       const check = checkCast(state, spellId);
       return {

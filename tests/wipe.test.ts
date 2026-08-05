@@ -84,10 +84,10 @@ describe('wipe conditions', () => {
   it('refuses every action after the wipe', () => {
     let state = isolateTimers(createInitialState(36));
     state = patchState(state, { status: 'over' });
-    const after = castSpell(state, 'lesserHeal');
+    const after = castSpell(state, 'renew');
 
     expect(after.mana).toBe(MANA.initial);
-    expect(after.stats.castsStartedBySpell.lesserHeal).toBe(0);
+    expect(after.stats.castsStartedBySpell.renew).toBe(0);
   });
 
   it('marks a dead member as untargetable and strips its HoTs', () => {

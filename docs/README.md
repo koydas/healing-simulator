@@ -19,6 +19,7 @@ picks up the relevant one automatically:
 | --- | --- |
 | `pure-engine` | the `src/simulation/` contract: purity, fixed step, event order, seeded randomness |
 | `classic-data` | sourcing any value claimed to be from WoW Classic, and the sourced / derived / approximated / designed split |
+| `class-spellbooks` | the per-class spell data model (`ClassSpellRank`, `SpellKind`), and the checklist for adding/changing a spell or a class |
 | `player-progression` | the saved profile: level, experience, records, and the `localStorage` boundary |
 | `render-budget` | the store / snapshot / `onFrame` split, `React.memo`, and the mobile layout rules |
 | `test-protocol` | Vitest conventions, the `tests/helpers.ts` toolkit, failure-branch coverage |

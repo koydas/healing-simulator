@@ -12,12 +12,15 @@
  *   - experience required per level: `player_xp_for_level` table (same source).
  *   - attribute → health / mana formulas: `Player::GetHealthBonusFromStamina`
  *     and `Player::GetManaBonusFromIntellect` (mangoszero/server, StatSystem.cpp).
- *   - priest healing spells: rank 1 values (wowclassicdb / EZDownRank).
+ *   - class spells (priest, druid, paladin): rank 1 values (EZDownRank for the
+ *     entries it covers; the rest cross-checked against secondary web sources
+ *     and flagged Approximated/Designed where a primary database was not
+ *     reachable in this environment — see `docs/classic-stats.md`, ADR-0021).
  *   - level 1 creatures: `creature_template` table (same vanilla database).
  */
 
 /** Character classes (Blizzard identifiers). */
-export type ClassId = 'warrior' | 'paladin' | 'hunter' | 'rogue' | 'priest' | 'mage';
+export type ClassId = 'warrior' | 'paladin' | 'hunter' | 'rogue' | 'priest' | 'mage' | 'druid';
 
 /** Playable races used by the party. */
 export type RaceId = 'human' | 'dwarf' | 'nightElf' | 'gnome';
@@ -139,6 +142,20 @@ export const CLASS_BASE_BY_LEVEL: Record<ClassId, readonly ClassBaseStats[]> = {
     [978, 1129], [1022, 1150], [1057, 1171], [1093, 1177], [1140, 1198], // 51-55
     [1178, 1219], [1227, 1225], [1267, 1246], [1318, 1252], [1360, 1273], // 56-60
   ]),
+  druid: classTable([
+    [33, 50], [41, 57], [58, 65], [65, 74], [82, 84], // 1-5
+    [89, 95], [96, 107], [113, 120], [120, 134], [137, 149], // 6-10
+    [144, 165], [151, 182], [168, 200], [175, 219], [182, 239], // 11-15
+    [199, 260], [206, 282], [214, 305], [233, 329], [243, 354], // 16-20
+    [254, 380], [266, 392], [289, 420], [303, 449], [318, 479], // 21-25
+    [334, 509], [361, 524], [379, 554], [398, 584], [418, 614], // 26-30
+    [439, 629], [461, 659], [494, 689], [518, 704], [543, 734], // 31-35
+    [569, 749], [596, 779], [624, 809], [653, 824], [683, 854], // 36-40
+    [714, 869], [746, 899], [779, 914], [823, 944], [858, 959], // 41-45
+    [894, 989], [921, 1004], [959, 1019], [998, 1049], [1038, 1064], // 46-50
+    [1079, 1079], [1121, 1109], [1164, 1124], [1208, 1139], [1253, 1154], // 51-55
+    [1299, 1169], [1346, 1199], [1384, 1214], [1433, 1229], [1483, 1244], // 56-60
+  ]),
 };
 
 export function getClassBase(classId: ClassId, level: number): ClassBaseStats {
@@ -171,13 +188,16 @@ function attributeTable(
  * `player_levelstats` (race, class, level, str, agi, sta, inte, spi),
  * index 0 = level 1.
  *
- * The five combinations the party is built from carry every level up to 60;
- * the others keep the level 1 row they have always had. Adding a race or class
- * to the party therefore means extending its list from the same SQL file first
- * — `getAttributes` refuses to guess (see `docs/classic-stats.md`).
+ * The five combinations the party is built from, plus `human/paladin` and
+ * `nightElf/druid` (the other two playable healer classes, ADR-0021), carry
+ * every level up to 60; the rest keep the level 1 row they have always had.
+ * Adding a race or class to the party therefore means extending its list from
+ * the same SQL file first — `getAttributes` refuses to guess (see
+ * `docs/classic-stats.md`).
  */
 export const RACE_CLASS_ATTRIBUTES: Record<string, readonly Attributes[]> = {
-  /* Party combinations — every level from 1 to 60. */
+  /* Party combinations, plus the other two playable classes — every level
+     from 1 to 60. */
   'dwarf/warrior': attributeTable([
     [25, 16, 25, 19, 19], [26, 17, 26, 19, 19], [27, 17, 27, 19, 20], [28, 18, 28, 19, 20], // 1-4
     [30, 19, 29, 19, 20], [31, 20, 30, 20, 20], [32, 20, 31, 20, 21], [33, 21, 32, 20, 21], // 5-8
@@ -246,6 +266,40 @@ export const RACE_CLASS_ATTRIBUTES: Record<string, readonly Attributes[]> = {
     [23, 36, 40, 117, 104], [24, 36, 41, 120, 106], [24, 36, 41, 122, 109], [24, 37, 42, 124, 111], // 53-56
     [24, 37, 42, 127, 113], [25, 37, 43, 129, 115], [25, 38, 43, 132, 118], [25, 38, 44, 133, 120], // 57-60
   ]),
+  'human/paladin': attributeTable([
+    [22, 20, 22, 20, 22], [23, 21, 23, 21, 23], [24, 21, 24, 21, 23], [25, 22, 25, 22, 24], // 1-4
+    [26, 22, 26, 22, 25], [27, 23, 27, 23, 25], [28, 23, 28, 24, 26], [29, 24, 28, 24, 26], // 5-8
+    [30, 24, 29, 25, 27], [31, 25, 30, 25, 28], [32, 25, 31, 26, 29], [33, 26, 32, 27, 29], // 9-12
+    [34, 27, 33, 27, 30], [35, 27, 34, 28, 31], [36, 28, 36, 29, 31], [38, 28, 37, 29, 32], // 13-16
+    [39, 29, 38, 30, 33], [40, 30, 39, 31, 34], [41, 30, 40, 31, 34], [42, 31, 41, 32, 35], // 17-20
+    [43, 32, 42, 33, 36], [45, 32, 43, 34, 37], [46, 33, 44, 34, 38], [47, 34, 46, 35, 38], // 21-24
+    [48, 34, 47, 36, 39], [50, 35, 48, 37, 40], [51, 36, 49, 37, 42], [52, 36, 50, 38, 43], // 25-28
+    [54, 37, 52, 39, 44], [55, 38, 53, 40, 44], [56, 39, 54, 41, 45], [58, 39, 56, 42, 46], // 29-32
+    [59, 40, 57, 42, 47], [61, 41, 58, 43, 48], [62, 42, 60, 44, 49], [64, 43, 61, 45, 50], // 33-36
+    [65, 43, 62, 46, 51], [67, 44, 64, 47, 52], [68, 45, 65, 48, 53], [70, 46, 67, 49, 54], // 37-40
+    [71, 47, 68, 50, 55], [73, 47, 70, 51, 56], [74, 48, 71, 52, 57], [76, 49, 73, 52, 58], // 41-44
+    [78, 50, 74, 53, 59], [79, 51, 76, 54, 60], [81, 52, 77, 56, 61], [83, 53, 79, 57, 63], // 45-48
+    [84, 54, 81, 58, 65], [86, 55, 82, 59, 66], [88, 56, 84, 60, 67], [90, 57, 86, 61, 68], // 49-52
+    [92, 58, 87, 62, 69], [93, 59, 89, 63, 70], [95, 60, 91, 64, 72], [97, 61, 93, 65, 73], // 53-56
+    [99, 62, 94, 66, 74], [101, 63, 96, 68, 75], [103, 64, 98, 69, 77], [105, 65, 100, 70, 78], // 57-60
+  ]),
+  'nightElf/druid': attributeTable([
+    [18, 25, 19, 22, 22], [19, 25, 20, 23, 23], [19, 26, 20, 24, 24], [20, 26, 21, 25, 25], // 1-4
+    [20, 27, 21, 26, 26], [21, 27, 22, 27, 27], [21, 28, 23, 28, 28], [22, 28, 23, 28, 29], // 5-8
+    [22, 29, 24, 29, 30], [23, 29, 24, 30, 31], [23, 30, 25, 31, 33], [24, 30, 26, 32, 34], // 9-12
+    [24, 31, 26, 33, 35], [25, 31, 27, 34, 36], [26, 32, 28, 36, 37], [26, 32, 28, 37, 38], // 13-16
+    [27, 33, 29, 38, 40], [27, 34, 30, 39, 41], [28, 34, 30, 40, 42], [29, 35, 31, 41, 43], // 17-20
+    [29, 35, 32, 42, 45], [30, 36, 33, 43, 46], [31, 37, 33, 44, 47], [31, 37, 34, 46, 49], // 21-24
+    [32, 38, 35, 47, 50], [33, 38, 36, 48, 51], [33, 39, 36, 49, 53], [34, 40, 37, 50, 54], // 25-28
+    [35, 40, 38, 52, 56], [35, 41, 39, 53, 57], [36, 42, 40, 54, 58], [37, 42, 41, 56, 60], // 29-32
+    [38, 43, 41, 57, 61], [38, 44, 42, 58, 63], [39, 44, 43, 60, 64], [40, 45, 44, 61, 66], // 33-36
+    [41, 46, 45, 62, 68], [42, 46, 46, 64, 69], [42, 47, 47, 65, 71], [43, 48, 48, 67, 72], // 37-40
+    [44, 49, 49, 68, 74], [45, 49, 50, 70, 76], [46, 50, 51, 71, 77], [47, 51, 51, 73, 79], // 41-44
+    [47, 52, 52, 74, 81], [48, 53, 53, 76, 83], [49, 53, 55, 77, 84], [50, 54, 56, 79, 86], // 45-48
+    [51, 55, 57, 81, 88], [52, 56, 58, 82, 90], [53, 57, 59, 84, 92], [54, 58, 60, 86, 94], // 49-52
+    [55, 59, 61, 87, 96], [56, 59, 62, 89, 98], [57, 60, 63, 91, 100], [58, 61, 64, 93, 102], // 53-56
+    [59, 62, 65, 94, 104], [60, 63, 67, 96, 106], [61, 64, 68, 98, 108], [62, 65, 69, 100, 110], // 57-60
+  ]),
   'nightElf/hunter': attributeTable([
     [17, 28, 20, 20, 21], [17, 29, 21, 21, 22], [18, 30, 22, 21, 22], [18, 32, 22, 22, 23], // 1-4
     [19, 33, 23, 22, 23], [19, 34, 24, 23, 24], [19, 35, 25, 23, 24], [20, 36, 26, 24, 25], // 5-8
@@ -266,7 +320,6 @@ export const RACE_CLASS_ATTRIBUTES: Record<string, readonly Attributes[]> = {
 
   /* Combinations outside the party — level 1 only, as before. */
   'human/warrior': attributeTable([[23, 20, 22, 20, 21]]),
-  'human/paladin': attributeTable([[22, 20, 22, 20, 22]]),
   'human/mage': attributeTable([[20, 20, 20, 23, 22]]),
   'dwarf/paladin': attributeTable([[24, 16, 25, 19, 20]]),
   'dwarf/hunter': attributeTable([[22, 19, 24, 19, 20]]),
@@ -414,48 +467,65 @@ export function manaPerTickFromSpirit(spirit: number): number {
 }
 
 /* -------------------------------------------------------------------------- */
-/* Priest healing spells — rank 1 values                                       */
+/* Class spells — rank 1 values (ADR-0021)                                     */
 /* -------------------------------------------------------------------------- */
 
-export interface PriestHealRank {
+/**
+ * One spell family at rank 1, for any of the three playable healer classes.
+ * A heal, a HoT, a group heal/HoT and an absorb shield are all expressed with
+ * the same shape — `gameConfig.ts`'s `defineSpell` reads whichever fields
+ * apply and derives the spell's `SpellKind` from them.
+ */
+export interface ClassSpellRank {
   /** Blizzard spell id, so the source can be looked up. */
   spellId: number;
   name: string;
   rank: number;
-  /** Level at which the priest learns this rank. */
+  /** Real training level of this rank in Classic. */
   requiredLevel: number;
   manaCost: number;
   castTimeMs: number;
-  /** Minimum / maximum direct healing (0 for a HoT). */
+  /** Minimum / maximum direct healing (0 for a HoT or a shield). */
   healMin: number;
   healMax: number;
-  /** Total HoT healing and its tick cadence (0 for a direct heal). */
+  /** Total HoT healing and its tick cadence (0 for a direct heal or a shield). */
   hotTotalHeal: number;
   hotTicks: number;
   hotIntervalMs: number;
-  /** Single target or whole party. */
+  /** Whole party rather than a single target (a heal, a HoT, or both). */
   targetsParty: boolean;
+  /** Always the caster (Divine Shield) rather than the selected target. */
+  targetsSelf: boolean;
+  /** Absorb pool granted (0 for anything that is not a shield). */
+  shieldAmount: number;
+  /** How long the absorb pool lasts before it fades, spent or not. */
+  shieldDurationMs: number;
 }
 
 /**
- * The five vanilla priest healing families, at rank 1.
- * `requiredLevel` is the real training level: at level 1 only Lesser Heal is
- * available (see ADR-0008).
+ * The priest's four healing spells, at rank 1: Power Word: Shield, Renew,
+ * Heal and Prayer of Healing (a group heal). `requiredLevel` is the real
+ * Classic training level; `gameConfig.ts` overrides Renew's to 1 so the
+ * default class is not left with nothing to cast between levels 1 and 3,
+ * since Shield itself only trains at 4 — see ADR-0021.
  */
-export const PRIEST_HEALS_RANK_1: Record<string, PriestHealRank> = {
-  lesserHeal: {
-    spellId: 2050,
-    name: 'Lesser Heal',
+export const PRIEST_SPELLS_RANK_1: Record<string, ClassSpellRank> = {
+  shield: {
+    spellId: 17,
+    name: 'Power Word: Shield',
     rank: 1,
-    requiredLevel: 1,
-    manaCost: 30,
-    castTimeMs: 1500,
-    healMin: 46,
-    healMax: 56,
+    requiredLevel: 4,
+    manaCost: 45,
+    castTimeMs: 0,
+    healMin: 0,
+    healMax: 0,
     hotTotalHeal: 0,
     hotTicks: 0,
     hotIntervalMs: 0,
     targetsParty: false,
+    targetsSelf: false,
+    shieldAmount: 44,
+    shieldDurationMs: 15_000,
   },
   renew: {
     spellId: 139,
@@ -470,6 +540,9 @@ export const PRIEST_HEALS_RANK_1: Record<string, PriestHealRank> = {
     hotTicks: 5,
     hotIntervalMs: 3000,
     targetsParty: false,
+    targetsSelf: false,
+    shieldAmount: 0,
+    shieldDurationMs: 0,
   },
   heal: {
     spellId: 2054,
@@ -484,20 +557,9 @@ export const PRIEST_HEALS_RANK_1: Record<string, PriestHealRank> = {
     hotTicks: 0,
     hotIntervalMs: 0,
     targetsParty: false,
-  },
-  flashHeal: {
-    spellId: 2061,
-    name: 'Flash Heal',
-    rank: 1,
-    requiredLevel: 20,
-    manaCost: 125,
-    castTimeMs: 1500,
-    healMin: 193,
-    healMax: 237,
-    hotTotalHeal: 0,
-    hotTicks: 0,
-    hotIntervalMs: 0,
-    targetsParty: false,
+    targetsSelf: false,
+    shieldAmount: 0,
+    shieldDurationMs: 0,
   },
   prayerOfHealing: {
     spellId: 596,
@@ -512,6 +574,181 @@ export const PRIEST_HEALS_RANK_1: Record<string, PriestHealRank> = {
     hotTicks: 0,
     hotIntervalMs: 0,
     targetsParty: true,
+    targetsSelf: false,
+    shieldAmount: 0,
+    shieldDurationMs: 0,
+  },
+};
+
+/**
+ * The druid's four spells, at rank 1: Healing Touch, Rejuvenation, Thorns and
+ * Tranquility. Healing Touch and Rejuvenation's cost/cast time/level are
+ * confirmed against `EZDownRank.lua` (GitHub raw fetch); their heal amounts,
+ * and every number for Thorns and Tranquility, could not be cross-checked
+ * against a primary spell database in this environment (every wowhead /
+ * wowclassicdb / fandom mirror returned HTTP 403 through this session's
+ * network policy) and are flagged **Approximated** in `docs/classic-stats.md`.
+ *
+ * Thorns and Tranquility are also **reflavored**: real Thorns reflects damage
+ * to the attacker (this game never lets a heal contribute party damage, see
+ * `PARTY_DAMAGE` in `gameConfig.ts`) and real Tranquility is a channel, which
+ * the engine has no concept of. Both are modeled with mechanics this project
+ * already has instead — an absorb shield and a party-wide HoT — with their
+ * amounts marked **Designed** rather than Classic's own numbers.
+ */
+export const DRUID_SPELLS_RANK_1: Record<string, ClassSpellRank> = {
+  healingTouch: {
+    spellId: 5185,
+    name: 'Healing Touch',
+    rank: 1,
+    requiredLevel: 1,
+    manaCost: 25,
+    castTimeMs: 1500,
+    healMin: 37,
+    healMax: 51,
+    hotTotalHeal: 0,
+    hotTicks: 0,
+    hotIntervalMs: 0,
+    targetsParty: false,
+    targetsSelf: false,
+    shieldAmount: 0,
+    shieldDurationMs: 0,
+  },
+  rejuvenation: {
+    spellId: 774,
+    name: 'Rejuvenation',
+    rank: 1,
+    requiredLevel: 4,
+    manaCost: 25,
+    castTimeMs: 0,
+    healMin: 0,
+    healMax: 0,
+    hotTotalHeal: 32,
+    hotTicks: 4,
+    hotIntervalMs: 3000,
+    targetsParty: false,
+    targetsSelf: false,
+    shieldAmount: 0,
+    shieldDurationMs: 0,
+  },
+  thorns: {
+    spellId: 467,
+    name: 'Thorns',
+    rank: 1,
+    requiredLevel: 6,
+    manaCost: 35,
+    castTimeMs: 0,
+    healMin: 0,
+    healMax: 0,
+    hotTotalHeal: 0,
+    hotTicks: 0,
+    hotIntervalMs: 0,
+    targetsParty: false,
+    targetsSelf: false,
+    shieldAmount: 36,
+    shieldDurationMs: 600_000,
+  },
+  tranquility: {
+    spellId: 740,
+    name: 'Tranquility',
+    rank: 1,
+    requiredLevel: 30,
+    manaCost: 300,
+    castTimeMs: 0,
+    healMin: 0,
+    healMax: 0,
+    hotTotalHeal: 100,
+    hotTicks: 5,
+    hotIntervalMs: 3000,
+    targetsParty: true,
+    targetsSelf: false,
+    shieldAmount: 0,
+    shieldDurationMs: 0,
+  },
+};
+
+/**
+ * The paladin's four spells, at rank 1: Holy Light, Blessing of Protection,
+ * Divine Shield and — standing in for a group heal vanilla paladins never
+ * had — Holy Radiance, borrowed anachronistically from a later expansion.
+ * Holy Light's cost/cast time/level are confirmed against `EZDownRank.lua`;
+ * every other number here is **Approximated** or **Designed** for the same
+ * reason as the druid's, and for the same reason (no network access to a
+ * primary spell database in this session) — see `docs/classic-stats.md`.
+ *
+ * Blessing of Protection and Divine Shield are real full-immunity effects in
+ * Classic, not an absorb pool; both are modeled here as a shield sized to
+ * comfortably outlast its own duration, which is the mechanic this engine has
+ * (see `PRIEST_SPELLS_RANK_1.shield`'s doc comment and ADR-0021).
+ */
+export const PALADIN_SPELLS_RANK_1: Record<string, ClassSpellRank> = {
+  holyLight: {
+    spellId: 635,
+    name: 'Holy Light',
+    rank: 1,
+    requiredLevel: 1,
+    manaCost: 35,
+    castTimeMs: 2500,
+    healMin: 39,
+    healMax: 47,
+    hotTotalHeal: 0,
+    hotTicks: 0,
+    hotIntervalMs: 0,
+    targetsParty: false,
+    targetsSelf: false,
+    shieldAmount: 0,
+    shieldDurationMs: 0,
+  },
+  blessingOfProtection: {
+    spellId: 1022,
+    name: 'Blessing of Protection',
+    rank: 1,
+    requiredLevel: 5,
+    manaCost: 220,
+    castTimeMs: 0,
+    healMin: 0,
+    healMax: 0,
+    hotTotalHeal: 0,
+    hotTicks: 0,
+    hotIntervalMs: 0,
+    targetsParty: false,
+    targetsSelf: false,
+    shieldAmount: 200,
+    shieldDurationMs: 6000,
+  },
+  divineShield: {
+    spellId: 642,
+    name: 'Divine Shield',
+    rank: 1,
+    requiredLevel: 18,
+    manaCost: 15,
+    castTimeMs: 0,
+    healMin: 0,
+    healMax: 0,
+    hotTotalHeal: 0,
+    hotTicks: 0,
+    hotIntervalMs: 0,
+    targetsParty: false,
+    targetsSelf: true,
+    shieldAmount: 500,
+    shieldDurationMs: 12_000,
+  },
+  holyRadiance: {
+    spellId: 82327,
+    name: 'Holy Radiance',
+    rank: 1,
+    requiredLevel: 30,
+    manaCost: 350,
+    castTimeMs: 2500,
+    healMin: 280,
+    healMax: 310,
+    hotTotalHeal: 0,
+    hotTicks: 0,
+    hotIntervalMs: 0,
+    targetsParty: true,
+    targetsSelf: false,
+    shieldAmount: 0,
+    shieldDurationMs: 0,
   },
 };
 

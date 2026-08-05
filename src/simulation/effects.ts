@@ -64,16 +64,30 @@ export function applyHealTo(draft: GameState, member: PartyMember, amount: numbe
 
 /**
  * Damages a living member.
- * The raw amount is multiplied by the ramp then rounded to the nearest integer.
- * Deaths are resolved separately, at the end of the simulation step.
+ * The raw amount is multiplied by the ramp then rounded to the nearest
+ * integer. An active shield absorbs before any of it reaches HP: `remaining`
+ * is what is left once the pool is drained, possibly nothing at all — a fully
+ * absorbed hit produces an `absorb` feedback event and no `damage` one, since
+ * nothing happened to HP. Deaths are resolved separately, at the end of the
+ * simulation step.
  */
 export function applyDamageTo(draft: GameState, member: PartyMember, rawAmount: number): void {
   if (!member.alive || rawAmount <= 0) return;
 
   const amount = Math.round(rawAmount * draft.damageMultiplier);
-  const applied = Math.min(amount, member.hp);
+  let remaining = amount;
 
-  member.hp = Math.max(0, member.hp - amount);
+  if (member.shieldAmount > 0) {
+    const absorbed = Math.min(remaining, member.shieldAmount);
+    member.shieldAmount -= absorbed;
+    remaining -= absorbed;
+    pushFeedback(draft, { kind: 'absorb', targetId: member.id, amount: absorbed });
+  }
+
+  if (remaining <= 0) return;
+
+  const applied = Math.min(remaining, member.hp);
+  member.hp = Math.max(0, member.hp - remaining);
   draft.stats.damageTaken += applied;
 
   pushFeedback(draft, { kind: 'damage', targetId: member.id, amount: applied });
@@ -99,6 +113,17 @@ export function applyHot(member: PartyMember, spell: SpellDefinition): void {
 }
 
 /**
+ * Grants (or replaces) a member's shield. Unlike a HoT a member carries at
+ * most one shield regardless of which spell granted it: casting a second one
+ * overwrites the first rather than stacking pools, the same "no stacking"
+ * rule Renew already follows for HoTs.
+ */
+export function applyShield(member: PartyMember, spell: SpellDefinition): void {
+  member.shieldAmount = spell.shieldAmount;
+  member.shieldMsRemaining = spell.shieldDurationMs;
+}
+
+/**
  * Applies the effect of a finished cast.
  * The target is assumed valid (alive): deaths cancel casts.
  */
@@ -118,11 +143,26 @@ export function applySpellEffect(
     return;
   }
 
+  if (spell.kind === 'groupHot') {
+    // Every living member gets the same HoT (like Tranquility, reflavored).
+    for (const member of draft.party) {
+      if (member.alive) {
+        applyHot(member, spell);
+      }
+    }
+    return;
+  }
+
   const target = findMember(draft, targetId);
   if (!target || !target.alive) return;
 
   if (spell.kind === 'hot') {
     applyHot(target, spell);
+    return;
+  }
+
+  if (spell.kind === 'shield') {
+    applyShield(target, spell);
     return;
   }
 

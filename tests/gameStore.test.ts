@@ -38,24 +38,24 @@ describe('createGameStore', () => {
   it('builds the healer as the chosen name and class', () => {
     const store = createGameStore(1, 'gorvath', {
       playerLevel: 40,
-      player: { name: 'Zed', classId: 'hunter' },
+      player: { name: 'Zed', classId: 'druid' },
     });
     const healer = store.getMemberSnapshot('healer');
     expect(healer.name).toBe('Zed');
-    expect(healer.classLabel).toBe('Night Elf · Hunter');
-    // A night elf hunter's pool at 40, not the priest default.
+    expect(healer.classLabel).toBe('Night Elf · Druid');
+    // A night elf druid's pool at 40, not the priest default.
     expect(store.getMemberSnapshot('healer').hpMax).not.toBe(0);
   });
 
   it('keeps the chosen identity across a restart, like it keeps the level', () => {
     const store = createGameStore(1, 'threx', {
       playerLevel: 12,
-      player: { name: 'Zed', classId: 'mage' },
+      player: { name: 'Zed', classId: 'paladin' },
     });
     store.restart(2, 'threx');
     const healer = store.getMemberSnapshot('healer');
     expect(healer.name).toBe('Zed');
-    expect(healer.classLabel).toBe('Gnome · Mage');
+    expect(healer.classLabel).toBe('Human · Paladin');
   });
 
   it('reports the end of the fight once, with the enemy fought', () => {
@@ -107,22 +107,22 @@ describe('createGameStore', () => {
   it('reports the class the fight was actually built with, on every restart', () => {
     const classIds: string[] = [];
     const store = createGameStore(1337, 'skarn', {
-      player: { name: 'Zed', classId: 'hunter' },
+      player: { name: 'Zed', classId: 'druid' },
       onFightEnd: (_outcome, _enemyId, _playerLevel, classId) => classIds.push(classId),
     });
 
     playOut(store);
-    expect(classIds).toEqual(['hunter']);
+    expect(classIds).toEqual(['druid']);
 
-    store.restart(99, 'skarn', undefined, { name: 'Zed', classId: 'mage' });
+    store.restart(99, 'skarn', undefined, { name: 'Zed', classId: 'paladin' });
     playOut(store);
-    expect(classIds).toEqual(['hunter', 'mage']);
+    expect(classIds).toEqual(['druid', 'paladin']);
   });
 
   it('keeps the current class when a rematch does not name one', () => {
-    const store = createGameStore(1, 'threx', { player: { name: 'Zed', classId: 'mage' } });
+    const store = createGameStore(1, 'threx', { player: { name: 'Zed', classId: 'paladin' } });
     store.restart(2, 'threx');
-    expect(store.getMemberSnapshot('healer').classLabel).toBe('Gnome · Mage');
+    expect(store.getMemberSnapshot('healer').classLabel).toBe('Human · Paladin');
   });
 
   it('reports the next fight too, at the level the rematch is started with', () => {

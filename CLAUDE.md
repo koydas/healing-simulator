@@ -27,6 +27,7 @@ Read `docs/README.md` first; `docs/architecture.md` explains the layering and
 
 @.claude/skills/pure-engine/SKILL.md
 @.claude/skills/classic-data/SKILL.md
+@.claude/skills/class-spellbooks/SKILL.md
 @.claude/skills/player-progression/SKILL.md
 @.claude/skills/render-budget/SKILL.md
 @.claude/skills/test-protocol/SKILL.md

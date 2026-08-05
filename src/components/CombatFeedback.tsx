@@ -21,6 +21,8 @@ function formatAmount(event: FeedbackEvent): string {
       return `+${event.amount}`;
     case 'damage':
       return `−${event.amount}`;
+    case 'absorb':
+      return `🛡${event.amount}`;
     default:
       return event.text ?? '';
   }

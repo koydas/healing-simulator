@@ -24,6 +24,7 @@ Architecture Decision Records for the Healing Simulator.
 - [ADR-0018: Persistent player profile in localStorage](./0018-persistent-player-profile-localstorage.md)
 - [ADR-0019: Levelling to 60 on Classic tables, with a designed boss reward](./0019-levelling-to-60-and-boss-experience.md)
 - [ADR-0020: Editable character identity — name, class, and per-class progress](./0020-editable-character-identity.md)
+- [ADR-0021: Per-class spellbooks, absorb shields, and replacing mage/hunter with druid/paladin](./0021-per-class-spellbooks-and-absorb-shields.md)
 
 ## Format
 

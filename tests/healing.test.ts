@@ -29,8 +29,8 @@ describe('healing accounting', () => {
     state = patchMember(state, 'tank', { hp: hpMax - 2 });
     state = selectTarget(state, 'tank');
 
-    state = castSpell(state, 'lesserHeal');
-    state = advance(state, SPELLS.lesserHeal.castTimeMs);
+    state = castSpell(state, 'renew');
+    state = advance(state, SPELLS.renew.hotIntervalMs);
 
     expect(memberOf(state, 'tank').hp).toBe(hpMax);
     expect(state.stats.effectiveHealing).toBe(2);

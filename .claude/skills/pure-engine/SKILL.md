@@ -52,11 +52,13 @@ draft.seed = pick.seed;
 ```
 
 Randomness is consumed in three places, in a fixed order: the healing roll on
-cast completion, the spike target, then the next spike interval. **Adding a
-fourth draw shifts every subsequent value**, so a seed that produced a given
-fight before will not reproduce it. That is acceptable, but say so in the commit
-message and in `docs/simulation.md` — someone comparing recorded runs needs to
-know the sequence changed.
+cast completion (any class's `direct`/`group` spell — a `shield` or `hot`/
+`groupHot` spell draws nothing, its amount is fixed), the spike target, then
+the next spike interval. **Adding a fourth draw shifts every subsequent
+value**, so a seed that produced a given fight before will not reproduce it.
+That is acceptable, but say so in the commit message and in
+`docs/simulation.md` — someone comparing recorded runs needs to know the
+sequence changed.
 
 When you need an integer in an inclusive range, take `max - min + 1` buckets
 (`min + Math.floor(value * (max - min + 1))`). Rounding a continuous sample
@@ -68,13 +70,17 @@ project already shipped once.
 Events landing on the same instant resolve in this order, and the order is part
 of the contract:
 
-1. cast completion, 2. HoT ticks, 3. mana regeneration, 4. tank damage,
-5. AoE damage, 6. spike, 7. death resolution, 8. wipe check.
+1. cast completion, 2. HoT ticks, 3. shield decay, 4. mana regeneration,
+5. tank damage, 6. AoE damage, 7. spike, 8. death resolution, 9. wipe check,
+10. party damage on the boss, 11. victory check.
 
 A new event goes in the position where it makes sense against the others, and
-`docs/simulation.md` gets the same list updated. Deaths resolve **once**, at
-step 7 — never mark someone dead inside a damage helper, or the wipe check and
-the feedback ordering fall out of sync.
+`docs/simulation.md` gets the same list updated — shield decay (`tickShields`)
+landed right after HoT ticks when the absorb-shield mechanic was added
+(ADR-0021), on the same reasoning: both are a per-member timed effect ticking
+down once per step. Deaths resolve **once**, at step 8 — never mark someone
+dead inside a damage helper, or the wipe check and the feedback ordering fall
+out of sync.
 
 ### Timers
 
@@ -135,4 +141,8 @@ would two fights at different levels disagree about it? Then it is state.
 - `docs/adr/0001-pure-simulation-engine.md` — why the engine is pure
 - `docs/adr/0002-fixed-timestep-loop.md` — why the step is fixed at 100 ms
 - `docs/adr/0003-deterministic-prng-in-state.md` — why the seed lives in the state
+- `docs/adr/0021-per-class-spellbooks-and-absorb-shields.md` — the shield and
+  groupHot mechanics, and where they sit in the resolution order
+- `class-spellbooks` skill — the per-class spell data model these mechanics
+  are driven by
 - `src/simulation/simulation.ts` — the step itself, in resolution order

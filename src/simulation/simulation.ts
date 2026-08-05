@@ -9,17 +9,18 @@
  * Resolution order for events landing on the same instant:
  *   1. cast completion
  *   2. HoT ticks
- *   3. mana regeneration
- *   4. tank damage
- *   5. AoE damage
- *   6. spike
- *   7. death resolution
- *   8. wipe check
- *   9. party damage on the boss
- *   10. victory check
+ *   3. shield decay
+ *   4. mana regeneration
+ *   5. tank damage
+ *   6. AoE damage
+ *   7. spike
+ *   8. death resolution
+ *   9. wipe check
+ *   10. party damage on the boss
+ *   11. victory check
  *
  * Wipe is checked before victory: a mutual kill (the boss dies the same tick
- * the tank does) resolves as a wipe, and step 10 is a no-op once step 8 has
+ * the tank does) resolves as a wipe, and step 11 is a no-op once step 9 has
  * already ended the fight.
  */
 
@@ -103,6 +104,24 @@ function tickHots(draft: GameState, dtMs: number): void {
 }
 
 /**
+ * Counts down an active shield's remaining duration; once it expires the pool
+ * is lost outright, spent or not — the same way Power Word: Shield fades in
+ * game. A member with no shield (`shieldAmount <= 0`) is skipped entirely, so
+ * this is a no-op on every step of a fight with no shield spell cast yet.
+ */
+function tickShields(draft: GameState, dtMs: number): void {
+  for (const member of draft.party) {
+    if (member.shieldAmount <= 0) continue;
+
+    member.shieldMsRemaining -= dtMs;
+    if (member.shieldMsRemaining <= 0) {
+      member.shieldAmount = 0;
+      member.shieldMsRemaining = 0;
+    }
+  }
+}
+
+/**
  * Vanilla mana regeneration: one tick every 2 seconds, and the five-second rule
  * which fully suspends the spirit-based part for 5 s after any mana spend.
  *
@@ -169,6 +188,8 @@ function resolveDeaths(draft: GameState): void {
     member.hp = 0;
     member.alive = false;
     member.hots = [];
+    member.shieldAmount = 0;
+    member.shieldMsRemaining = 0;
     draft.stats.deaths.push(member.id);
     pushFeedback(draft, { kind: 'death', targetId: member.id, text: `${member.name} died` });
 
@@ -242,6 +263,7 @@ export function stepSimulation(state: GameState, dtMs: number): GameState {
 
   advanceCast(draft, dtMs);
   tickHots(draft, dtMs);
+  tickShields(draft, dtMs);
   regenerateMana(draft, dtMs);
   applyTankDamage(draft, dtMs);
   applyAoeDamage(draft, dtMs);

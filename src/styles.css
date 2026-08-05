@@ -90,8 +90,8 @@ button {
 .app {
   display: flex;
   flex-direction: column;
-  height: 100%;
-  min-height: 100dvh;
+  height: 100dvh;
+  min-height: 100%;
   max-width: 560px;
   margin: 0 auto;
   padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom)
@@ -128,7 +128,7 @@ button {
 
 .header__top {
   display: grid;
-  grid-template-columns: 1fr auto auto;
+  grid-template-columns: auto minmax(0, 1fr) auto auto;
   align-items: center;
   gap: var(--gap);
 }
@@ -191,6 +191,113 @@ button {
   opacity: 0.4;
   cursor: default;
 }
+
+
+.boss-portrait {
+  --boss-main: #8b5e3c;
+  --boss-light: #c78d55;
+  --boss-dark: #3d2a25;
+  position: relative;
+  width: 54px;
+  height: 54px;
+  align-self: center;
+  transform-origin: 50% 78%;
+  animation: boss-idle 1.9s ease-in-out infinite;
+}
+
+.boss-portrait--skarn {
+  --boss-main: #3fbf77;
+  --boss-light: #8df0a9;
+  --boss-dark: #123c35;
+}
+
+.boss-portrait--threx {
+  --boss-main: #a873d6;
+  --boss-light: #e4b7ff;
+  --boss-dark: #342247;
+}
+
+.boss-portrait__body {
+  position: absolute;
+  inset: 7px 6px 9px;
+  border: 2px solid rgba(255, 255, 255, 0.2);
+  border-radius: 45% 45% 38% 38%;
+  background: radial-gradient(circle at 32% 24%, var(--boss-light), var(--boss-main) 55%, var(--boss-dark));
+  box-shadow: inset -6px -8px 0 rgba(0, 0, 0, 0.18), 0 5px 0 rgba(0, 0, 0, 0.2);
+  z-index: 2;
+}
+
+.boss-portrait__shadow {
+  position: absolute;
+  left: 10px;
+  right: 10px;
+  bottom: 2px;
+  height: 8px;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.35);
+}
+
+.boss-portrait__horn {
+  position: absolute;
+  top: -9px;
+  width: 14px;
+  height: 18px;
+  border-radius: 80% 10% 80% 10%;
+  background: #f5d38b;
+  transform: rotate(-35deg);
+}
+
+.boss-portrait__horn--left { left: 3px; }
+.boss-portrait__horn--right { right: 3px; transform: scaleX(-1) rotate(-35deg); }
+
+.boss-portrait__eye {
+  position: absolute;
+  top: 15px;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #10131b;
+  box-shadow: 0 0 0 2px #fff2;
+}
+
+.boss-portrait__eye--left { left: 12px; }
+.boss-portrait__eye--right { right: 12px; }
+
+.boss-portrait__mouth {
+  position: absolute;
+  left: 16px;
+  right: 16px;
+  bottom: 10px;
+  height: 6px;
+  border-bottom: 3px solid #140b0d;
+  border-radius: 50%;
+}
+
+.boss-portrait__badge {
+  position: absolute;
+  right: -8px;
+  bottom: -7px;
+  font-size: 16px;
+  filter: drop-shadow(0 1px 1px rgba(0, 0, 0, 0.7));
+}
+
+.boss-portrait__arm {
+  position: absolute;
+  top: 29px;
+  width: 18px;
+  height: 8px;
+  border-radius: 999px;
+  background: var(--boss-dark);
+  z-index: 1;
+}
+
+.boss-portrait__arm--left { left: 0; transform: rotate(25deg); }
+.boss-portrait__arm--right { right: 0; transform: rotate(-25deg); }
+.boss-portrait--attack { animation: boss-attack 520ms ease-out; }
+.boss-portrait--hurt { animation: boss-hurt 500ms ease-out; }
+.boss-portrait--gorvath-joke { animation: boss-rock-wiggle 750ms ease-in-out; }
+.boss-portrait--skarn-joke { animation: boss-bug-scuttle 750ms steps(4, end); }
+.boss-portrait--threx-joke { animation: boss-rhino-snort 750ms ease-in-out; }
 
 .header__bossbar {
   position: relative;
@@ -428,7 +535,7 @@ button {
   /* Pinned between the party and the controls, never inside the scrolling
      region: combat messages must stay visible whatever the party scroll. */
   flex: 0 0 auto;
-  min-height: 46px;
+  min-height: 30px;
   display: flex;
   flex-direction: column;
   justify-content: flex-end;
@@ -451,11 +558,17 @@ button {
 /* -------------------------------------------------------------- Controls -- */
 
 .controls {
+  position: sticky;
+  bottom: 0;
+  z-index: 5;
   display: flex;
   flex-direction: column;
   gap: var(--gap);
   padding: var(--gap);
-  padding-bottom: calc(var(--gap) + env(safe-area-inset-bottom));
+  /* The spell row is the last thing on screen and sits flush against the
+     bottom edge — only the device's own safe area is kept below it, so the
+     thumb reaches the buttons where it naturally rests. */
+  padding-bottom: max(var(--gap), env(safe-area-inset-bottom));
   background: var(--bg-panel);
   border-top: 1px solid var(--border-soft);
 }
@@ -464,6 +577,12 @@ button {
   display: flex;
   align-items: center;
   gap: var(--gap);
+}
+
+/* Idle, nothing is drawn — but the row keeps its height, so beginning a cast
+   does not push the spell buttons down mid-tap. */
+.castbar[data-casting='false'] {
+  visibility: hidden;
 }
 
 .castbar__track {
@@ -626,6 +745,65 @@ button {
   text-align: center;
 }
 
+
+@keyframes boss-idle {
+  0%, 100% { transform: translateY(0) rotate(-1deg); }
+  50% { transform: translateY(-3px) rotate(1deg); }
+}
+
+@keyframes boss-attack {
+  0% { transform: translateX(0) scale(1); }
+  45% { transform: translateX(-8px) rotate(-10deg) scale(1.06); }
+  100% { transform: translateX(0) scale(1); }
+}
+
+@keyframes boss-hurt {
+  0% { transform: translateX(0); filter: brightness(1); }
+  35% { transform: translateX(7px) rotate(8deg); filter: brightness(1.7); }
+  70% { transform: translateX(-4px) rotate(-5deg); }
+  100% { transform: translateX(0); filter: brightness(1); }
+}
+
+@keyframes boss-rock-wiggle {
+  0%, 100% { transform: rotate(0); }
+  25% { transform: rotate(-12deg); }
+  50% { transform: rotate(12deg); }
+  75% { transform: rotate(-8deg); }
+}
+
+@keyframes boss-bug-scuttle {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-7px) translateY(2px); }
+  50% { transform: translateX(7px) translateY(-2px); }
+  75% { transform: translateX(-4px); }
+}
+
+@keyframes boss-rhino-snort {
+  0%, 100% { transform: scale(1); }
+  40% { transform: scale(1.12) rotate(4deg); }
+  55% { transform: scale(0.96) rotate(-4deg); }
+}
+
+@media (max-width: 390px) {
+  .app__main { padding-inline: 6px; }
+  .header { padding-block: 7px; }
+  .header__top { gap: 6px; }
+  .boss-portrait { width: 46px; height: 46px; }
+  .header__name { font-size: 14px; }
+  .header__subtitle { font-size: 10px; }
+  .header__stats { gap: 6px; }
+  .header__timer { font-size: 17px; }
+  .header__pause { min-width: 42px; min-height: 40px; }
+  .messages { min-height: 24px; }
+  .frame { min-height: 58px; padding: 7px 8px; }
+  /* Spell buttons keep the base rule's 64 px minimum and `auto-fit` grid
+     (ADR-0015): at 320 px that wraps to 4 + 1 rows instead of forcing five
+     columns that would either shrink below 64 px or overflow the row — see
+     the Codex finding on #17 and docs/adr/0015. */
+  .spell__name { font-size: 11px; }
+  .spell__description { font-size: 8px; }
+}
+
 /* ------------------------------------------------------------ Home screen -- */
 
 /* The home screen carries a character sheet, a record table and three enemy
@@ -633,8 +811,8 @@ button {
    `html`, `body` and `.app` are height-locked and the page never does. */
 .home {
   position: relative;
-  height: 100%;
-  min-height: 100dvh;
+  height: 100dvh;
+  min-height: 100%;
   padding: 16px env(safe-area-inset-right) env(safe-area-inset-bottom)
     env(safe-area-inset-left);
   overflow-y: auto;
@@ -1313,6 +1491,18 @@ button {
   .frame__fill,
   .feedback__item {
     transition: none;
+    animation-duration: 0.01ms;
+  }
+
+  /* The idle wobble is infinite and the attack/hurt/joke states layer more
+     motion on top of it every 6 s — collapse all of them to a single,
+     imperceptible frame instead of leaving continuous movement running. */
+  .boss-portrait,
+  .boss-portrait--attack,
+  .boss-portrait--hurt,
+  .boss-portrait--gorvath-joke,
+  .boss-portrait--skarn-joke,
+  .boss-portrait--threx-joke {
     animation-duration: 0.01ms;
   }
 }

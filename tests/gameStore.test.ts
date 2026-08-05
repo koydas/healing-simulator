@@ -128,4 +128,27 @@ describe('createGameStore', () => {
     playOut(store);
     expect(store.getState().outcome).toBe('victory');
   });
+
+  /**
+   * The header snapshot used to carry raw `elapsedMs`, which changes on
+   * every 100 ms tick and defeated `reuse`/`snapshotEqual` — every
+   * `useSyncExternalStore` subscriber woke up at 10 Hz just to animate a
+   * boss portrait that only changes phase a few times per 6 s cycle (Codex
+   * finding on #17). `bossAnimationPhase` replaces it: two ticks in the same
+   * phase, with nothing else in the header changed, must reuse the exact
+   * same snapshot reference.
+   */
+  it('reuses the header snapshot while the boss animation phase does not change', () => {
+    const store = createGameStore(1, 'gorvath');
+    // Past the opening "attack" beat (< 520 ms) and before the first party
+    // damage tick (1000 ms) or the next phase boundary (2000 ms): the whole
+    // header, including bossAnimationPhase, is stable across these ticks.
+    store.advance(600);
+    const first = store.getHeaderSnapshot();
+    expect(first.bossAnimationPhase).toBe('idle');
+
+    store.advance(TICK_MS);
+    const second = store.getHeaderSnapshot();
+    expect(second).toBe(first);
+  });
 });

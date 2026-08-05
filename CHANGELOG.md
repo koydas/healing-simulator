@@ -24,6 +24,18 @@ All notable changes to this project are recorded here, following
   migrated, the same documented trade-off ADR-0018 already called out for a
   future incompatible shape.
 
+- **An animated boss portrait in the header**, built in the DOM (no image
+  assets): idle sway, a short attack lunge and hurt flinch on a fixed 6 s
+  cycle, plus a one-off "joke" beat per boss. The animation phase is computed
+  in the store (`bossAnimationPhase`) rather than exposing raw `elapsedMs`, so
+  the header snapshot is still reused between phase changes instead of
+  re-rendering at the simulation's 10 Hz tick. All of it is neutralised under
+  `prefers-reduced-motion: reduce`. The spell row is also now sticky at the
+  bottom of the screen, within the safe area, so it stays reachable on short
+  phones. The narrow-phone breakpoint keeps the spell grid's existing 64 px
+  minimum and `auto-fit` wrap (ADR-0015) rather than forcing five columns —
+  at 320 px that means the accepted 4 + 1 wrap, not an overflowing row.
+
 - **A character sheet on the home screen, with levels and an experience bar up
   to 60.** The healer's health, mana, regeneration, attributes and known spells
   are read from the WoW Classic tables at the current level — the full
@@ -69,6 +81,18 @@ All notable changes to this project are recorded here, following
   as start a same-enemy rematch. See ADR-0016.
 
 ### Changed
+
+- **The spell buttons now sit flush against the bottom of the fight screen**
+  and the idle "Ready" bar is gone. That bar was an empty full-width track
+  labelled `Ready` above the spells: it looked like a button and did nothing
+  when tapped. The cast bar row is now blank until a cast starts, keeping its
+  40 px height (`visibility: hidden`, not removed) so the controls block
+  measures the same idle and casting — verified identical at 390 × 844,
+  320 × 568 and 667 × 375, meaning the spell buttons and party frames never
+  shift under a thumb mid-cast. The controls also dropped the 8 px of padding
+  below the spell row, keeping only `env(safe-area-inset-bottom)`. `Cancel`
+  is unchanged: hidden and out of the tab order while idle, visible and
+  working during a cast.
 
 - **Health and mana values now sit inside their bars, like the boss bar.** The
   party frames lost their separate value row: `hp / max` and the percentage are

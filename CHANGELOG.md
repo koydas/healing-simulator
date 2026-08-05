@@ -53,6 +53,16 @@ All notable changes to this project are recorded here, following
 
 ### Changed
 
+- **Health and mana values now sit inside their bars, like the boss bar.** The
+  party frames lost their separate value row: `hp / max` and the percentage are
+  overlaid on the health bar, which grows to fill the frame (14 → 28 px on a
+  phone, 33 px on desktop). Each frame drops from 70 px to the 64 px minimum,
+  giving the party 30 px back — the fight screen overflows by 186 px instead of
+  214 px at 320 × 568, and by 257 px instead of 285 px at 667 × 375. The mana
+  value moved into its track the same way, returning the 96 px it reserved on
+  the right to the bar itself. Floating combat numbers keep the right side of
+  the frame to themselves, so they no longer cover the percentage.
+
 - **Contributor guides follow the new shape.** A `player-progression` skill
   covers the saved profile, the experience rules and the storage boundary;
   `classic-data` now describes the level-indexed tables and the sourced /

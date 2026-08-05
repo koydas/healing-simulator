@@ -59,16 +59,20 @@ export const PartyFrame = memo(function PartyFrame({ memberId }: PartyFrameProps
         )}
       </span>
 
+      {/* Health values live inside the bar, like the boss bar: one row instead
+          of two, which gives the party ~6 px per frame back on a phone. */}
       <span className="frame__bar">
         <span className={hpBarClass(member.hpRatio)} />
-        {!member.alive && <span className="frame__dead-label">DEAD</span>}
-      </span>
-
-      <span className="frame__footer">
-        <span className="frame__hp">
-          {member.hp} / {member.hpMax}
-        </span>
-        <span className="frame__percent">{member.hpPercent}%</span>
+        {member.alive ? (
+          <span className="frame__values">
+            <span className="frame__hp">
+              {member.hp} / {member.hpMax}
+            </span>
+            <span className="frame__percent">{member.hpPercent}%</span>
+          </span>
+        ) : (
+          <span className="frame__dead-label">DEAD</span>
+        )}
       </span>
 
       <MemberFeedback events={member.feedback} />

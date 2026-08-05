@@ -33,8 +33,8 @@ export const ManaBar = memo(function ManaBar() {
     <div className="manabar" ref={barRef}>
       <div className="manabar__track">
         <div className="manabar__fill" />
+        <span className="manabar__value" ref={valueRef} />
       </div>
-      <span className="manabar__value" ref={valueRef} />
     </div>
   );
 });

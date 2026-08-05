@@ -1338,4 +1338,16 @@ button {
     transition: none;
     animation-duration: 0.01ms;
   }
+
+  /* The idle wobble is infinite and the attack/hurt/joke states layer more
+     motion on top of it every 6 s — collapse all of them to a single,
+     imperceptible frame instead of leaving continuous movement running. */
+  .boss-portrait,
+  .boss-portrait--attack,
+  .boss-portrait--hurt,
+  .boss-portrait--gorvath-joke,
+  .boss-portrait--skarn-joke,
+  .boss-portrait--threx-joke {
+    animation-duration: 0.01ms;
+  }
 }

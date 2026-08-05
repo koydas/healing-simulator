@@ -77,7 +77,13 @@ export interface HeaderSnapshot {
   bossHpRatio: number;
   bossHpPercent: number;
   playerLevel: number;
-  elapsedMs: number;
+  /**
+   * Stable animation phase for the boss portrait — recomputed from
+   * `state.elapsedMs`, but only changes at the few phase boundaries in each
+   * 6 s cycle instead of on every 100 ms tick, so the snapshot stays reused
+   * (`reuse`/`snapshotEqual`) between phase changes (see render-budget).
+   */
+  bossAnimationPhase: BossAnimationPhase;
   status: GameStatus;
   timeLabel: string;
   damageMultiplier: number;
@@ -158,6 +164,23 @@ function castLabel(castTimeMs: number): string {
   return castTimeMs <= 0 ? 'Instant' : `${(castTimeMs / 1000).toFixed(1)} s`;
 }
 
+export type BossAnimationPhase = 'idle' | 'attack' | 'hurt' | 'joke';
+
+/**
+ * Boss portrait animation phase, on a fixed 6 s cycle: a short attack, then a
+ * hurt flinch, then a per-boss "joke" beat, idle the rest of the time. Kept a
+ * function of `state.elapsedMs` (not React state) so it stays deterministic
+ * and cheap to recompute every step.
+ */
+function bossAnimationPhase(state: GameState): BossAnimationPhase {
+  if (state.status !== 'active') return 'idle';
+  const cycle = state.elapsedMs % 6000;
+  if (cycle < 520) return 'attack';
+  if (cycle >= 2000 && cycle < 2500) return 'hurt';
+  if (cycle >= 4300 && cycle < 5050) return 'joke';
+  return 'idle';
+}
+
 export interface GameStoreOptions {
   /** Level the fight is fought at — the saved profile's, 1 without one. */
   playerLevel?: number;
@@ -229,7 +252,7 @@ export function createGameStore(
       bossHpRatio,
       bossHpPercent: Math.round(bossHpRatio * 100),
       playerLevel: state.playerLevel,
-      elapsedMs: state.elapsedMs,
+      bossAnimationPhase: bossAnimationPhase(state),
       status: state.status,
       timeLabel: `${minutes}:${String(seconds).padStart(2, '0')}`,
       damageMultiplier: Math.round(state.damageMultiplier * 100) / 100,

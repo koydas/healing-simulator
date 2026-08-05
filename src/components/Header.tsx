@@ -2,7 +2,7 @@
 
 import { memo, useCallback, type CSSProperties } from 'react';
 import { useHeaderSnapshot, useStore } from '../hooks/useGameStore';
-
+import type { HeaderSnapshot } from '../store/gameStore';
 
 const BOSS_EMOJI: Record<string, string> = {
   gorvath: '🪨',
@@ -10,14 +10,14 @@ const BOSS_EMOJI: Record<string, string> = {
   threx: '🦏',
 };
 
-function bossAnimationClass(header: ReturnType<typeof useHeaderSnapshot>): string {
-  if (header.status !== 'active') return 'boss-portrait--idle';
-  const elapsedMs = header.elapsedMs;
-  const cycle = elapsedMs % 6000;
-  if (cycle < 520) return 'boss-portrait--attack';
-  if (cycle >= 2000 && cycle < 2500) return 'boss-portrait--hurt';
-  if (cycle >= 4300 && cycle < 5050) return `boss-portrait--${header.enemyId}-joke`;
-  return 'boss-portrait--idle';
+/**
+ * `header.bossAnimationPhase` is already a stable, memo-friendly value built
+ * by the store (see `gameStore.buildHeaderSnapshot`) — this only turns it
+ * into the CSS class, picking the per-boss variant for the "joke" phase.
+ */
+function bossAnimationClass(header: HeaderSnapshot): string {
+  if (header.bossAnimationPhase === 'joke') return `boss-portrait--${header.enemyId}-joke`;
+  return `boss-portrait--${header.bossAnimationPhase}`;
 }
 
 export const Header = memo(function Header() {

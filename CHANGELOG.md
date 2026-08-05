@@ -7,6 +7,16 @@ All notable changes to this project are recorded here, following
 
 ### Added
 
+- **An animated boss portrait in the header**, built in the DOM (no image
+  assets): idle sway, a short attack lunge and hurt flinch on a fixed 6 s
+  cycle, plus a one-off "joke" beat per boss. The animation phase is computed
+  in the store (`bossAnimationPhase`) rather than exposing raw `elapsedMs`, so
+  the header snapshot is still reused between phase changes instead of
+  re-rendering at the simulation's 10 Hz tick. All of it is neutralised under
+  `prefers-reduced-motion: reduce`. The spell row is also now sticky at the
+  bottom of the screen, within the safe area, so it stays reachable on short
+  phones.
+
 - **A character sheet on the home screen, with levels and an experience bar up
   to 60.** The healer's health, mana, regeneration, attributes and known spells
   are read from the WoW Classic tables at the current level — the full

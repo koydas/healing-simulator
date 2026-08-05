@@ -161,8 +161,9 @@ of silently granting nothing, which would look like a bug.
 ### The balance consequence stays visible
 
 Levelling makes the fight easier: the encounters are still the level 1 designs
-(`ENEMY_LEVEL`), and the spellbook is still rank 1 only, so health pools grow
-about 30× between level 1 and 60 while healing does not move.
+(`ENEMY_LEVEL`), and every class's spellbook is still rank 1 only (ADR-0021),
+so health pools grow about 30× between level 1 and 60 while healing does not
+move.
 `tests/gameStore.test.ts` asserts that a level 60 party wins with no healing —
 that test is documentation, do not delete it to make a suite look better.
 

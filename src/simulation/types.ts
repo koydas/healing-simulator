@@ -9,8 +9,24 @@ import type { ClassId, RaceId } from '../config/classicData';
 
 export type Role = 'tank' | 'healer' | 'dps';
 
-/** The five vanilla priest healing families (rank 1). */
-export type SpellId = 'lesserHeal' | 'renew' | 'heal' | 'flashHeal' | 'prayerOfHealing';
+/**
+ * Every spell of every playable class (rank 1), four per class — priest,
+ * druid and paladin (ADR-0021). Ids are unique across classes, so `SpellId`
+ * stays one flat union regardless of which class is fighting.
+ */
+export type SpellId =
+  | 'shield'
+  | 'renew'
+  | 'heal'
+  | 'prayerOfHealing'
+  | 'healingTouch'
+  | 'rejuvenation'
+  | 'thorns'
+  | 'tranquility'
+  | 'holyLight'
+  | 'blessingOfProtection'
+  | 'divineShield'
+  | 'holyRadiance';
 
 export type GameStatus = 'active' | 'paused' | 'over';
 
@@ -68,6 +84,10 @@ export interface PartyMember {
   hp: number;
   alive: boolean;
   hots: HotEffect[];
+  /** Absorb pool from a shield spell (0 when none is active). */
+  shieldAmount: number;
+  /** Time left before the shield fades, spent or not (0 when none is active). */
+  shieldMsRemaining: number;
 }
 
 export interface ActiveCast {
@@ -77,7 +97,7 @@ export interface ActiveCast {
   elapsedMs: number;
 }
 
-export type FeedbackKind = 'heal' | 'overheal' | 'damage' | 'death' | 'message';
+export type FeedbackKind = 'heal' | 'overheal' | 'damage' | 'absorb' | 'death' | 'message';
 
 export interface FeedbackEvent {
   id: number;

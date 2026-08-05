@@ -20,6 +20,7 @@ no health value or spell cost is written by hand anywhere else.
 | Stamina → health formula | `Player::GetHealthBonusFromStamina`, [mangoszero/server `StatSystem.cpp`](https://github.com/mangoszero/server/blob/master/src/game/Object/StatSystem.cpp) | server code |
 | Intellect → mana formula | `Player::GetManaBonusFromIntellect`, same file | server code |
 | Priest healing spells (rank 1) | [wowclassicdb](https://wowclassicdb.com/spell/2050) for the amounts, [EZDownRank](https://github.com/mrbuds/EZDownRank/blob/master/EZDownRank.lua) for costs / cast times / levels | database + addon |
+| Druid and paladin spells (rank 1) | [EZDownRank](https://github.com/mrbuds/EZDownRank/blob/master/EZDownRank.lua) for Healing Touch, Rejuvenation and Holy Light's cost/cast time/level; every other number (Thorns, Tranquility, Blessing of Protection, Divine Shield, and every heal amount) is **Approximated or Designed** — the primary spell databases were blocked by this session's network policy, see "Approximations" | addon + secondary sources (ADR-0021) |
 | Level 1 creatures | `creature_template` table, [same vanilla database](https://github.com/mangoszero/database/blob/master/World/Setup/FullDB/creature_template.sql) | 1.12 server |
 | Spirit regeneration | commonly documented priest formula (see "Approximations") | **approximation** |
 
@@ -50,12 +51,14 @@ Sanity check: a level 1 human warrior has 22 stamina, so
 | Rogue | 25 | — (energy) |
 | Priest | 31 | 110 |
 | Mage | 31 | 100 |
+| Druid | 33 | 50 |
 
-`CLASS_BASE_BY_LEVEL` carries the same two columns for all six classes at every
-level up to 60 (`getClassBase(classId, level)`); the level 1 row above is just
-the first entry. A handful of rows in the source table are not monotonic
+`CLASS_BASE_BY_LEVEL` carries the same two columns for all seven classes at
+every level up to 60 (`getClassBase(classId, level)`); the level 1 row above is
+just the first entry. A handful of rows in the source table are not monotonic
 (warrior 101 → 100 at level 11, paladin 28 → 26 at level 2) — they are copied
-as they are, not smoothed.
+as they are, not smoothed. Druid (class id 11 in `player_classlevelstats`) was
+added in [ADR-0021](./adr/0021-per-class-spellbooks-and-absorb-shields.md).
 
 ## The party
 
@@ -83,24 +86,29 @@ At level 1 the attributes behind those numbers are:
 
 Only the priest's mana is simulated: it is the player's resource.
 
-Only these five race/class combinations carry a full 1 – 60 column; the other
-twelve keep their level 1 row. Adding a race or class to the party means
+Only these five race/class combinations, plus `human/paladin` and
+`nightElf/druid` (added for ADR-0021), carry a full 1 – 60 column; the other
+ten keep their level 1 row. Adding a race or class to the party means
 extending its column from the same SQL file first — `getAttributes` throws for
 a level it has no row for, rather than interpolating a character that never
 existed.
 
-### The player's own class is editable, among three of those five
+### The player's own class is editable, and each one has its own spellbook
 
 Since [ADR-0020](./adr/0020-editable-character-identity.md) the character
 sheet's name and class can be edited; the healer party member is rebuilt from
 whichever is chosen, the same way it was always rebuilt from Elowen the human
-priest. Class is restricted to `PLAYABLE_CLASSES = ['priest', 'mage', 'hunter']`
-— three of the five combinations above, each paired with the race the party
-already uses for it. Warrior and rogue are the other two, and both are
-excluded on purpose: their base mana is **0 at every level**
-(`CLASS_BASE_BY_LEVEL`), and every spell this game simulates costs mana. The
-spellbook itself never changes with class — only the identity, and the
-health/mana/attributes it derives, do.
+priest. Class is restricted to
+`PLAYABLE_CLASSES = ['priest', 'druid', 'paladin']` — the three sourced
+combinations that both spend mana and, since
+[ADR-0021](./adr/0021-per-class-spellbooks-and-absorb-shields.md), simulate a
+real healing kit: Priest (Shield, Renew, Heal, Prayer of Healing), Druid
+(Healing Touch, Rejuvenation, Thorns, Tranquility) and Paladin (Holy Light,
+Blessing of Protection, Divine Shield, Holy Radiance). Mage and Hunter, and
+Warrior and Rogue before them, are excluded — the first two never got a
+spellbook of their own, and the latter two have **0 mana at every level**
+(`CLASS_BASE_BY_LEVEL`). Each class's spellbook, not just its identity and
+derived stats, now changes with the choice — see the "Spells" section below.
 
 The tank has 1.96 times the hunter's health — the original "the tank has twice
 the health of the others" rule is no longer imposed, it **emerges** from picking
@@ -108,48 +116,88 @@ a dwarf warrior (stamina 25, the highest in the game at level 1).
 
 ## Mana and regeneration
 
-| Value | Level 1 | Level 60 | Origin |
+| Value | Level 1 (priest default) | Level 60 | Origin |
 | --- | --- | --- | --- |
-| Priest pool | 160 | 2956 | class base + intellect bonus (22 → 120) |
+| Pool | 160 | 2956 | class base + intellect bonus (22 → 120) |
 | Regeneration tick | every 2 s | every 2 s | vanilla |
 | Mana per tick | 18.5 | 45.25 | spirit / 4 + 12.5 (24 → 131) |
 | Five-second rule | 5 s | 5 s | vanilla |
 
+Druid and paladin get the exact same formula and cadence, from their own class
+base and their own attributes at that level (`manaProfileAtLevel`) — a level 1
+night elf druid has 100 mana, a level 1 human paladin 79 (see the "two new
+playable classes" test in `tests/classicStats.test.ts`).
+
 In vanilla, spirit-based regeneration is **fully suspended for the 5 seconds
-following a mana expenditure** (without the Meditation talent). A priest who
+following a mana expenditure** (without the Meditation talent). A healer who
 chains casts therefore regenerates nothing at all: the breathing window is part
 of the game.
 
-In numbers at level 1: 160 mana = 5 Lesser Heals back to back, then you must
-stop casting for 5 s to restart the ticks, at 9.25 mana per second. *Sustainable*
-healing throughput lands around 15 HP/s, while *burst* throughput reaches
-34 HP/s.
+## Spells (rank 1) — one four-spell kit per class (ADR-0021)
 
-## Priest spells (rank 1)
+Before [ADR-0021](./adr/0021-per-class-spellbooks-and-absorb-shields.md) every
+playable class cast the same five priest spells. Each of the three now has its
+own four, gated by `requiredLevel` the same way. Healing is **rolled uniformly
+inside the spell's range**, like in game — there is no "base ± 10%".
+
+### Priest
 
 | Spell | Level | Mana | Cast | Effect | Id |
 | --- | --- | --- | --- | --- | --- |
-| Lesser Heal | **1** | 30 | 1.5 s | 46 – 56 | 2050 |
-| Renew | 8 | 30 | instant | 45 over 15 s (5 ticks of 9, every 3 s) | 139 |
+| Renew | **1** (Designed override; real level is 8) | 30 | instant | 45 over 15 s (5 ticks of 9, every 3 s) | 139 |
+| Power Word: Shield | 4 | 45 | instant | Absorbs 44 damage for 15 s | 17 |
 | Heal | 16 | 155 | 3.0 s | 295 – 341 | 2054 |
-| Flash Heal | 20 | 125 | 1.5 s | 193 – 237 | 2061 |
 | Prayer of Healing | 30 | 410 | 3.0 s | 312 – 333 on the party | 596 |
 
-Healing is **rolled uniformly inside the spell's range**, like in game — there
-is no "base ± 10%" any more.
+Lesser Heal and Flash Heal, from the pre-ADR-0021 kit, are gone. Renew's gate
+moving to level 1 is the one deliberate, Designed exception in this table: real
+Classic trains it at 8, but leaving the default class with nothing to cast for
+three levels — Shield itself only trains at 4 — was worse than the deviation
+(see ADR-0021's Context).
 
-**At level 1 a priest only knows Lesser Heal.** The other four spells are shown
-locked with their training level, and unlock as the character levels: Renew at
-8, Heal at 16, Flash Heal at 20, Prayer of Healing at 30. See
-[ADR-0008](./adr/0008-classic-spellbook-level-gating.md) for the discussion.
+### Druid
 
-A note on scale: Prayer of Healing costs 410 mana, 2.5 times a level 1 priest's
-pool. That is not an inconsistency — it is a level 30 spell, and a level 30
-priest has 1322 mana.
+| Spell | Level | Mana | Cast | Effect | Id |
+| --- | --- | --- | --- | --- | --- |
+| Healing Touch | **1** | 25 | 1.5 s | 37 – 51 | 5185 |
+| Rejuvenation | 4 | 25 | instant | 32 over 12 s (4 ticks of 8, every 3 s) | 774 |
+| Thorns | 6 | 35 | instant | Absorbs 36 damage for 10 min | 467 |
+| Tranquility | 30 | 300 | instant | 100 over 15 s on the party (5 ticks of 20, every 3 s) | 740 |
+
+Thorns and Tranquility are **reflavored**, not just Approximated: real Thorns
+reflects damage to the attacker (this game never lets a heal contribute party
+damage — see `PARTY_DAMAGE`'s design note) and real Tranquility is a channel,
+which the engine has no concept of. Both are reimplemented with a mechanic
+this project already has (an absorb shield; an instant party-wide HoT) instead.
+
+### Paladin
+
+| Spell | Level | Mana | Cast | Effect | Id |
+| --- | --- | --- | --- | --- | --- |
+| Holy Light | **1** | 35 | 2.5 s | 39 – 47 | 635 |
+| Blessing of Protection | 5 | 220 | instant | Absorbs 200 damage for 6 s | 1022 |
+| Divine Shield | 18 | 15 | instant | Absorbs 500 damage for 12 s, self only | 642 |
+| Holy Radiance | 30 | 350 | 2.5 s | 280 – 310 on the party | 82327 |
+
+Blessing of Protection and Divine Shield are real full-immunity effects in
+Classic (they block *all* damage, not a fixed pool); both are modeled here as
+a shield sized to comfortably outlast its own duration, the mechanic this
+engine actually has. Holy Radiance has no vanilla equivalent at all — real
+1.12 paladins had no AoE heal — and is borrowed anachronistically from a later
+expansion, marked Designed outright rather than presented as sourced.
+
+**At level 1 each class knows exactly one spell**: Renew, Healing Touch or
+Holy Light. The other three of each kit are shown locked with their training
+level. See [ADR-0008](./adr/0008-classic-spellbook-level-gating.md) for the
+original discussion and ADR-0021 for the per-class split.
+
+A note on scale: Prayer of Healing and Holy Radiance cost 410 and 350 mana,
+multiples of a level 1 pool. That is not an inconsistency — they are level 30
+spells, and a level 30 priest has 1322 mana.
 
 Only **rank 1** of each family exists in the game so far, at every level. A
-level 60 priest therefore heals for the same amounts as a level 16 one — see
-the levelling section below.
+level 60 character therefore heals for the same amounts as when the spell first
+unlocked — see the levelling section below.
 
 ## Experience and levels
 
@@ -222,11 +270,16 @@ This is the section to read before quoting any number from this project.
 
 ### Sourced — exact Classic value
 
-- base health and mana per class, at every level from 1 to 60;
-- attributes per race/class, at every level for the party's five combinations;
+- base health and mana per class, at every level from 1 to 60, including
+  druid (ADR-0021);
+- attributes per race/class, at every level for the party's five combinations,
+  plus `human/paladin` and `nightElf/druid` (ADR-0021);
 - the experience required for each level, and the level cap of 60;
 - the stamina → health and intellect → mana formulas;
-- cost, cast time, required level and healing amount of the five spells;
+- Renew, Heal and Prayer of Healing's cost, cast time, required level and
+  healing amount (priest); Healing Touch and Rejuvenation's cost, cast time
+  and required level (druid); Holy Light's cost, cast time and required level
+  (paladin) — all four confirmed against `EZDownRank.lua`;
 - the 1.5 s global cooldown;
 - the 2 s regeneration tick and the five-second rule;
 - the attack speed of level 1 creatures (2000 ms).
@@ -234,8 +287,8 @@ This is the section to read before quoting any number from this project.
 ### Derived — computed from the sources
 
 - each party member's health and mana, at the profile's level;
-- Renew's healing per tick (45 / 5 ticks = 9);
-- the priest's mana per tick (from spirit);
+- Renew's, Rejuvenation's and Tranquility's healing per tick (total ÷ ticks);
+- every playable class's mana per tick (from spirit);
 - which spells are trained at a given level.
 
 ### Approximated — flagged as such
@@ -245,12 +298,33 @@ This is the section to read before quoting any number from this project.
   publicly usable. We apply the commonly documented priest formula
   (`spirit / 4 + 12.5` per 2 s tick), which describes level 60. At level 1 the
   true value is probably a little lower.
+- **Every heal amount and cost not confirmed against `EZDownRank.lua`**, and
+  Thorns' and the two paladin defensive spells' cost/level/duration
+  (ADR-0021): Healing Touch and Holy Light's heal ranges, Rejuvenation's total
+  heal, Thorns' mana/level/duration, Blessing of Protection and Divine
+  Shield's mana/level. This session's network policy blocked every primary
+  spell database it tried (wowclassicdb, wowhead, every fandom mirror
+  returned HTTP 403); these numbers are cross-checked against secondary web
+  sources instead and should be replaced with a primary source when one is
+  reachable.
 
 ### Designed — game design, not Classic
 
-- **Melee damage per enemy: Gorvath 8, Skarn 6, Threx 9 per swing.** Each is
-  bracketed by the measurements (median 2 × elite factor 3 = 6; high end
-  10 × 1.2 = 12), but chosen.
+- **Melee damage per enemy: Gorvath 5, Skarn 6, Threx 9 per swing.** Each was
+  originally bracketed by the measurements (median 2 × elite factor 3 = 6;
+  high end 10 × 1.2 = 12); Gorvath's was lowered from 8 to 5 for ADR-0021 (see
+  its update note on [ADR-0010](./adr/0010-level-1-boss-profile.md)) so a
+  level 1 priest's Renew — 3 HP/s sustained on one target — can out-heal it.
+- **Thorns' and Divine Shield's absorb amount, and Blessing of Protection's**
+  (ADR-0021): all three real spells are either a damage-reflect buff or a
+  full-immunity effect, not an HP-based pool, so this game's absorb-shield
+  mechanic needs a number none of them actually have. Each is sized to
+  comfortably outlast its own duration.
+- **Tranquility's and Holy Radiance's healing amounts** (ADR-0021): both
+  spells are reimplemented with a mechanic the real one does not use (an
+  instant party-wide HoT instead of a channel; a same-expansion group heal
+  paladins never had), so their numbers describe the reimplementation, not
+  the original spell.
 - **AoE and spike per enemy** — no level 1 creature has those abilities; every
   amount is calibrated against level 1 health pools:
   - Gorvath: AoE 6 per member every 12 s, spike 18 on a non-tank every 6 to
@@ -274,52 +348,64 @@ This is the section to read before quoting any number from this project.
   sourced; the share is a pacing choice (ADR-0019).
 - **Party composition**, character names, and the three enemies' names and
   selection-screen descriptions.
-- **Which classes the player's own character can be**: Priest, Mage or
-  Hunter. All three are sourced race/class pairs with a full attribute table;
-  the restriction to exactly these three is designed, because Warrior and
-  Rogue have no mana in Classic and this game only simulates a mana-costed
-  spellbook (ADR-0020).
+- **Which classes the player's own character can be**: Priest, Druid or
+  Paladin (ADR-0021, replacing Mage and Hunter). All three are sourced
+  race/class pairs with a full attribute table and their own real healing
+  kit; Warrior and Rogue remain excluded because they have no mana in Classic
+  and every spell this game simulates costs mana (ADR-0020).
+- **Renew's level 1 gate, and the shield mechanic itself** (ADR-0021): moving
+  Renew from its real level 8 to 1 is a designed exception to the sourced
+  training level, made for playability; the absorb-shield `SpellKind` and its
+  resolution (consume before HP, decay on a timer, never stack) are this
+  project's own engine mechanic, reused for every shield-kind spell rather
+  than invented per spell.
 
 ## Resulting balance
 
-Verified by simulating an automated healer chaining Lesser Heal on the lowest
-member (eight seeds), against each of the three selectable enemies:
+This table described a Lesser Heal-spamming bot, before
+[ADR-0021](./adr/0021-per-class-spellbooks-and-absorb-shields.md) removed that
+spell from the priest's kit. Re-measured against a bot that spams **Renew** on
+the lowest-ratio living ally instead — the priest's actual level 1 spell —
+against each of the three selectable enemies:
 
-| Enemy | No healing | Naive automated healer |
+| Enemy | No healing | Naive Renew-spam (12 seeds) |
 | --- | --- | --- |
-| Gorvath | 22 s | 48 – 63 s |
-| Skarn | 26 s | 40 – 63 s |
-| Threx | 20 s | 34 – 56 s |
+| Gorvath | 32 s | 44 – 54 s, 7 wins / 5 wipes |
+| Skarn | 26 s | 44 – 46 s, 1 win / 11 wipes |
+| Threx | 20 s | 30 – 36 s, 0 wins / 12 wipes |
 
-Gorvath's initial pressure is about 8.8 HP/s (melee 4.0 + AoE 2.5 + spike 2.2)
-against roughly 15 HP/s sustainable: the fight is holdable at first, then the
-ramp overtakes the healer's throughput. Skarn and Threx land a little lower on
-the naive-healer end by design — spreading heals across a bleeding party, or
-reacting fast enough to a short-fuse burst, is harder for a bot that always
-targets the single lowest-HP ally than steady single-target pressure is. See
-[ADR-0016](./adr/0016-selectable-enemy-encounters.md).
-
-With a single spell available, the difficulty comes mostly from **triage** —
-one Lesser Heal every 1.5 s cannot follow two low targets at once.
+Gorvath's tank melee was lowered from 8 to 5 per swing specifically so this
+bot — the same class of naive, always-retarget strategy the original balance
+pass used — produces a real mix of outcomes again (see ADR-0021 and
+ADR-0010's update note); Skarn (6 per swing, 3 HP/s, exactly Renew's own
+sustained rate) and Threx (9 per swing, 4.5 HP/s) were **not** recalibrated
+and remain very hard to near-unwinnable for a level 1 priest playing this
+naively, since Renew alone still cannot outpace their tank pressure with any
+margin. This is a known, deliberately deferred consequence — see ADR-0021's
+Alternatives Considered — not a bug: a real player reacting faster and
+smarter than "always retarget to the lowest ratio" fares better than these
+numbers suggest, and a level 4+ priest has Shield to lean on besides. Druid
+and paladin, whose level 1 spell is a strong direct heal rather than a slow
+HoT, are not affected by any of this — their own naive-bot numbers were not
+part of this measurement.
 
 Since [ADR-0017](./adr/0017-boss-health-and-victory.md), "survival" is no
 longer the only measure: if the boss's health reaches 0 before a wipe
-condition does, the fight is won. The same naive healer, twelve seeds,
-produces a real mix rather than a guaranteed outcome either way — Gorvath 7
-wins / 5 wipes, Skarn 7/5, Threx 6/6 — because a dead DPS both slows the boss
-kill down and does not slow the incoming damage down, a death spiral that
-punishes losing party members twice over.
+condition does, the fight is won. A dead DPS both slows the boss kill down and
+does not slow the incoming damage down, a death spiral that punishes losing
+party members twice over.
 
 ## What levelling still does not cover
 
 Levels 1 to 60 are in place — stats, thresholds, spell gating — but two pieces
 of the game stayed at level 1, and the fight is unbalanced because of it.
 
-1. **The spellbook is rank 1 only.** `PRIEST_HEALS_RANK_1` holds one rank per
-   family, so a level 60 priest still heals for 46 – 56 with Lesser Heal while
+1. **Every spellbook is rank 1 only.** `PRIEST_SPELLS_RANK_1`,
+   `DRUID_SPELLS_RANK_1` and `PALADIN_SPELLS_RANK_1` each hold one rank per
+   family, so a level 60 priest still heals for 295 – 341 with Heal while
    carrying a 2956 mana pool. The rank tables
    ([EZDownRank](https://github.com/mrbuds/EZDownRank/blob/master/EZDownRank.lua))
-   are the next thing to source.
+   are the next thing to source, for all three classes.
 2. **The encounters are level 1 designs.** Gorvath, Skarn and Threx keep the
    damage of ADR-0010 and ADR-0016 whatever the party's level, so the fight
    gets easier every level — past roughly level 8 the party wins with no

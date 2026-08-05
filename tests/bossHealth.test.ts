@@ -7,7 +7,7 @@ import { stepSimulation } from '../src/simulation/simulation';
 import type { GameState } from '../src/simulation/types';
 import { isolateTimers, patchMember, patchState } from './helpers';
 
-/** Naive automated healer: always Lesser Heal the lowest-ratio living ally. */
+/** Naive automated healer: always Renew the lowest-ratio living ally. */
 function playNaively(seed: number): GameState {
   let state = createInitialState(seed, 1, 'gorvath');
   let guard = 0;
@@ -26,8 +26,8 @@ function playNaively(seed: number): GameState {
     if (target && target !== state.selectedTargetId) {
       state = selectTarget(state, target);
     }
-    if (checkCast(state, 'lesserHeal').allowed) {
-      state = castSpell(state, 'lesserHeal');
+    if (checkCast(state, 'renew').allowed) {
+      state = castSpell(state, 'renew');
     }
     state = stepSimulation(state, TICK_MS);
   }
@@ -87,7 +87,7 @@ describe('boss health', () => {
     let base = isolateTimers(createInitialState(1));
     base = patchState(base, {
       bossHp: 1,
-      activeCast: { spellId: 'lesserHeal', targetId: 'tank', castTimeMs: 1500, elapsedMs: 0 },
+      activeCast: { spellId: 'heal', targetId: 'tank', castTimeMs: 1500, elapsedMs: 0 },
     });
     const state = patchState(base, { timers: { ...base.timers, partyDamageMs: TICK_MS } });
 
@@ -136,7 +136,7 @@ describe('boss health', () => {
   });
 
   it('the same naive strategy can just as well end in a wipe, seed depending', () => {
-    const result = playNaively(202);
+    const result = playNaively(4);
     expect(result.outcome).toBe('wipe');
     expect(result.bossHp).toBeGreaterThan(0);
   });

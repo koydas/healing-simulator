@@ -87,7 +87,14 @@ export function castSpell(state: GameState, spellId: SpellId): GameState {
   }
 
   const draft = cloneState(state);
-  const targetId = spell.requiresTarget ? draft.selectedTargetId : null;
+  // A self-only spell (Divine Shield) always targets the caster, never the
+  // selected target — checked first since `requiresTarget` is already false
+  // for it (see `defineSpell` in `gameConfig.ts`).
+  const targetId = spell.targetsSelf
+    ? PLAYER_MEMBER_ID
+    : spell.requiresTarget
+      ? draft.selectedTargetId
+      : null;
 
   draft.mana = Math.max(0, draft.mana - spell.manaCost);
   draft.stats.manaSpent += spell.manaCost;

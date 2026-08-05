@@ -147,8 +147,9 @@ reload is enough. If an intermediate cache (corporate CDN, proxy) holds on to
 
 ### "The fight ends too quickly"
 
-With no healing at all, the wipe happens around 22 s (the tank has 90 HP and
-takes 8 damage every 2 s). Played well, survival goes well past a minute; the
+With no healing at all, the wipe happens around 32 s (the tank has 90 HP and
+takes 5 damage every 2 s against Gorvath). Played well, survival goes well
+past a minute; the
 ×1.15 ramp every 30 s mathematically overtakes healing throughput in the end —
 that is the point of the mode.
 
@@ -165,12 +166,14 @@ while the tank is still standing, and the fight then runs on without a healer
 until a wipe condition is met. Casting is refused with `You are dead`, and any
 cast in flight is interrupted. HoTs applied beforehand keep ticking.
 
-### "Four buttons out of five are greyed out"
+### "Three buttons out of four are greyed out"
 
-That is intended. At level 1 a WoW Classic priest only knows Lesser Heal; Renew
-comes at level 8, Heal at 16, Flash Heal at 20 and Prayer of Healing at 30. The
-locked buttons show their required level, and unlock as the character levels —
-three victories per level (see
+That is intended. Each class only knows its first spell at level 1 — Renew for
+the priest, Healing Touch for the druid, Holy Light for the paladin; the other
+three of that class's kit unlock at higher levels (see
+[classic-stats.md](./classic-stats.md#spells-rank-1--one-four-spell-kit-per-class-adr-0021)).
+The locked buttons show their required level, and unlock as the character
+levels — three victories per level (see
 [classic-stats.md](./classic-stats.md#experience-and-levels)).
 
 ### "Mana is not coming back"

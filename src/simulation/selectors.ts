@@ -3,7 +3,14 @@
  * None of these helpers mutate state or touch the DOM.
  */
 
-import { GCD_MS, SPELLS, SPELL_ORDER } from '../config/gameConfig';
+import {
+  DEFAULT_PLAYER_CLASS,
+  GCD_MS,
+  PLAYER_MEMBER_ID,
+  SPELLS,
+  SPELL_ORDER,
+  isPlayableClass,
+} from '../config/gameConfig';
 import type { FeedbackEvent, GameOutcome, GameState, PartyMember, SpellId } from './types';
 
 export function getMember(state: GameState, id: string | null): PartyMember | undefined {
@@ -43,9 +50,23 @@ export function getGcdProgress(state: GameState): number {
   return Math.max(0, Math.min(1, 1 - state.gcdRemainingMs / GCD_MS));
 }
 
-/** Renew currently on a member, or `undefined`. */
-export function getRenewEffect(member: PartyMember) {
-  return member.hots.find((hot) => hot.spellId === 'renew');
+/**
+ * The HoT currently on a member, or `undefined` — Renew, Rejuvenation, or the
+ * per-member tick a party-wide HoT like Tranquility applies. A member never
+ * carries more than one of the same `spellId` (`applyHot` replaces rather
+ * than stacks), but could in principle carry two different HoTs at once; the
+ * party-frame indicator only needs to know *a* HoT is running, so the first
+ * one is enough.
+ */
+export function getActiveHotEffect(member: PartyMember) {
+  return member.hots[0];
+}
+
+/** The spell order of the class actually fighting, healer's own class first. */
+function spellOrderFor(state: GameState): readonly SpellId[] {
+  const healer = state.party.find((member) => member.id === PLAYER_MEMBER_ID);
+  const classId = healer && isPlayableClass(healer.classId) ? healer.classId : DEFAULT_PLAYER_CLASS;
+  return SPELL_ORDER[classId];
 }
 
 /** Floating feedback attached to a member. */
@@ -117,7 +138,7 @@ export function computeStatsSummary(state: GameState): StatsSummary {
     manaSpent: stats.manaSpent,
     manaEfficiency: stats.manaSpent > 0 ? stats.effectiveHealing / stats.manaSpent : 0,
     damageTaken: stats.damageTaken,
-    casts: SPELL_ORDER.map((spellId) => ({
+    casts: spellOrderFor(state).map((spellId) => ({
       spellId,
       name: SPELLS[spellId].name,
       started: stats.castsStartedBySpell[spellId] ?? 0,

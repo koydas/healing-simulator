@@ -113,34 +113,34 @@ describe('renaming the character', () => {
 describe('switching class', () => {
   it('starts an unplayed class at level 1 with no experience', () => {
     const profile = grantXp(createEmptyProfile(), 550); // level 2, 150 xp, as priest
-    const next = switchClass(profile, 'mage');
-    expect(next.classId).toBe('mage');
+    const next = switchClass(profile, 'druid');
+    expect(next.classId).toBe('druid');
     expect(next.level).toBe(1);
     expect(next.xp).toBe(0);
   });
 
   it('stashes the class being left at its current level and experience', () => {
     const profile = grantXp(createEmptyProfile(), 550); // priest, level 2, 150 xp
-    const next = switchClass(profile, 'hunter');
+    const next = switchClass(profile, 'paladin');
     expect(next.otherClassProgress.priest).toEqual({ level: 2, xp: 150 });
-    expect(next.otherClassProgress.hunter).toBeUndefined();
+    expect(next.otherClassProgress.paladin).toBeUndefined();
   });
 
   it('restores exactly the progress a class was left at', () => {
     let profile = grantXp(createEmptyProfile(), 550); // priest, level 2, 150 xp
-    profile = switchClass(profile, 'mage'); // mage starts fresh
+    profile = switchClass(profile, 'druid'); // druid starts fresh
     profile = grantXp(profile, 1000); // 400 for level 2, 600 left inside it
     profile = switchClass(profile, 'priest'); // back to the stashed priest
 
     expect(profile.classId).toBe('priest');
     expect(profile.level).toBe(2);
     expect(profile.xp).toBe(150);
-    expect(profile.otherClassProgress.mage).toEqual({ level: 2, xp: 600 });
+    expect(profile.otherClassProgress.druid).toEqual({ level: 2, xp: 600 });
   });
 
   it('shares the boss record across every class', () => {
     const withAWin = applyFightOutcome(createEmptyProfile(), 'gorvath', 'victory').profile;
-    const next = switchClass(withAWin, 'hunter');
+    const next = switchClass(withAWin, 'paladin');
     expect(next.records.gorvath).toEqual({ wins: 1, losses: 0 });
   });
 
@@ -151,7 +151,7 @@ describe('switching class', () => {
 
   it('never mutates the profile it is given', () => {
     const profile = grantXp(createEmptyProfile(), 550);
-    switchClass(profile, 'mage');
+    switchClass(profile, 'druid');
     expect(profile.classId).toBe('priest');
     expect(profile.level).toBe(2);
     expect(profile.otherClassProgress).toEqual({});
@@ -266,7 +266,7 @@ describe('persistence', () => {
     const storage = fakeStorage();
     let saved = applyFightOutcome(createEmptyProfile(), 'threx', 'victory').profile;
     saved = renameCharacter(saved, 'Bob');
-    saved = switchClass(saved, 'mage');
+    saved = switchClass(saved, 'druid');
     saveProfile(saved, storage);
 
     expect(storage.data[PROFILE_STORAGE_KEY]).toContain('"version":2');
@@ -328,16 +328,16 @@ describe('persistence', () => {
 
   it('sanitizes stashed per-class progress and drops the active class from it', () => {
     const sanitized = sanitizeProfile({
-      classId: 'mage',
+      classId: 'druid',
       otherClassProgress: {
         priest: { level: 999, xp: -5 },
-        hunter: 'not an object',
-        mage: { level: 10, xp: 100 }, // active class: dropped, not duplicated
+        paladin: 'not an object',
+        druid: { level: 10, xp: 100 }, // active class: dropped, not duplicated
       },
     });
     expect(sanitized.otherClassProgress.priest).toMatchObject({ level: 60, xp: 0 });
-    expect(sanitized.otherClassProgress.hunter).toBeUndefined();
-    expect(sanitized.otherClassProgress.mage).toBeUndefined();
+    expect(sanitized.otherClassProgress.paladin).toBeUndefined();
+    expect(sanitized.otherClassProgress.druid).toBeUndefined();
   });
 
   it('deletes the save', () => {

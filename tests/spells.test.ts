@@ -15,8 +15,8 @@ import {
 
 /**
  * A fight isolated from the timeline, with one wounded member so healing is
- * observable. The tank (90 HP) is the default target: at 10 HP a Lesser Heal
- * (46-56) lands in full.
+ * observable. The tank (90 HP) is the default target: at 10 HP a Renew tick
+ * (9) always lands in full, well under the missing HP.
  */
 function woundedGame(seed = 1, targetId = 'tank', hp = 10): GameState {
   let state = isolateTimers(createInitialState(seed));
@@ -25,23 +25,23 @@ function woundedGame(seed = 1, targetId = 'tank', hp = 10): GameState {
 }
 
 describe('spell availability at level 1', () => {
-  it('only allows Lesser Heal', () => {
+  it('only allows Renew', () => {
     const state = woundedGame();
 
-    expect(checkCast(state, 'lesserHeal').allowed).toBe(true);
-    for (const spellId of ['renew', 'heal', 'flashHeal', 'prayerOfHealing'] as const) {
+    expect(checkCast(state, 'renew').allowed).toBe(true);
+    for (const spellId of ['shield', 'heal', 'prayerOfHealing'] as const) {
       expect(checkCast(state, spellId)).toEqual({ allowed: false, reason: 'level' });
     }
   });
 
   it('refuses an untrained spell without spending anything', () => {
     const state = woundedGame();
-    const refused = castSpell(state, 'flashHeal');
+    const refused = castSpell(state, 'shield');
 
     expect(refused.mana).toBe(MANA.initial);
     expect(refused.gcdRemainingMs).toBe(0);
     expect(refused.stats.manaSpent).toBe(0);
-    expect(refused.stats.castsStartedBySpell.flashHeal).toBe(0);
+    expect(refused.stats.castsStartedBySpell.shield).toBe(0);
     expect(refused.feedback.at(-1)?.text).toBe('Level too low');
   });
 
@@ -49,20 +49,20 @@ describe('spell availability at level 1', () => {
     const state = patchState(woundedGame(), { playerLevel: 20, mana: 500 });
 
     expect(checkCast(state, 'renew').allowed).toBe(true);
+    expect(checkCast(state, 'shield').allowed).toBe(true);
     expect(checkCast(state, 'heal').allowed).toBe(true);
-    expect(checkCast(state, 'flashHeal').allowed).toBe(true);
     expect(checkCast(state, 'prayerOfHealing').reason).toBe('level');
   });
 });
 
 describe('cost and global cooldown', () => {
   it('spends mana on cast start and triggers the GCD', () => {
-    const state = castSpell(woundedGame(), 'lesserHeal');
+    const state = castSpell(woundedGame(), 'renew');
 
-    expect(state.mana).toBe(MANA.initial - SPELLS.lesserHeal.manaCost);
+    expect(state.mana).toBe(MANA.initial - SPELLS.renew.manaCost);
     expect(state.gcdRemainingMs).toBe(GCD_MS);
-    expect(state.stats.manaSpent).toBe(SPELLS.lesserHeal.manaCost);
-    expect(state.stats.castsStartedBySpell.lesserHeal).toBe(1);
+    expect(state.stats.manaSpent).toBe(SPELLS.renew.manaCost);
+    expect(state.stats.castsStartedBySpell.renew).toBe(1);
   });
 
   it('applies an instant spell right away and counts it as completed', () => {
@@ -75,18 +75,18 @@ describe('cost and global cooldown', () => {
 
   it('refuses a second spell during the GCD, without spending anything', () => {
     const first = castSpell(unlockAllSpells(woundedGame()), 'renew');
-    const second = castSpell(first, 'lesserHeal');
+    const second = castSpell(first, 'shield');
 
     expect(second.mana).toBe(first.mana);
     expect(second.gcdRemainingMs).toBe(first.gcdRemainingMs);
-    expect(second.stats.castsStartedBySpell.lesserHeal).toBe(0);
+    expect(second.stats.castsStartedBySpell.shield).toBe(0);
     expect(second.feedback.at(-1)?.text).toBe('Global cooldown');
   });
 
   it('refuses a spell while another cast is in progress', () => {
     let state = castSpell(unlockAllSpells(woundedGame()), 'heal'); // 3 s cast
     state = advance(state, GCD_MS);
-    const refused = castSpell(state, 'lesserHeal');
+    const refused = castSpell(state, 'renew');
 
     expect(refused.activeCast?.spellId).toBe('heal');
     expect(refused.mana).toBe(state.mana);
@@ -95,7 +95,7 @@ describe('cost and global cooldown', () => {
 
   it('refuses the cast without enough mana', () => {
     const state = patchState(woundedGame(), { mana: 10 });
-    const refused = castSpell(state, 'lesserHeal');
+    const refused = castSpell(state, 'renew');
 
     expect(refused.mana).toBe(10);
     expect(refused.gcdRemainingMs).toBe(0);
@@ -106,7 +106,7 @@ describe('cost and global cooldown', () => {
 
   it('refuses the cast without a selected target', () => {
     const state = patchState(woundedGame(), { selectedTargetId: null });
-    const refused = castSpell(state, 'lesserHeal');
+    const refused = castSpell(state, 'renew');
 
     expect(refused.mana).toBe(MANA.initial);
     expect(refused.feedback.at(-1)?.text).toBe('Target required');
@@ -116,7 +116,7 @@ describe('cost and global cooldown', () => {
     let state = woundedGame(1, 'dps1', 50);
     state = selectTarget(state, 'dps1');
     state = patchMember(state, 'dps1', { alive: false, hp: 0 });
-    const refused = castSpell(state, 'lesserHeal');
+    const refused = castSpell(state, 'renew');
 
     expect(refused.feedback.at(-1)?.text).toBe('Target is dead');
     expect(refused.stats.manaSpent).toBe(0);
@@ -133,7 +133,7 @@ describe('cost and global cooldown', () => {
 
   it('refuses every cast once the fight is over', () => {
     const state = patchState(woundedGame(), { status: 'over' });
-    const refused = castSpell(state, 'lesserHeal');
+    const refused = castSpell(state, 'renew');
 
     expect(refused.mana).toBe(MANA.initial);
     expect(refused.feedback.at(-1)?.text).toBe('Fight is over');
@@ -159,24 +159,24 @@ describe('a dead healer', () => {
   it('cannot cast any more, and spends nothing trying', () => {
     let state = selectTarget(healerDown(), 'tank');
 
-    expect(checkCast(state, 'lesserHeal')).toEqual({ allowed: false, reason: 'caster_dead' });
+    expect(checkCast(state, 'renew')).toEqual({ allowed: false, reason: 'caster_dead' });
 
     const manaBefore = state.mana;
-    state = castSpell(state, 'lesserHeal');
+    state = castSpell(state, 'renew');
 
     expect(state.mana).toBe(manaBefore);
     expect(state.activeCast).toBeNull();
     expect(state.gcdRemainingMs).toBe(0);
     expect(state.stats.manaSpent).toBe(0);
-    expect(state.stats.castsStartedBySpell.lesserHeal).toBe(0);
+    expect(state.stats.castsStartedBySpell.renew).toBe(0);
     expect(state.feedback.at(-1)?.text).toBe('You are dead');
   });
 
   it('interrupts the cast it had in flight, and heals nobody with it', () => {
-    let state = isolateTimers(createInitialState(1));
+    let state = unlockAllSpells(isolateTimers(createInitialState(1)));
     state = patchMember(state, 'tank', { hp: 50 });
     state = selectTarget(state, 'tank');
-    state = castSpell(state, 'lesserHeal');
+    state = castSpell(state, 'heal'); // 3 s cast: still in flight when she dies
 
     state = patchMember(state, 'healer', { hp: 1 });
     state = patchState(state, { timers: { ...state.timers, aoeMs: TICK_MS } });
@@ -189,7 +189,7 @@ describe('a dead healer', () => {
     const tankHp = memberOf(state, 'tank').hp;
     state = advance(state, 3000);
     expect(memberOf(state, 'tank').hp).toBe(tankHp);
-    expect(state.stats.castsCompletedBySpell.lesserHeal).toBe(0);
+    expect(state.stats.castsCompletedBySpell.heal).toBe(0);
   });
 
   it('leaves the HoTs it applied while alive ticking', () => {
@@ -211,26 +211,31 @@ describe('a dead healer', () => {
 
 describe('cast resolution', () => {
   it('applies healing when the cast finishes, not before', () => {
-    let state = castSpell(woundedGame(), 'lesserHeal');
-    state = advance(state, 1400);
+    let state = castSpell(unlockAllSpells(woundedGame()), 'heal');
+    state = advance(state, 2900);
     expect(memberOf(state, 'tank').hp).toBe(10);
 
-    state = stepSimulation(state, TICK_MS);
+    state = stepSimulation(state, TICK_MS); // reaches the 3 s cast time
     expect(state.activeCast).toBeNull();
     expect(memberOf(state, 'tank').hp).toBeGreaterThan(10);
-    expect(state.stats.castsCompletedBySpell.lesserHeal).toBe(1);
+    expect(state.stats.castsCompletedBySpell.heal).toBe(1);
   });
 
-  it('rolls healing inside the Classic 46 – 56 range', () => {
+  it('rolls healing inside the Classic 295 – 341 range', () => {
+    // A level 60 party: at level 1 a tank's 90 HP would clip every roll to a
+    // full heal, hiding the range entirely (see `test-protocol`).
     const amounts = new Set<number>();
 
     for (let seed = 1; seed <= 40; seed += 1) {
-      let state = castSpell(woundedGame(seed), 'lesserHeal');
-      state = advance(state, SPELLS.lesserHeal.castTimeMs);
+      let state = isolateTimers(createInitialState(seed, 60));
+      state = patchMember(state, 'tank', { hp: 10 });
+      state = selectTarget(state, 'tank');
+      state = castSpell(state, 'heal');
+      state = advance(state, SPELLS.heal.castTimeMs);
       const healed = memberOf(state, 'tank').hp - 10;
       amounts.add(healed);
-      expect(healed).toBeGreaterThanOrEqual(SPELLS.lesserHeal.healMin);
-      expect(healed).toBeLessThanOrEqual(SPELLS.lesserHeal.healMax);
+      expect(healed).toBeGreaterThanOrEqual(SPELLS.heal.healMin);
+      expect(healed).toBeLessThanOrEqual(SPELLS.heal.healMax);
     }
 
     // The range is actually covered, not stuck on a single value.
@@ -316,7 +321,7 @@ describe('Renew', () => {
 
 describe('cancellation and interruption', () => {
   it('keeps the mana and the GCD, and applies no healing', () => {
-    let state = castSpell(woundedGame(), 'lesserHeal');
+    let state = castSpell(unlockAllSpells(woundedGame()), 'heal');
     state = advance(state, 1000);
 
     const cancelled = cancelCast(state);
@@ -326,22 +331,23 @@ describe('cancellation and interruption', () => {
     expect(cancelled.gcdRemainingMs).toBe(GCD_MS - 1000);
     expect(memberOf(cancelled, 'tank').hp).toBe(10);
     expect(cancelled.stats.castsCancelled).toBe(1);
-    expect(cancelled.stats.castsCompletedBySpell.lesserHeal).toBe(0);
+    expect(cancelled.stats.castsCompletedBySpell.heal).toBe(0);
   });
 
   it('never refunds mana', () => {
-    let state = castSpell(woundedGame(), 'lesserHeal');
+    const before = unlockAllSpells(woundedGame());
+    let state = castSpell(before, 'heal');
     state = advance(state, 500);
     const cancelled = cancelCast(state);
 
-    expect(cancelled.stats.manaSpent).toBe(SPELLS.lesserHeal.manaCost);
-    expect(cancelled.mana).toBeLessThanOrEqual(MANA.initial - SPELLS.lesserHeal.manaCost);
+    expect(cancelled.stats.manaSpent).toBe(SPELLS.heal.manaCost);
+    expect(cancelled.mana).toBeLessThanOrEqual(before.mana - SPELLS.heal.manaCost);
   });
 
   it('cancels the cast when its target dies', () => {
-    let state = woundedGame(1, 'dps1', 40);
+    let state = unlockAllSpells(woundedGame(1, 'dps1', 40));
     state = selectTarget(state, 'dps1');
-    state = castSpell(state, 'lesserHeal');
+    state = castSpell(state, 'heal'); // 3 s cast: still in flight
     state = patchMember(state, 'dps1', { hp: 1 });
     state = patchState(state, { timers: { ...state.timers, aoeMs: TICK_MS } });
 
@@ -396,7 +402,7 @@ describe('mana regeneration (five-second rule)', () => {
 
   it('restarts the five-second rule on every accepted cast', () => {
     let state = regenGame(MANA.max);
-    state = castSpell(state, 'lesserHeal');
+    state = castSpell(state, 'renew');
     expect(state.msSinceLastCastStart).toBe(0);
 
     const manaAfterCast = state.mana;

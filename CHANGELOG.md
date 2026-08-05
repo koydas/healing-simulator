@@ -7,6 +7,31 @@ All notable changes to this project are recorded here, following
 
 ### Added
 
+- **Priest, Druid and Paladin each have their own four-spell kit** (ADR-0021),
+  replacing the single shared priest spellbook every playable class used to
+  cast: Priest keeps Renew and Prayer of Healing and gains Power Word: Shield
+  and Heal; Druid gets Healing Touch, Rejuvenation, Thorns and Tranquility;
+  Paladin gets Holy Light, Blessing of Protection, Divine Shield and Holy
+  Radiance. Mage and Hunter are no longer selectable classes — a saved profile
+  playing either falls back to Priest, the same way any other unplayable
+  `classId` already did.
+  - New mechanic: **absorb shields**. Power Word: Shield, Thorns, Blessing of
+    Protection and Divine Shield grant a party frame badge (🛡 amount) that
+    consumes incoming damage before HP, decaying on its own if never fully
+    spent. Tranquility (reflavored as an instant party-wide HoT) applies the
+    same tick to every living member at once.
+  - Druid pairs with Night Elf, Paladin with Human; both now carry a full
+    level 1 – 60 attribute column, sourced the same way the original five
+    combinations were (`player_classlevelstats`/`player_levelstats`,
+    MaNGOS Zero).
+  - ⚠️ A meaningful share of the new spells' numbers are Approximated or
+    Designed rather than Sourced — this session's network policy blocked
+    every primary spell database it tried. See `docs/classic-stats.md`.
+  - ⚠️ Gorvath's tank melee drops from 8 to 5 per swing: a level 1 priest's
+    sole spell (Renew, 3 HP/s sustained) could not mathematically out-heal
+    the original value even with perfect play. Druid and Paladin were
+    unaffected by the original value.
+
 - **The character sheet is now editable, and minimized by default.** A
   pencil opens a name field and a three-way class picker (Priest, Mage,
   Hunter — the sourced combinations with a mana pool the priest spellbook can

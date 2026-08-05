@@ -52,9 +52,14 @@ export const PartyFrame = memo(function PartyFrame({ memberId }: PartyFrameProps
         <span className="frame__name">{member.name}</span>
         <span className="frame__role">{member.roleLabel}</span>
         <span className="frame__class">{member.classLabel}</span>
-        {member.renewTicks > 0 && (
-          <span className="frame__renew" title="Renew active">
-            ⟳ {member.renewTicks}
+        {member.shieldAmount > 0 && (
+          <span className="frame__shield" title={`Shield: absorbs ${member.shieldAmount} more damage`}>
+            🛡 {member.shieldAmount}
+          </span>
+        )}
+        {member.hotTicks > 0 && (
+          <span className="frame__hot" title="Heal over time active">
+            ⟳ {member.hotTicks}
           </span>
         )}
       </span>

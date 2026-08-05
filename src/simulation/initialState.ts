@@ -7,6 +7,7 @@
 
 import {
   DEFAULT_ENEMY_ID,
+  DEFAULT_PLAYER_CLASS,
   DEFAULT_SEED,
   ENEMIES,
   PARTY_DAMAGE,
@@ -14,6 +15,7 @@ import {
   STARTING_LEVEL,
   manaProfileAtLevel,
   partyTemplateAtLevel,
+  type PlayableClassId,
   type PlayerIdentity,
 } from '../config/gameConfig';
 import { nextRange, normalizeSeed } from './random';
@@ -36,13 +38,16 @@ function createParty(level: number, player?: PlayerIdentity): PartyMember[] {
     hp: template.hpMax,
     alive: true,
     hots: [],
+    shieldAmount: 0,
+    shieldMsRemaining: 0,
   }));
 }
 
-export function createEmptyStats(): GameStats {
+/** `classId` picks which of the three per-class spellbooks the stats track. */
+export function createEmptyStats(classId: PlayableClassId = DEFAULT_PLAYER_CLASS): GameStats {
   const castsStartedBySpell: Record<string, number> = {};
   const castsCompletedBySpell: Record<string, number> = {};
-  for (const spellId of SPELL_ORDER) {
+  for (const spellId of SPELL_ORDER[classId]) {
     castsStartedBySpell[spellId] = 0;
     castsCompletedBySpell[spellId] = 0;
   }
@@ -114,7 +119,7 @@ export function createInitialState(
     damageMultiplier: 1,
     feedback: [],
     nextFeedbackId: 1,
-    stats: createEmptyStats(),
+    stats: createEmptyStats(player?.classId),
   };
 }
 

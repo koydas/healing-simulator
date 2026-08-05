@@ -9,6 +9,14 @@
 > Flash Heal and Prayer of Healing unlock by playing. The gating rule and its
 > refusal message are untouched. Only rank 1 of each family exists so far.
 
+> Update (ADR-0021): the priest's is no longer the only spellbook — druid and
+> paladin each have their own four spells, gated by `requiredLevel` the same
+> way, with the same refusal and the same locked-button treatment. Lesser Heal
+> and Flash Heal are dropped from the priest's kit (replaced by Power Word:
+> Shield and, at level 30, the unchanged Prayer of Healing); Renew's gate
+> moves from its real level 8 to a Designed 1, so the default class still has
+> something to cast between levels 1 and 3, since Shield itself trains at 4.
+
 ## Context
 
 The four original spells (Renew, Flash Heal, Greater Heal, Group Heal) were

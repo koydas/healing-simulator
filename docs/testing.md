@@ -23,7 +23,9 @@ as a parameter, and the storage functions take their `Storage` as an argument.
 | `tests/damage.test.ts` | tank damage, AoE, spike selection and rescheduling, ramp (Gorvath, the default enemy) |
 | `tests/encounter.test.ts` | enemy selection: `ENEMY_ORDER`/`ENEMIES` shape, `state.encounter` per enemy, per-enemy damage applied, `restartGame` with an explicit enemy, determinism per enemy |
 | `tests/bossHealth.test.ts` | boss health per enemy, party damage per tick (scaled by alive contributors, healer excluded), clamped at 0, victory sets `outcome`/cancels the cast, a simultaneous tank+boss death resolves as a wipe, no event after the fight ends, both outcomes reachable through the real cast/select/step path |
-| `tests/spells.test.ts` | level gating, cost, GCD, refusals, cast resolution, Renew, cancellation, five-second rule |
+| `tests/spells.test.ts` | level gating, cost, GCD, refusals, cast resolution, Renew, cancellation, five-second rule (priest kit) |
+| `tests/shieldMechanics.test.ts` | the absorb-shield mechanic (ADR-0021): granting a pool, absorbing before HP, partial vs full absorb, decay, no stacking, self-only targeting (Divine Shield), clearing on death, and a party-wide HoT (Tranquility) |
+| `tests/classSpellbooks.test.ts` | `SPELL_ORDER` shape per class (four unique spells, no overlap between classes, ordered by training level), and the paladin's group heal (Holy Radiance) |
 | `tests/healing.test.ts` | effective healing vs overhealing, `hpMax` clamp, dead targets, HPS / efficiency |
 | `tests/wipe.test.ts` | wipe conditions, freeze after a wipe, pause, invariants over a full fight |
 | `tests/selectors.test.ts` | ratios, cast / GCD progress, feedback, duration formatting |
@@ -39,9 +41,11 @@ as a parameter, and the storage functions take their `Storage` as an argument.
   simulation. That works because the `GameState` is a plain data structure.
 - **`unlockAllSpells(state)`** raises `playerLevel` to 60 and grants the needed
   mana, leaving health and regeneration where the fight built them: that is how
-  Renew, Heal, Flash Heal and Prayer of Healing get tested against level 1
-  pools. To fight *as* a level 60 party instead — the Classic tables applied to
-  everyone — build the state with `createInitialState(seed, 60)`.
+  a class's higher-level spells (Shield, Heal, Prayer of Healing; Rejuvenation,
+  Thorns, Tranquility; Blessing of Protection, Divine Shield, Holy Radiance)
+  get tested against level 1 pools. To fight *as* a level 60 party instead —
+  the Classic tables applied to everyone — build the state with
+  `createInitialState(seed, 60)`.
 - **A fake `Storage`** (a plain object with `getItem` / `setItem` /
   `removeItem`) drives the persistence tests, including one that throws on
   every call to stand in for Safari's private mode. No global is mocked.
@@ -64,7 +68,8 @@ as a parameter, and the storage functions take their `Storage` as an argument.
 ## Reference values
 
 The tests rely on the level 1 stats: tank 90 HP, healer 51 HP and 160 mana, DPS
-55 / 50 / 46 HP; melee 8, AoE 6, spike 18. Timings are read from the
+55 / 50 / 46 HP; melee 5 (Gorvath, lowered from 8 for ADR-0021), AoE 6, spike
+18. Timings are read from the
 configuration (`TANK_DAMAGE.intervalMs`, `MANA.tickMs`, …) rather than written
 as literals — a balance change therefore only breaks value assertions, not
 cadence ones.
@@ -94,9 +99,12 @@ exactly where they were left; the options dialog (focus lands in it,
 Tab cannot reach the screen behind, `Escape` closes it, "Delete saved game"
 asks twice then resets the sheet to level 1), the experience line on the end
 screen after a victory, a level 60 profile's victory saying "already at the
-level cap" rather than the wipe wording, and the sheet showing the new level
-once you come back. Then: `?seed=1&enemy=skarn&level=30&class=hunter` skipping
-straight to that fight, at the level and class the link pins rather than
+level cap" rather than the wipe wording, the sheet showing the new level once
+you come back, and — since ADR-0021 — a shield badge (🛡 amount) appearing on
+a party frame after casting Power Word: Shield/Thorns/Blessing of
+Protection/Divine Shield and draining as damage lands. Then:
+`?seed=1&enemy=skarn&level=30&class=druid` skipping straight to that fight,
+at the level and class the link pins rather than
 whatever the current profile is; opening the same kind of link at a level or
 class *different* from the current profile's and confirming the end screen
 shows the "not recorded" note instead of an experience line, and that the

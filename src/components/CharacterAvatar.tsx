@@ -1,12 +1,12 @@
 /**
  * A small cartoon bust for the character sheet, procedurally drawn from the
- * chosen class (ADR-0020) rather than an image file: no network request, no
- * bundled asset, consistent with "no remote asset, no CDN"
- * (`docs/architecture.md`). Silhouette and palette both vary — pointed ears
- * and a headband for the night elf hunter, round ears and a conical hat for
- * the gnome mage, round ears and a thin halo for the human priest — so the
- * three playable classes read apart from each other at a glance, even at the
- * 40 px the minimized sheet draws it at.
+ * chosen class (ADR-0020, ADR-0021) rather than an image file: no network
+ * request, no bundled asset, consistent with "no remote asset, no CDN"
+ * (`docs/architecture.md`). Silhouette and palette both vary — round ears and
+ * a thin halo for the human priest, pointed ears and a leaf circlet for the
+ * night elf druid, round ears and a horned crown for the human paladin — so
+ * the three playable classes read apart from each other at a glance, even at
+ * the 40 px the minimized sheet draws it at.
  */
 
 import { memo } from 'react';
@@ -35,19 +35,19 @@ const PALETTES: Record<PlayableClassId, AvatarPalette> = {
     robeAccent: '#c9a84c',
     earShape: 'round',
   },
-  mage: {
-    skin: '#e7bd8e',
-    hair: '#8a8a96',
-    robe: '#3d5bd9',
-    robeAccent: '#9db8ff',
-    earShape: 'round',
-  },
-  hunter: {
+  druid: {
     skin: '#b98cd9',
     hair: '#241a35',
     robe: '#3d7350',
     robeAccent: '#8fd6a4',
     earShape: 'pointed',
+  },
+  paladin: {
+    skin: '#f0c9a0',
+    hair: '#c9a84c',
+    robe: '#8a95a8',
+    robeAccent: '#e8d27a',
+    earShape: 'round',
   },
 };
 
@@ -82,9 +82,15 @@ export const CharacterAvatar = memo(function CharacterAvatar({
         stroke={palette.robeAccent}
         strokeWidth="2"
       />
-    ) : classId === 'mage' ? (
-      <path d="M32 3 L45 20 L19 20 Z" fill={palette.robe} stroke={palette.robeAccent} strokeWidth="1.5" />
+    ) : classId === 'paladin' ? (
+      <path
+        d="M20 14 L24 6 L28 12 L32 4 L36 12 L40 6 L44 14 Z"
+        fill={palette.robeAccent}
+        stroke={palette.hair}
+        strokeWidth="1"
+      />
     ) : (
+      // Druid: a leaf circlet across the brow.
       <path
         d="M17 20 Q32 11 47 20 L44 25 Q32 18 20 25 Z"
         fill={palette.robeAccent}

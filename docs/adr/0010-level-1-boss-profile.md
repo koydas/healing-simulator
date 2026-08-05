@@ -71,6 +71,15 @@ against roughly 15 HP/s sustainable — holdable at first, doomed in the long ru
 > and its measurements above are unchanged; only the possible outcomes are not
 > the ones described here anymore.
 
+> Update (ADR-0021): melee drops from 8 to 5 damage every 2 s. Per-class
+> spellbooks made the priest's level 1 kit Renew alone (3 HP/s sustained on
+> one target); at 8 per swing (4 HP/s) the tank's own damage could not be
+> out-healed by Renew even with perfect, unlimited-mana play — simulating the
+> naive-healer benchmark found 0 wins in 400 seeds. At 5 per swing (2.5 HP/s)
+> Renew clears it with a margin and the benchmark returns a real win/wipe mix
+> again. Druid and paladin, whose level 1 spell is a strong direct heal, were
+> never at risk from the original value. AoE, spike and ramp are unchanged.
+
 ## Consequences
 
 - ✅ The fight remains a fight, at a credible level 1 scale.

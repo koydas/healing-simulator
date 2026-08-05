@@ -20,6 +20,7 @@
   --danger: #e5484d;
   --heal: #3ecf6b;
   --overheal: #98a2b3;
+  --shield: #f5c451;
   --tank: #4cc2ff;
   --healer: #6ee7a8;
   --dps: #f2994a;
@@ -409,14 +410,29 @@ button {
   text-overflow: ellipsis;
 }
 
-.frame__renew {
+.frame__shield,
+.frame__hot {
   margin-left: auto;
   padding: 1px 6px;
   border-radius: 999px;
-  background: rgba(62, 207, 107, 0.16);
-  color: var(--heal);
   font-size: 11px;
   font-variant-numeric: tabular-nums;
+}
+
+.frame__shield {
+  background: rgba(245, 196, 81, 0.18);
+  color: var(--shield);
+}
+
+.frame__hot {
+  background: rgba(62, 207, 107, 0.16);
+  color: var(--heal);
+}
+
+/* The shield badge already claimed `margin-left: auto`; a HoT badge shown
+   alongside it should sit right after, not be pushed again. */
+.frame__shield + .frame__hot {
+  margin-left: 4px;
 }
 
 .frame__bar {
@@ -512,6 +528,10 @@ button {
 
 .feedback__item--damage {
   color: var(--danger);
+}
+
+.feedback__item--absorb {
+  color: var(--shield);
 }
 
 .feedback__item--death {

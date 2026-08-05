@@ -61,7 +61,7 @@ about to `TICK_MS`, then step once.
   not the one after. The same applies to the five-second rule: the tick landing
   exactly at 5000 ms already counts.
 - Read cadences from the config (`TANK_DAMAGE.intervalMs`, `MANA.tickMs`,
-  `SPELLS.lesserHeal.castTimeMs`) rather than writing `2000`. A balance change
+  `SPELLS.heal.castTimeMs`) rather than writing `2000`. A balance change
   should then break only the assertions about *values*, not the ones about
   *timing*.
 

@@ -44,9 +44,11 @@ Changing a member's race or class is enough to recompute their health: you edit
 The healer row is also the player's own character, and its name/race/class
 are editable from the sheet (ADR-0020): `partyTemplateAtLevel(level, player)`
 overrides just that slot when a `PlayerIdentity` is passed, leaving the other
-four untouched. `player` is restricted to `PLAYABLE_CLASSES` — Priest, Mage,
-Hunter — because Warrior and Rogue have 0 mana at every level and this game
-only simulates a mana-costed spellbook.
+four untouched. `player` is restricted to `PLAYABLE_CLASSES` — Priest, Druid,
+Paladin (ADR-0021) — because Warrior and Rogue have 0 mana at every level and
+this game only simulates mana-costed spellbooks. Since ADR-0021 each of the
+three also has its own four-spell kit, not just its own stats — see "Spells"
+below.
 
 ## Healer mana
 
@@ -76,20 +78,40 @@ level 1, 7888 at level 20, 71 332 at level 59, 0 at the cap. Progression pacing
 is that one constant — see
 [ADR-0019](./adr/0019-levelling-to-60-and-boss-experience.md).
 
-## Spells — rank 1, gated by level
+## Spells — rank 1, one four-spell kit per class, gated by level (ADR-0021)
 
-| Spell | Level | Mana | Cast | Effect |
+`SPELL_ORDER[classId]` and `SPELLS` — see
+[classic-stats.md](./classic-stats.md#spells-rank-1--one-four-spell-kit-per-class-adr-0021)
+for the sourced/approximated/designed split of every number below.
+
+| Priest | Level | Mana | Cast | Effect |
 | --- | --- | --- | --- | --- |
-| Lesser Heal | **1** | 30 | 1.5 s | 46 – 56 |
-| Renew | 8 | 30 | instant | 9 per tick × 5, every 3 s |
+| Renew | **1** (Designed; real level 8) | 30 | instant | 9 per tick × 5, every 3 s |
+| Power Word: Shield | 4 | 45 | instant | absorbs 44 for 15 s |
 | Heal | 16 | 155 | 3.0 s | 295 – 341 |
-| Flash Heal | 20 | 125 | 1.5 s | 193 – 237 |
 | Prayer of Healing | 30 | 410 | 3.0 s | 312 – 333 on the party |
 
-At level 1 only Lesser Heal is castable; the others appear locked with their
-required level (ADR-0008) and unlock as the character levels. No per-spell
-cooldown, no haste, no spell queue — and **only rank 1 of each family exists**,
-at every level.
+| Druid | Level | Mana | Cast | Effect |
+| --- | --- | --- | --- | --- |
+| Healing Touch | **1** | 25 | 1.5 s | 37 – 51 |
+| Rejuvenation | 4 | 25 | instant | 8 per tick × 4, every 3 s |
+| Thorns | 6 | 35 | instant | absorbs 36 for 10 min |
+| Tranquility | 30 | 300 | instant | 20 per tick × 5 on the party, every 3 s |
+
+| Paladin | Level | Mana | Cast | Effect |
+| --- | --- | --- | --- | --- |
+| Holy Light | **1** | 35 | 2.5 s | 39 – 47 |
+| Blessing of Protection | 5 | 220 | instant | absorbs 200 for 6 s |
+| Divine Shield | 18 | 15 | instant | absorbs 500 for 12 s, self only |
+| Holy Radiance | 30 | 350 | 2.5 s | 280 – 310 on the party |
+
+At level 1 each class only knows its first spell; the other three appear
+locked with their required level (ADR-0008, ADR-0021) and unlock as the
+character levels. No per-spell cooldown, no haste, no spell queue — and
+**only rank 1 of each family exists**, at every level. `shield`-kind spells
+also carry `shieldAmount`/`shieldDurationMs`: consumed by damage before HP
+(`applyDamageTo`), decaying on its own after the duration if unspent
+(`tickShields`, `docs/simulation.md`).
 
 ## Enemies — three selectable encounters
 
@@ -101,7 +123,7 @@ rate — and identical across all three; every amount is designed. The ramp
 
 | Enemy | Health | Tank melee | AoE | Spike |
 | --- | --- | --- | --- | --- |
-| Gorvath the Cavebreaker (`TANK_DAMAGE` / `AOE_DAMAGE` / `SPIKE_DAMAGE`) | 600 | 8 every 2000 ms | 6 per member every 12 000 ms | 18, uniform [6000, 10 000) ms |
+| Gorvath the Cavebreaker (`TANK_DAMAGE` / `AOE_DAMAGE` / `SPIKE_DAMAGE`) | 600 | 5 every 2000 ms | 6 per member every 12 000 ms | 18, uniform [6000, 10 000) ms |
 | Skarn the Swarmcaller (`SKARN_*`) | 550 | 6 every 2000 ms | 8 per member every 9000 ms | 14, uniform [8000, 12 000) ms |
 | Threx the Impaler (`THREX_*`) | 460 | 9 every 2000 ms | 4 per member every 16 000 ms | 26, uniform [5000, 8000) ms |
 
@@ -125,35 +147,36 @@ longer fight → more time for the ramp to kill someone else).
 
 ## Orders of magnitude
 
-Gorvath — the reference profile:
+Gorvath — the reference profile, re-measured for the priest's post-ADR-0021
+kit (Renew, its only level 1 spell):
 
-- Pressure on the tank: 8 / 2 s = **4.0 HP/s**; they fall in 22 s with no
+- Pressure on the tank: 5 / 2 s = **2.5 HP/s**; they fall in 32 s with no
   healing.
 - AoE: 6 × 5 / 12 s ≈ **2.5 HP/s** spread across the party.
 - Spike: 18 every 8 s on average ≈ **2.2 HP/s** on a non-tank, a third of their
   health in one hit.
-- **Burst** healing throughput: 51 HP every 1.5 s ≈ 34 HP/s.
-- **Sustainable** healing throughput: mana-limited to ≈ 15 HP/s (9.25 mana/s
-  outside the five-second rule, 1.7 HP per point of mana).
+- Renew's **sustained** throughput on one target: 9 HP every 3 s = **3 HP/s** —
+  above the tank's own pressure with a small margin, which is the whole point
+  of the ADR-0021 re-calibration (see its update note on
+  [ADR-0010](./adr/0010-level-1-boss-profile.md)).
 
-Measured survival, all three enemies, eight fixed seeds (ADR-0016):
+Measured survival, all three enemies, naive Renew-spam, twelve fixed seeds
+(ADR-0021 re-measurement; see
+[classic-stats.md](./classic-stats.md#resulting-balance) for the full
+discussion):
 
-| Enemy | No healing | Naive automated healer |
+| Enemy | No healing | Naive Renew-spam |
 | --- | --- | --- |
-| Gorvath | 22 s | 48 – 63 s |
-| Skarn | 26 s | 40 – 63 s |
-| Threx | 20 s | 34 – 56 s |
+| Gorvath | 32 s | 44 – 54 s, 7 wins / 5 wipes |
+| Skarn | 26 s | 44 – 46 s, 1 win / 11 wipes |
+| Threx | 20 s | 30 – 36 s, 0 wins / 12 wipes |
 
-The ramp pushes pressure above sustainable healing after a few tiers, for
-every enemy. Since ADR-0017 that is no longer automatically a loss: if the
-boss dies first, it is a win. Measured outcome distribution for the same
-naive healer, twelve fixed seeds (ADR-0017):
-
-| Enemy | Wins | Wipes |
-| --- | --- | --- |
-| Gorvath | 7 | 5 |
-| Skarn | 7 | 5 |
-| Threx | 6 | 6 |
+Only Gorvath's tank melee was recalibrated. Skarn (3 HP/s tank pressure,
+exactly Renew's own sustained rate) and Threx (4.5 HP/s) remain very hard to
+near-unwinnable for a level 1 priest playing this naively — a known,
+deliberately deferred consequence (ADR-0021's Alternatives Considered), not a
+bug. Druid and paladin, whose level 1 spell is a strong direct heal rather
+than a slow HoT, are not at risk from any of this.
 
 ### Above level 1, that balance no longer holds
 
@@ -166,7 +189,7 @@ survives Gorvath with no healing at all, and the fight is only a question of
 how long the boss takes to die. `tests/gameStore.test.ts` asserts that outcome
 rather than leaving it implicit.
 
-Fixing it means sourcing the priest's spell ranks first, then scaling the
+Fixing it means sourcing each class's spell ranks first, then scaling the
 encounters — in that order, since scaling the bosses against a rank 1 spellbook
 makes every fight unwinnable instead of easy. See
 [ADR-0019](./adr/0019-levelling-to-60-and-boss-experience.md).
@@ -204,5 +227,5 @@ the one you mean to retune.
   windows, then the win/wipe distribution — before committing the numbers.
 
 After any change, run `npm test`: several tests rely on the nominal values
-(90 / 51 / 55 / 50 / 46 health, 8 / 6 / 18 damage for Gorvath — see
+(90 / 51 / 55 / 50 / 46 health, 5 / 6 / 18 damage for Gorvath — see
 `tests/encounter.test.ts` and `tests/bossHealth.test.ts` for the rest).

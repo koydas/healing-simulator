@@ -3,6 +3,7 @@ import { castSpell, selectTarget } from '../src/simulation/actions';
 import { createInitialState } from '../src/simulation/initialState';
 import {
   formatDuration,
+  getActiveHotEffect,
   getAliveMembers,
   getCastProgress,
   getGcdProgress,
@@ -11,7 +12,6 @@ import {
   getManaRatio,
   getMember,
   getMemberFeedback,
-  getRenewEffect,
 } from '../src/simulation/selectors';
 import { advance, isolateTimers, memberOf, patchMember, unlockAllSpells } from './helpers';
 
@@ -54,10 +54,10 @@ describe('selectors', () => {
     let state = isolateTimers(createInitialState(1));
     expect(getCastProgress(state)).toBe(0);
 
-    state = castSpell(state, 'lesserHeal');
+    state = castSpell(unlockAllSpells(state), 'heal'); // 3 s cast
     expect(getCastProgress(state)).toBe(0);
 
-    state = advance(state, 600);
+    state = advance(state, 1200);
     expect(getCastProgress(state)).toBeCloseTo(0.4, 6);
   });
 
@@ -75,27 +75,27 @@ describe('selectors', () => {
     expect(getGcdProgress(state)).toBe(1);
   });
 
-  it('exposes the active Renew', () => {
+  it('exposes the active HoT', () => {
     let state = unlockAllSpells(isolateTimers(createInitialState(1)));
     state = selectTarget(state, 'dps3');
     state = patchMember(state, 'dps3', { hp: 10 });
     state = castSpell(state, 'renew');
 
-    expect(getRenewEffect(memberOf(state, 'dps3'))?.ticksRemaining).toBe(5);
-    expect(getRenewEffect(memberOf(state, 'tank'))).toBeUndefined();
+    expect(getActiveHotEffect(memberOf(state, 'dps3'))?.ticksRemaining).toBe(5);
+    expect(getActiveHotEffect(memberOf(state, 'tank'))).toBeUndefined();
   });
 
   it('separates per-target feedback from global messages', () => {
     let state = isolateTimers(createInitialState(1));
     state = patchMember(state, 'tank', { hp: 10 });
-    state = castSpell(state, 'lesserHeal');
-    state = advance(state, 1500);
+    state = castSpell(state, 'renew'); // instant, default target is the tank
+    state = advance(state, 3000); // first Renew tick
 
     expect(getMemberFeedback(state, 'tank').length).toBeGreaterThan(0);
     expect(getMemberFeedback(state, 'dps1')).toHaveLength(0);
 
     // Instant spell then a second cast: refused because of the GCD.
-    const refused = castSpell(castSpell(unlockAllSpells(state), 'renew'), 'lesserHeal');
+    const refused = castSpell(castSpell(unlockAllSpells(state), 'shield'), 'renew');
     expect(getGlobalMessages(refused).at(-1)?.text).toBe('Global cooldown');
   });
 

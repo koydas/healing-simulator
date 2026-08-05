@@ -24,20 +24,21 @@ part of the contract that makes the game predictable:
 
 1. cast completion;
 2. HoT ticks;
-3. mana regeneration;
-4. tank damage;
-5. AoE damage;
-6. spike;
-7. death resolution;
-8. wipe check;
-9. party damage on the boss;
-10. victory check.
+3. shield decay;
+4. mana regeneration;
+5. tank damage;
+6. AoE damage;
+7. spike;
+8. death resolution;
+9. wipe check;
+10. party damage on the boss;
+11. victory check.
 
-Step 10 is a no-op once step 8 has already ended the fight this tick: a
+Step 11 is a no-op once step 9 has already ended the fight this tick: a
 mutual kill (the boss and the tank dying on the same step) resolves as a
 wipe, not a victory. See [ADR-0017](./adr/0017-boss-health-and-victory.md).
 
-Expired feedback is pruned after step 10.
+Expired feedback is pruned after step 11.
 
 Before step 1 the step updates `elapsedMs`, `damageMultiplier`,
 `gcdRemainingMs` and `msSinceLastCastStart` (the five-second rule counter).
@@ -169,20 +170,51 @@ The `GameState` carries `playerLevel`, taken from the saved profile when the
 fight is created (1 without one, 60 at most). It does two things: a spell whose
 `requiredLevel > playerLevel` is refused with the `level` reason, and the whole
 party's health, mana and regeneration are built from the Classic tables at that
-level. At level 1 only Lesser Heal is available; the other buttons are visible
-but locked, and unlock at 8, 16, 20 and 30. See
-[ADR-0008](./adr/0008-classic-spellbook-level-gating.md) and
+level. Since [ADR-0021](./adr/0021-per-class-spellbooks-and-absorb-shields.md)
+each of the three playable classes (`SPELL_ORDER[classId]`) has its own four
+spells and its own gating: a level 1 priest only has Renew, a level 1 druid
+only has Healing Touch, a level 1 paladin only has Holy Light — the other
+three buttons of each kit are visible but locked, and unlock as the character
+levels. See [ADR-0008](./adr/0008-classic-spellbook-level-gating.md) and
 [ADR-0019](./adr/0019-levelling-to-60-and-boss-experience.md).
 
 The level never changes **during** a fight: experience is granted when the
 fight ends, outside the engine, and applies from the next one.
 
-## Renew
+## Renew and the other HoTs
 
 - 5 ticks of 9 (45 total), **3 s** apart, with **no immediate tick**;
 - never stacks: reapplying replaces the effect, resets the ticks to 5 and the
   delay to 3 s;
 - falls off when its carrier dies.
+
+Rejuvenation (druid) and Tranquility (druid, party-wide) follow the exact same
+mechanics — a `HotEffect` with its own tick amount, count and interval — the
+only two `SpellKind`s that involve a HoT are `hot` (one target) and `groupHot`
+(every living member, applied once each with the same effect).
+
+## Shields (ADR-0021)
+
+A `shield`-kind spell (Power Word: Shield, Thorns, Blessing of Protection,
+Divine Shield) grants the target an absorb pool instead of healing:
+
+- `member.shieldAmount` is the damage still absorbable; `member.shieldMsRemaining`
+  is how long the pool lasts before it fades **unconsumed**.
+- `applyDamageTo` drains the pool before any of a hit reaches HP: a fully
+  absorbed hit produces an `absorb` feedback event and no `damage` one; a hit
+  bigger than the pool produces both, in that order, with the pool at 0 and
+  only the remainder taken off HP.
+- The pool never stacks: casting a second shield on an already-shielded member
+  replaces the pool and resets the duration, the same "no stacking" rule
+  Renew follows.
+- `tickShields` (step 3) counts the duration down once per simulation step; at
+  0 the pool is lost outright, spent or not.
+- Death clears both fields, the same way it already clears HoTs.
+
+Divine Shield always targets the caster (`targetsSelf: true`), never the
+selected ally — `requiresTarget` is `false` for it, and `castSpell` resolves
+its target to `PLAYER_MEMBER_ID` before the usual `requiresTarget` branch even
+runs.
 
 ## End of fight
 
@@ -207,6 +239,8 @@ Nothing can happen afterwards: `stepSimulation` returns the state untouched.
 | nothing spent when a cast is refused | `castSpell` (refusal branch) |
 | no refund after an interruption | `cancelActiveCast` |
 | Renew never stacks | `applyHot` (replacement by `spellId`) |
+| a shield never stacks | `applyShield` (overwrites the pool and duration) |
+| `0 <= shieldAmount`, cleared on death or expiry | `applyDamageTo`, `tickShields`, `resolveDeaths` |
 | no progress while paused | `stepSimulation` guard clause |
 | same seed + same actions = same fight | seed inside the state |
 | no real timer in the business logic | no time API under `simulation/` |

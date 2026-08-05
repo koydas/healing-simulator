@@ -14,10 +14,12 @@
 
 import {
   CREATURE_LEVEL_1,
+  DRUID_SPELLS_RANK_1,
   GLOBAL_COOLDOWN_MS,
   MANA_REGEN_VANILLA,
   MAX_LEVEL,
-  PRIEST_HEALS_RANK_1,
+  PALADIN_SPELLS_RANK_1,
+  PRIEST_SPELLS_RANK_1,
   getAttributes,
   manaPerTickFromSpirit,
   maxHealthAtLevel,
@@ -25,6 +27,7 @@ import {
   xpToNextLevel,
   type Attributes,
   type ClassId,
+  type ClassSpellRank,
   type RaceId,
 } from './classicData';
 import type { EncounterProfile, EnemyId, Role, SpellId } from '../simulation/types';
@@ -94,15 +97,16 @@ const PLAYER_SLOT = PARTY_SLOTS.find((slot) => slot.id === PLAYER_MEMBER_ID)!;
 
 /**
  * Classes the player's own character may be edited to, from the character
- * sheet (ADR-0020). Restricted to the three that both have a full 1 – 60
- * `RACE_CLASS_ATTRIBUTES` column *and* spend mana: warrior and rogue are two
- * of the five combinations the party is built from, but their base mana is 0
- * at every level (see `CLASS_BASE_BY_LEVEL` in `classicData.ts`) — a warrior
- * or rogue healer would have a 0 mana pool and could never cast the priest
- * spellbook this game simulates. That spellbook itself does not change with
- * the class: only the sheet's identity, and the health/mana it derives, do.
+ * sheet (ADR-0020, ADR-0021): the three healer classes this game actually
+ * simulates a spellbook for. Each has its own four rank 1 spells (`SPELLS`,
+ * `SPELL_ORDER`), unlike before ADR-0021 where every playable class cast the
+ * same priest spellbook and the choice was cosmetic. Mage and hunter — two of
+ * the other three sourced race/class combinations — are no longer offered:
+ * this game only ever simulated a healer, and giving the healer a mage's or a
+ * hunter's flavor never fit that any better than a warrior's or a rogue's
+ * (both excluded from the start for having no mana at all).
  */
-export const PLAYABLE_CLASSES = ['priest', 'mage', 'hunter'] as const;
+export const PLAYABLE_CLASSES = ['priest', 'druid', 'paladin'] as const;
 export type PlayableClassId = (typeof PLAYABLE_CLASSES)[number];
 
 export function isPlayableClass(value: unknown): value is PlayableClassId {
@@ -110,16 +114,17 @@ export function isPlayableClass(value: unknown): value is PlayableClassId {
 }
 
 /**
- * Race paired with each playable class — the same pairing `PARTY_SLOTS`
- * already uses for it, the only one with a full attribute table. Changing
- * class therefore changes race and every derived stat with it; it is not an
- * independent choice (see `classic-data`: only five race/class combinations
- * are sourced past level 1).
+ * Race paired with each playable class — human priest and human paladin
+ * match `PARTY_SLOTS`'s and Classic's own Alliance pairing; night elf is the
+ * only Alliance race with a druid in vanilla. Changing class therefore
+ * changes race and every derived stat with it; it is not an independent
+ * choice (see `classic-data`: only a sourced race/class combination has a
+ * full attribute table past level 1).
  */
 const PLAYABLE_CLASS_RACE: Record<PlayableClassId, RaceId> = {
   priest: 'human',
-  mage: 'gnome',
-  hunter: 'nightElf',
+  druid: 'nightElf',
+  paladin: 'human',
 };
 
 export function raceForPlayableClass(classId: PlayableClassId): RaceId {
@@ -198,6 +203,7 @@ export const CLASS_LABELS: Record<ClassId, string> = {
   rogue: 'Rogue',
   priest: 'Priest',
   mage: 'Mage',
+  druid: 'Druid',
 };
 
 export const RACE_LABELS: Record<RaceId, string> = {
@@ -223,8 +229,8 @@ export interface ManaProfile {
  * Priest pool and regeneration at a given level, derived from that level's
  * attributes (level 1: intellect 22 → 160 mana, spirit 24 → 18.5 mana per 2s
  * tick; level 60: intellect 120 → 2956 mana, spirit 131 → 45.25 per tick).
- * Other playable classes get their own pool the same way — a mage or hunter
- * still casts the priest spellbook (ADR-0020), just with a different pool.
+ * Druid and paladin get their own pool the same way, from their own attribute
+ * tables (ADR-0020, ADR-0021) — and, since ADR-0021, their own spellbook too.
  *
  * The behaviour is vanilla's: regeneration lands in 2-second ticks and the
  * **five-second rule** fully suspends it for 5 s after every mana expenditure.
@@ -256,7 +262,13 @@ export const CAST_IDLE_CAP_MS = 10_000;
 
 export const GCD_MS = GLOBAL_COOLDOWN_MS;
 
-export type SpellKind = 'direct' | 'hot' | 'group';
+/**
+ * `hot` and `group` predate ADR-0021; `groupHot` (a HoT applied to every
+ * living member at once, e.g. the druid's Tranquility) and `shield` (an
+ * absorb pool consumed by damage before HP, e.g. Power Word: Shield) are new
+ * with it.
+ */
+export type SpellKind = 'direct' | 'hot' | 'group' | 'groupHot' | 'shield';
 
 export interface SpellDefinition {
   id: SpellId;
@@ -270,72 +282,134 @@ export interface SpellDefinition {
   castTimeMs: number;
   manaCost: number;
   requiresTarget: boolean;
+  /** Always the caster, never the selected target (e.g. Divine Shield). */
+  targetsSelf: boolean;
   /** Direct heal: min / max bounds (the roll is uniform between them). */
   healMin: number;
   healMax: number;
-  /** HoT: healing per tick, tick count, interval. */
+  /** HoT / group HoT: healing per tick, tick count, interval. */
   healPerTick: number;
   hotTicks: number;
   hotIntervalMs: number;
+  /** Shield: absorb pool granted, and how long it lasts unconsumed. */
+  shieldAmount: number;
+  shieldDurationMs: number;
   /** Short description shown on the button. */
   description: string;
 }
 
-function defineSpell(id: SpellId, key: string, description: string): SpellDefinition {
-  const source = PRIEST_HEALS_RANK_1[key];
-  const kind: SpellKind = source.targetsParty
-    ? 'group'
-    : source.hotTicks > 0
-      ? 'hot'
-      : 'direct';
+function classifySpellKind(source: ClassSpellRank): SpellKind {
+  if (source.shieldAmount > 0) return 'shield';
+  if (source.targetsParty) return source.hotTicks > 0 ? 'groupHot' : 'group';
+  return source.hotTicks > 0 ? 'hot' : 'direct';
+}
+
+/**
+ * Builds a `SpellDefinition` from a sourced rank. `overrides` exists for the
+ * one deliberate deviation from Classic's own training levels: Renew's is
+ * lowered from 8 to 1 so the default class (priest) is not left with zero
+ * castable spells between levels 1 and 3, since Shield itself only trains at
+ * 4 — see ADR-0021. Every other spell uses its real, sourced level untouched.
+ */
+function defineSpell(
+  id: SpellId,
+  source: ClassSpellRank,
+  description: string,
+  overrides: Partial<Pick<ClassSpellRank, 'requiredLevel'>> = {},
+): SpellDefinition {
+  const merged: ClassSpellRank = { ...source, ...overrides };
+  const kind = classifySpellKind(merged);
 
   return {
     id,
-    spellId: source.spellId,
-    name: source.name,
-    rank: source.rank,
-    requiredLevel: source.requiredLevel,
+    spellId: merged.spellId,
+    name: merged.name,
+    rank: merged.rank,
+    requiredLevel: merged.requiredLevel,
     kind,
-    castTimeMs: source.castTimeMs,
-    manaCost: source.manaCost,
-    requiresTarget: !source.targetsParty,
-    healMin: source.healMin,
-    healMax: source.healMax,
-    healPerTick: source.hotTicks > 0 ? source.hotTotalHeal / source.hotTicks : 0,
-    hotTicks: source.hotTicks,
-    hotIntervalMs: source.hotIntervalMs,
+    castTimeMs: merged.castTimeMs,
+    manaCost: merged.manaCost,
+    requiresTarget: !merged.targetsParty && !merged.targetsSelf,
+    targetsSelf: merged.targetsSelf,
+    healMin: merged.healMin,
+    healMax: merged.healMax,
+    healPerTick: merged.hotTicks > 0 ? merged.hotTotalHeal / merged.hotTicks : 0,
+    hotTicks: merged.hotTicks,
+    hotIntervalMs: merged.hotIntervalMs,
+    shieldAmount: merged.shieldAmount,
+    shieldDurationMs: merged.shieldDurationMs,
     description,
   };
 }
 
-/** The five priest healing families, at rank 1. */
+/**
+ * Every spell of every playable class, at rank 1 — spell ids are unique
+ * across classes, so this stays one flat lookup (`SPELLS[cast.spellId]`)
+ * regardless of which class is fighting. `SPELL_ORDER` is what varies per
+ * class.
+ */
 export const SPELLS: Record<SpellId, SpellDefinition> = {
-  lesserHeal: defineSpell('lesserHeal', 'lesserHeal', '46 – 56'),
-  renew: defineSpell('renew', 'renew', '9 / tick × 5'),
-  heal: defineSpell('heal', 'heal', '295 – 341'),
-  flashHeal: defineSpell('flashHeal', 'flashHeal', '193 – 237'),
-  prayerOfHealing: defineSpell('prayerOfHealing', 'prayerOfHealing', '312 – 333 party'),
+  // Priest.
+  shield: defineSpell('shield', PRIEST_SPELLS_RANK_1.shield, 'Absorbs 44 damage'),
+  renew: defineSpell('renew', PRIEST_SPELLS_RANK_1.renew, '9 / tick × 5', { requiredLevel: 1 }),
+  heal: defineSpell('heal', PRIEST_SPELLS_RANK_1.heal, '295 – 341'),
+  prayerOfHealing: defineSpell(
+    'prayerOfHealing',
+    PRIEST_SPELLS_RANK_1.prayerOfHealing,
+    '312 – 333 party',
+  ),
+  // Druid.
+  healingTouch: defineSpell('healingTouch', DRUID_SPELLS_RANK_1.healingTouch, '37 – 51'),
+  rejuvenation: defineSpell('rejuvenation', DRUID_SPELLS_RANK_1.rejuvenation, '8 / tick × 4'),
+  thorns: defineSpell('thorns', DRUID_SPELLS_RANK_1.thorns, 'Absorbs 36 damage'),
+  tranquility: defineSpell(
+    'tranquility',
+    DRUID_SPELLS_RANK_1.tranquility,
+    '20 / tick × 5 party',
+  ),
+  // Paladin.
+  holyLight: defineSpell('holyLight', PALADIN_SPELLS_RANK_1.holyLight, '39 – 47'),
+  blessingOfProtection: defineSpell(
+    'blessingOfProtection',
+    PALADIN_SPELLS_RANK_1.blessingOfProtection,
+    'Absorbs 200 damage',
+  ),
+  divineShield: defineSpell(
+    'divineShield',
+    PALADIN_SPELLS_RANK_1.divineShield,
+    'Absorbs 500 damage',
+  ),
+  holyRadiance: defineSpell(
+    'holyRadiance',
+    PALADIN_SPELLS_RANK_1.holyRadiance,
+    '280 – 310 party',
+  ),
 };
 
-/** Display order: the order in which the priest learns the spells. */
-export const SPELL_ORDER: readonly SpellId[] = [
-  'lesserHeal',
-  'renew',
-  'heal',
-  'flashHeal',
-  'prayerOfHealing',
-] as const;
+/**
+ * Display order per class: the order in which that class learns its four
+ * spells (ascending by `requiredLevel`), the same convention the single
+ * priest spellbook used before ADR-0021.
+ */
+export const SPELL_ORDER: Record<PlayableClassId, readonly SpellId[]> = {
+  priest: ['renew', 'shield', 'heal', 'prayerOfHealing'],
+  druid: ['healingTouch', 'rejuvenation', 'thorns', 'tranquility'],
+  paladin: ['holyLight', 'blessingOfProtection', 'divineShield', 'holyRadiance'],
+};
 
 /** Spells actually usable at the given level. */
 export function isSpellUnlocked(spell: SpellDefinition, level: number = STARTING_LEVEL): boolean {
   return spell.requiredLevel <= level;
 }
 
-/** The spells a priest of that level has trained, in learning order. */
-export function spellsKnownAtLevel(level: number): readonly SpellDefinition[] {
-  return SPELL_ORDER.map((spellId) => SPELLS[spellId]).filter((spell) =>
-    isSpellUnlocked(spell, level),
-  );
+/** The spells a character of that class and level has trained, in learning order. */
+export function spellsKnownAtLevel(
+  level: number,
+  classId: PlayableClassId = DEFAULT_PLAYER_CLASS,
+): readonly SpellDefinition[] {
+  return SPELL_ORDER[classId]
+    .map((spellId) => SPELLS[spellId])
+    .filter((spell) => isSpellUnlocked(spell, level));
 }
 
 /* -------------------------------------------------------------------------- */
@@ -358,9 +432,17 @@ const MELEE_INTERVAL_MS = CREATURE_LEVEL_1.meleeAttackTimeMs;
 /**
  * Gorvath the Cavebreaker — the original level 1 elite profile (ADR-0010):
  * steady pressure on the tank, a moderate AoE and an occasional spike.
+ *
+ * Re-calibrated from 8 to 5 per swing (ADR-0021): a level 1 priest's only
+ * spell is now Renew (3 HP/s sustained on one target, see `docs/balance.md`),
+ * and 8 per 2 s swing (4 HP/s) could not be out-healed even by a perfect
+ * player — a mathematical loss, not a triage challenge. At 5 per swing
+ * (2.5 HP/s) Renew clears the tank's own damage with a margin, leaving AoE,
+ * ramp and spikes as the actual test. Druid and paladin, whose level 1 spell
+ * is a strong direct heal, were never at risk from the original value.
  */
 export const TANK_DAMAGE = {
-  amount: 8,
+  amount: 5,
   intervalMs: MELEE_INTERVAL_MS,
   firstAtMs: MELEE_INTERVAL_MS,
 } as const;
@@ -562,10 +644,10 @@ export function playerCharacterAtLevel(
     hpMax: maxHealthAtLevel(player.classId, attributes, level),
     manaMax: mana.max,
     manaPerTick: mana.perTick,
-    spellsKnown: spellsKnownAtLevel(level),
-    spellsLocked: SPELL_ORDER.map((spellId) => SPELLS[spellId]).filter(
-      (spell) => !isSpellUnlocked(spell, level),
-    ),
+    spellsKnown: spellsKnownAtLevel(level, player.classId),
+    spellsLocked: SPELL_ORDER[player.classId]
+      .map((spellId) => SPELLS[spellId])
+      .filter((spell) => !isSpellUnlocked(spell, level)),
   };
 }
 

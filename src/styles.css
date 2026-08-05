@@ -796,8 +796,10 @@ button {
   .header__pause { min-width: 42px; min-height: 40px; }
   .messages { min-height: 24px; }
   .frame { min-height: 58px; padding: 7px 8px; }
-  .controls__spells { grid-template-columns: repeat(5, minmax(58px, 1fr)); gap: 5px; }
-  .spell { min-width: 0; min-height: 58px; padding: 3px; }
+  /* Spell buttons keep the base rule's 64 px minimum and `auto-fit` grid
+     (ADR-0015): at 320 px that wraps to 4 + 1 rows instead of forcing five
+     columns that would either shrink below 64 px or overflow the row — see
+     the Codex finding on #17 and docs/adr/0015. */
   .spell__name { font-size: 11px; }
   .spell__description { font-size: 8px; }
 }

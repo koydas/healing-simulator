@@ -15,7 +15,9 @@ All notable changes to this project are recorded here, following
   re-rendering at the simulation's 10 Hz tick. All of it is neutralised under
   `prefers-reduced-motion: reduce`. The spell row is also now sticky at the
   bottom of the screen, within the safe area, so it stays reachable on short
-  phones.
+  phones. The narrow-phone breakpoint keeps the spell grid's existing 64 px
+  minimum and `auto-fit` wrap (ADR-0015) rather than forcing five columns —
+  at 320 px that means the accepted 4 + 1 wrap, not an overflowing row.
 
 - **A character sheet on the home screen, with levels and an experience bar up
   to 60.** The healer's health, mana, regeneration, attributes and known spells

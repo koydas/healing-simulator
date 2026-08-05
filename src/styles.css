@@ -455,7 +455,10 @@ button {
   flex-direction: column;
   gap: var(--gap);
   padding: var(--gap);
-  padding-bottom: calc(var(--gap) + env(safe-area-inset-bottom));
+  /* The spell row is the last thing on screen and sits flush against the
+     bottom edge — only the device's own safe area is kept below it, so the
+     thumb reaches the buttons where it naturally rests. */
+  padding-bottom: env(safe-area-inset-bottom);
   background: var(--bg-panel);
   border-top: 1px solid var(--border-soft);
 }
@@ -464,6 +467,12 @@ button {
   display: flex;
   align-items: center;
   gap: var(--gap);
+}
+
+/* Idle, nothing is drawn — but the row keeps its height, so beginning a cast
+   does not push the spell buttons down mid-tap. */
+.castbar[data-casting='false'] {
+  visibility: hidden;
 }
 
 .castbar__track {

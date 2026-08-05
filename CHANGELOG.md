@@ -53,6 +53,18 @@ All notable changes to this project are recorded here, following
 
 ### Changed
 
+- **The spell buttons now sit flush against the bottom of the fight screen**
+  and the idle "Ready" bar is gone. That bar was an empty full-width track
+  labelled `Ready` above the spells: it looked like a button and did nothing
+  when tapped. The cast bar row is now blank until a cast starts, keeping its
+  40 px height (`visibility: hidden`, not removed) so the controls block
+  measures the same idle and casting — verified identical at 390 × 844,
+  320 × 568 and 667 × 375, meaning the spell buttons and party frames never
+  shift under a thumb mid-cast. The controls also dropped the 8 px of padding
+  below the spell row, keeping only `env(safe-area-inset-bottom)`. `Cancel`
+  is unchanged: hidden and out of the tab order while idle, visible and
+  working during a cast.
+
 - **Health and mana values now sit inside their bars, like the boss bar.** The
   party frames lost their separate value row: `hp / max` and the percentage are
   overlaid on the health bar, which grows to fill the frame (14 → 28 px on a

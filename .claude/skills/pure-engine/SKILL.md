@@ -98,13 +98,33 @@ Numbers live in `src/config/gameConfig.ts`, never inline in the engine. If the
 number claims to come from WoW Classic, it belongs in `classicData.ts` instead —
 see the `classic-data` skill.
 
+### Values that depend on the level ride in the state
+
+`state.playerLevel` is fixed when the fight is created and never changes during
+one: `createInitialState(seed, level, enemyId)` builds the party with
+`partyTemplateAtLevel` and the pool with `manaProfileAtLevel`, and experience is
+granted after the fight, outside the engine.
+
+Anything a step needs that depends on the level is **copied into the state at
+creation**, the way `manaRegenPerTick` and `manaMax` are, rather than looked up
+per tick:
+
+```ts
+draft.mana = Math.min(draft.manaMax, draft.mana + draft.manaRegenPerTick);
+```
+
+Cadences that are identical at every level (`MANA.tickMs`, the five-second
+rule, the GCD) stay constants. The test for a level-dependent value is simple:
+would two fights at different levels disagree about it? Then it is state.
+
 ## Constraints
 
 - Do not add a real timer, an `async` path, or an event emitter to the engine:
   the fixed step is what makes fights reproducible.
-- Do not reach for React state or the store from `src/simulation/` — the
-  dependency direction is one-way, and breaking it makes the engine untestable
-  in the `node` environment.
+- Do not reach for React state, the store, or the saved profile from
+  `src/simulation/` — the dependency direction is one-way, and breaking it
+  makes the engine untestable in the `node` environment. The profile reaches
+  the engine as a plain `playerLevel` number and nothing else.
 - Do not silently change the meaning of an existing field of `GameState`;
   add a field instead, so old tests keep saying what they meant.
 - A change to the engine without a test is incomplete (see `test-protocol`).

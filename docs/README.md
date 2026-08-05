@@ -4,7 +4,7 @@
 | --- | --- |
 | [architecture.md](./architecture.md) | layering, data flow, rendering strategy |
 | [simulation.md](./simulation.md) | engine contract: fixed timestep, event order, invariants |
-| [classic-stats.md](./classic-stats.md) | WoW Classic level 1 stats: sources, formulas, and what is sourced / derived / designed |
+| [classic-stats.md](./classic-stats.md) | WoW Classic stats from level 1 to 60: sources, formulas, experience, and what is sourced / derived / designed |
 | [balance.md](./balance.md) | every balance value and where it lives in the code |
 | [testing.md](./testing.md) | how the Vitest suite is organised and what it must cover |
 | [deployment.md](./deployment.md) | Docker image, Nginx, Kubernetes manifests, probes |
@@ -19,6 +19,7 @@ picks up the relevant one automatically:
 | --- | --- |
 | `pure-engine` | the `src/simulation/` contract: purity, fixed step, event order, seeded randomness |
 | `classic-data` | sourcing any value claimed to be from WoW Classic, and the sourced / derived / approximated / designed split |
+| `player-progression` | the saved profile: level, experience, records, and the `localStorage` boundary |
 | `render-budget` | the store / snapshot / `onFrame` split, `React.memo`, and the mobile layout rules |
 | `test-protocol` | Vitest conventions, the `tests/helpers.ts` toolkit, failure-branch coverage |
 | `new-adr` | recording an architecture decision |

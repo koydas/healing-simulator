@@ -8,10 +8,10 @@
 import {
   CANCEL_MESSAGE,
   GCD_MS,
-  PLAYER_LEVEL,
   PLAYER_MEMBER_ID,
   REFUSAL_MESSAGES,
   SPELLS,
+  STARTING_LEVEL,
   isSpellUnlocked,
   type CastRefusalReason,
 } from '../config/gameConfig';
@@ -145,7 +145,15 @@ export function togglePause(state: GameState): GameState {
   return state;
 }
 
-/** Starts a new fight with the given seed and enemy. */
-export function restartGame(seed: number, enemyId: EnemyId): GameState {
-  return createInitialState(seed, PLAYER_LEVEL, enemyId);
+/**
+ * Starts a new fight with the given seed, enemy and level. The level comes
+ * from the saved profile, so a rematch played after a level-up is fought with
+ * the new character, not the one that won the previous fight.
+ */
+export function restartGame(
+  seed: number,
+  enemyId: EnemyId,
+  playerLevel: number = STARTING_LEVEL,
+): GameState {
+  return createInitialState(seed, playerLevel, enemyId);
 }

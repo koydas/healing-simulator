@@ -3,6 +3,31 @@
 - **Date:** 2026-08-02
 - **Status:** Accepted
 
+> Update (ADR-0018): the "no `localStorage`" half of this decision no longer
+> holds. The player profile — level, experience and the record against each
+> boss — is stored under `healing-simulator.profile.v1` and can be deleted from
+> the options menu. Everything else below still applies: a fight in progress is
+> not saved, its statistics die with the tab, and the seed remains the only way
+> to replay one.
+
+> Update (ADR-0019): once the party's stats came from `playerLevel`, `?seed=`
+> and `?enemy=` stopped fully identifying a fight — the same URL opened from a
+> level 1 and a level 60 profile built a different party, with different
+> health, mana and spellbook, and could resolve to a different outcome.
+> `?level=` now pins it the same way, read by `readInitialLevel()` and written
+> by `syncFightUrl` alongside the other two; absent, it falls back to the
+> current profile's level exactly as before. Caught by Codex review on #9.
+>
+> That fix opened a second problem, caught by the same review one round later:
+> pinning `?level=` lets a fight be played at a level different from the
+> profile that opens it — a level 59 profile replaying an easy `?level=1` link
+> could otherwise bank the full level-59 reward for a trivial fight, and a
+> level 1 profile replaying `?level=60` could claim a win its character never
+> earned. `App.handleFightEnd` now compares the level the fight actually ran at
+> (`state.playerLevel`, passed through the store's `onFightEnd`) against the
+> live profile's level and skips the reward and the record entirely on a
+> mismatch; the end screen says so instead of silently doing nothing.
+
 ## Context
 
 The brief forbids any backend, any database and any local persistence. Yet two

@@ -1,9 +1,10 @@
-# WoW Classic stats — level 1
+# WoW Classic stats — levels 1 to 60
 
 Every character, spell and regeneration value in the game comes from **WoW
-Classic (patch 1.12)**, at **level 1**. This document says where each number
-comes from, how it is computed, and — just as importantly — **what is not
-sourced**.
+Classic (patch 1.12)**. A character starts at **level 1** and can reach the
+vanilla cap of **60**; every stat in between is read from the game's own
+tables. This document says where each number comes from, how it is computed,
+and — just as importantly — **what is not sourced**.
 
 The raw data lives in [`src/config/classicData.ts`](../src/config/classicData.ts).
 Derived values are computed in [`src/config/gameConfig.ts`](../src/config/gameConfig.ts):
@@ -13,8 +14,9 @@ no health value or spell cost is written by hand anywhere else.
 
 | Data | Source | Nature |
 | --- | --- | --- |
-| Base health and mana per class (level 1) | `player_classlevelstats` table of the vanilla [MaNGOS Zero](https://github.com/mangoszero/database/blob/master/World/Setup/FullDB/player_classlevelstats.sql) database | 1.12 server |
-| Attributes per race and class (level 1) | `player_levelstats` table, [same database](https://github.com/mangoszero/database/blob/master/World/Setup/FullDB/player_levelstats.sql) | 1.12 server |
+| Base health and mana per class (levels 1 – 60) | `player_classlevelstats` table of the vanilla [MaNGOS Zero](https://github.com/mangoszero/database/blob/master/World/Setup/FullDB/player_classlevelstats.sql) database | 1.12 server |
+| Attributes per race and class (levels 1 – 60) | `player_levelstats` table, [same database](https://github.com/mangoszero/database/blob/master/World/Setup/FullDB/player_levelstats.sql) | 1.12 server |
+| Experience required per level | `player_xp_for_level` table, [same database](https://github.com/mangoszero/database/blob/master/World/Setup/FullDB/player_xp_for_level.sql) | 1.12 server |
 | Stamina → health formula | `Player::GetHealthBonusFromStamina`, [mangoszero/server `StatSystem.cpp`](https://github.com/mangoszero/server/blob/master/src/game/Object/StatSystem.cpp) | server code |
 | Intellect → mana formula | `Player::GetManaBonusFromIntellect`, same file | server code |
 | Priest healing spells (rank 1) | [wowclassicdb](https://wowclassicdb.com/spell/2050) for the amounts, [EZDownRank](https://github.com/mrbuds/EZDownRank/blob/master/EZDownRank.lua) for costs / cast times / levels | database + addon |
@@ -49,20 +51,43 @@ Sanity check: a level 1 human warrior has 22 stamina, so
 | Priest | 31 | 110 |
 | Mage | 31 | 100 |
 
+`CLASS_BASE_BY_LEVEL` carries the same two columns for all six classes at every
+level up to 60 (`getClassBase(classId, level)`); the level 1 row above is just
+the first entry. A handful of rows in the source table are not monotonic
+(warrior 101 → 100 at level 11, paladin 28 → 26 at level 2) — they are copied
+as they are, not smoothed.
+
 ## The party
 
-Five level 1 Alliance characters. Health is not written in the code: it is
-recomputed at startup from the attributes.
+Five Alliance characters, all at the profile's level. Health is not written in
+the code: it is recomputed from the attributes of that level, by
+`partyTemplateAtLevel`.
 
-| Member | Race / class | Sta. | Int. | Spirit | Health | Mana |
-| --- | --- | --- | --- | --- | --- | --- |
-| Thorgrim (tank) | Dwarf warrior | 25 | 19 | 19 | **90** | — |
-| Elowen (healer) | Human priest | 20 | 22 | 24 | **51** | **160** |
-| Kaelan (DPS) | Human rogue | 21 | 20 | 20 | **55** | — |
-| Fizzwick (DPS) | Gnome mage | 19 | 26 | 22 | **50** | 210 |
-| Sylandra (DPS) | Night elf hunter | 20 | 20 | 21 | **46** | 83 |
+| Member | Race / class | Health lv. 1 | Health lv. 60 |
+| --- | --- | --- | --- |
+| Thorgrim (tank) | Dwarf warrior | **90** | **2639** |
+| Elowen (healer) | Human priest | **51** | **1707** |
+| Kaelan (DPS) | Human rogue | **55** | **2093** |
+| Fizzwick (DPS) | Gnome mage | **50** | **1620** |
+| Sylandra (DPS) | Night elf hunter | **46** | **2177** |
+
+At level 1 the attributes behind those numbers are:
+
+| Member | Sta. | Int. | Spirit | Mana |
+| --- | --- | --- | --- | --- |
+| Thorgrim | 25 | 19 | 19 | — |
+| Elowen | 20 | 22 | 24 | **160** |
+| Kaelan | 21 | 20 | 20 | — |
+| Fizzwick | 19 | 26 | 22 | 210 |
+| Sylandra | 20 | 20 | 21 | 83 |
 
 Only the priest's mana is simulated: it is the player's resource.
+
+Only these five race/class combinations carry a full 1 – 60 column; the other
+twelve keep their level 1 row. Adding a race or class to the party means
+extending its column from the same SQL file first — `getAttributes` throws for
+a level it has no row for, rather than interpolating a character that never
+existed.
 
 The tank has 1.96 times the hunter's health — the original "the tank has twice
 the health of the others" rule is no longer imposed, it **emerges** from picking
@@ -70,12 +95,12 @@ a dwarf warrior (stamina 25, the highest in the game at level 1).
 
 ## Mana and regeneration
 
-| Value | Level 1 | Origin |
-| --- | --- | --- |
-| Priest pool | 160 | 110 (priest base) + 50 (intellect 22) |
-| Regeneration tick | every 2 s | vanilla |
-| Mana per tick | 18.5 | spirit 24 → `24 / 4 + 12.5` |
-| Five-second rule | 5 s | vanilla |
+| Value | Level 1 | Level 60 | Origin |
+| --- | --- | --- | --- |
+| Priest pool | 160 | 2956 | class base + intellect bonus (22 → 120) |
+| Regeneration tick | every 2 s | every 2 s | vanilla |
+| Mana per tick | 18.5 | 45.25 | spirit / 4 + 12.5 (24 → 131) |
+| Five-second rule | 5 s | 5 s | vanilla |
 
 In vanilla, spirit-based regeneration is **fully suspended for the 5 seconds
 following a mana expenditure** (without the Meditation talent). A priest who
@@ -101,12 +126,37 @@ Healing is **rolled uniformly inside the spell's range**, like in game — there
 is no "base ± 10%" any more.
 
 **At level 1 a priest only knows Lesser Heal.** The other four spells are shown
-locked, with their training level. See
+locked with their training level, and unlock as the character levels: Renew at
+8, Heal at 16, Flash Heal at 20, Prayer of Healing at 30. See
 [ADR-0008](./adr/0008-classic-spellbook-level-gating.md) for the discussion.
 
 A note on scale: Prayer of Healing costs 410 mana, 2.5 times a level 1 priest's
-pool. That is not an inconsistency — it is a level 30 spell, cast with a much
-larger pool.
+pool. That is not an inconsistency — it is a level 30 spell, and a level 30
+priest has 1322 mana.
+
+Only **rank 1** of each family exists in the game so far, at every level. A
+level 60 priest therefore heals for the same amounts as a level 16 one — see
+the levelling section below.
+
+## Experience and levels
+
+The experience needed for each level is the table the game itself uses,
+`player_xp_for_level`: 400 to reach level 2, 7600 for level 11, 209,800 for
+level 60, and **4,084,700** in total from 1 to 60. `xpToNextLevel(level)`
+returns `null` at the cap, and throws outside `[1, 60]` — a corrupt saved
+profile fails where it is loaded rather than during a fight.
+
+What a boss kill is *worth* is ours, not Classic's. Vanilla pays
+`2 × (5 × level + 45)` for a same-level elite — 100 experience at level 1, 690
+at level 59 — which against the table above is about 8,000 boss kills to reach
+60. A victory therefore grants `round(xpToNextLevel(level) × 0.34)` instead:
+**three victories per level**, 136 experience at level 1, 71,332 at level 59. A
+wipe grants nothing. That constant, `BOSS_XP.victoryShare`, is the single knob
+for progression pacing. See
+[ADR-0019](./adr/0019-levelling-to-60-and-boss-experience.md).
+
+The level, the experience inside it and the win/loss record per boss are saved
+in `localStorage` ([ADR-0018](./adr/0018-persistent-player-profile-localstorage.md)).
 
 ## The enemies
 
@@ -156,7 +206,9 @@ This is the section to read before quoting any number from this project.
 
 ### Sourced — exact Classic value
 
-- base health and mana per class, attributes per race/class;
+- base health and mana per class, at every level from 1 to 60;
+- attributes per race/class, at every level for the party's five combinations;
+- the experience required for each level, and the level cap of 60;
 - the stamina → health and intellect → mana formulas;
 - cost, cast time, required level and healing amount of the five spells;
 - the 1.5 s global cooldown;
@@ -165,9 +217,10 @@ This is the section to read before quoting any number from this project.
 
 ### Derived — computed from the sources
 
-- each party member's health and mana;
+- each party member's health and mana, at the profile's level;
 - Renew's healing per tick (45 / 5 ticks = 9);
-- the priest's mana per tick (from spirit).
+- the priest's mana per tick (from spirit);
+- which spells are trained at a given level.
 
 ### Approximated — flagged as such
 
@@ -200,6 +253,9 @@ This is the section to read before quoting any number from this project.
   per-class attack is simulated; the tank and three DPS are abstracted into
   one throughput.
 - **Wipe conditions** (tank death or three deaths).
+- **The experience a boss kill is worth**: 34% of the current level's
+  requirement on a victory, nothing on a wipe. The requirement itself is
+  sourced; the share is a pacing choice (ADR-0019).
 - **Party composition**, character names, and the three enemies' names and
   selection-screen descriptions.
 
@@ -233,20 +289,25 @@ wins / 5 wipes, Skarn 7/5, Threx 6/6 — because a dead DPS both slows the boss
 kill down and does not slow the incoming damage down, a death spiral that
 punishes losing party members twice over.
 
-## Levelling up later
+## What levelling still does not cover
 
-The level is a `GameState` field (`playerLevel`) and a configuration constant
-(`PLAYER_LEVEL`). Today both are 1.
+Levels 1 to 60 are in place — stats, thresholds, spell gating — but two pieces
+of the game stayed at level 1, and the fight is unbalanced because of it.
 
-To open up other levels you need to:
+1. **The spellbook is rank 1 only.** `PRIEST_HEALS_RANK_1` holds one rank per
+   family, so a level 60 priest still heals for 46 – 56 with Lesser Heal while
+   carrying a 2956 mana pool. The rank tables
+   ([EZDownRank](https://github.com/mrbuds/EZDownRank/blob/master/EZDownRank.lua))
+   are the next thing to source.
+2. **The encounters are level 1 designs.** Gorvath, Skarn and Threx keep the
+   damage of ADR-0010 and ADR-0016 whatever the party's level, so the fight
+   gets easier every level — past roughly level 8 the party wins with no
+   healing at all (`tests/gameStore.test.ts` pins it).
 
-1. extend `CLASS_BASE_LEVEL_1` and `RACE_CLASS_ATTRIBUTES_LEVEL_1` into
-   level-indexed tables (both source SQL files contain every level up to 60);
-2. add the higher spell ranks to `PRIEST_HEALS_RANK_1`;
-3. change `PLAYER_LEVEL` — spell gating already follows on its own.
-
-Nothing else in the engine depends on the level: the simulation only knows
-health, mana and amounts.
+The order matters: scaling the bosses *before* the spell ranks would make every
+fight unwinnable rather than easy, because health pools grow about 30× between
+level 1 and 60 while rank 1 healing does not move at all. See
+[ADR-0019](./adr/0019-levelling-to-60-and-boss-experience.md).
 
 ## References
 
@@ -256,4 +317,6 @@ health, mana and amounts.
 - [ADR-0010](./adr/0010-level-1-boss-profile.md) — level 1 boss profile
 - [ADR-0016](./adr/0016-selectable-enemy-encounters.md) — the selection screen and the other two enemies
 - [ADR-0017](./adr/0017-boss-health-and-victory.md) — boss health, party damage output, and the victory condition
+- [ADR-0018](./adr/0018-persistent-player-profile-localstorage.md) — the saved profile
+- [ADR-0019](./adr/0019-levelling-to-60-and-boss-experience.md) — levels 1 to 60 and the experience reward
 - [balance.md](./balance.md) — constant reference

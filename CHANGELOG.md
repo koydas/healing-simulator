@@ -7,6 +7,34 @@ All notable changes to this project are recorded here, following
 
 ### Added
 
+- **A character sheet on the home screen, with levels and an experience bar up
+  to 60.** The healer's health, mana, regeneration, attributes and known spells
+  are read from the WoW Classic tables at the current level — the full
+  `player_classlevelstats`, `player_levelstats` and `player_xp_for_level`
+  tables are now sourced, not just their level 1 row. The whole party levels
+  along: 90 → 2639 HP on the tank, 51 → 1707 HP and 160 → 2956 mana on the
+  priest, and the real spellbook unlocks on the way (Renew at 8, Heal at 16,
+  Flash Heal at 20, Prayer of Healing at 30). See ADR-0019.
+
+- **Killing a boss grants experience.** A victory is worth 34% of the current
+  level's requirement — three victories per level, 136 experience at level 1,
+  71,332 at level 59 — while a wipe grants none. The thresholds are Classic's
+  (4,084,700 experience from 1 to 60); the share is our own pacing choice,
+  because vanilla's kill formula would take about 8,000 boss kills. The end
+  screen reports what the fight paid and any level gained. See ADR-0019.
+  ⚠️ The encounters are still level 1 designs and the spellbook is still rank 1
+  only, so fights get easier as you level.
+
+- **A win/loss counter per boss**, shown on the home screen with a total row,
+  counted the moment a fight ends.
+
+- **Progress is saved in the browser, and can be deleted.** Level, experience
+  and records live in `localStorage` under `healing-simulator.profile.v1`;
+  `Options → Delete saved game` erases them behind a confirmation and resets
+  the character to level 1. A corrupt or hand-edited save is clamped rather
+  than trusted, and a browser that refuses storage simply plays unsaved. This
+  reverses the "no local persistence" half of ADR-0005 — see ADR-0018.
+
 - **The boss now has a health bar, and the fight can be won.** The tank and
   the three DPS chip away at the boss automatically over the fight; a dead
   contributor's share is not picked up by the survivors. The health bar sits
@@ -22,7 +50,16 @@ All notable changes to this project are recorded here, following
   screen can return to the selection screen ("Choose another enemy") as well
   as start a same-enemy rematch. See ADR-0016.
 
-### Fixed
+### Changed
+
+- **Contributor guides follow the new shape.** A `player-progression` skill
+  covers the saved profile, the experience rules and the storage boundary;
+  `classic-data` now describes the level-indexed tables and the sourced /
+  designed split of experience; `pure-engine`, `render-budget` and
+  `test-protocol` gained the level-carried state field, the props-driven home
+  screen with its measured layout budget, and the injected-storage testing
+  rule. ADR-0007 and ADR-0008 carry update notes pointing at ADR-0019.
+
 
 - **A shared `?seed=` URL now replays against the right enemy, stays accurate
   through a rematch, and stops recycling randomness across "Choose another
@@ -61,6 +98,34 @@ All notable changes to this project are recorded here, following
   `healing-simulator.home`. See ADR-0012.
 
 ### Fixed
+
+- **A replay URL now pins the level the party is fought at.** `?seed=` and
+  `?enemy=` stopped fully identifying a fight once the whole party's health,
+  mana and spellbook started coming from `playerLevel`: the same link opened
+  from a level 1 and a level 60 profile built a different party — 51 HP versus
+  817 HP on the healer for the identical seed and enemy in one measured case —
+  and could resolve to a different outcome. `?level=` now pins it exactly like
+  the other two, read by `readInitialLevel()` and written back by
+  `syncFightUrl`; without it, a fight still falls back to the current profile's
+  level as before. Caught by Codex review on #9. See ADR-0005.
+
+- **A replay URL pinned at a level different from the current profile no
+  longer touches that profile.** Pinning `?level=` (previous entry) opened a
+  second problem: a profile could still play the pinned fight and have it
+  scored as its own — a level 59 profile replaying a shared `?level=1` link
+  could win trivially and bank the full level-59 reward, and a level 1 profile
+  replaying `?level=60` could claim a win it never earned. `App.handleFightEnd`
+  now compares the level the fight actually ran at against the live profile
+  and refuses the experience and the win/loss record on a mismatch; the end
+  screen says so instead of silently granting nothing. Caught by Codex review
+  on #9, one round after the fix above. See ADR-0005.
+
+- **A level 60 victory no longer reads like a wipe.** `bossXpReward` correctly
+  grants 0 experience at the level cap, but the end screen picked its wording
+  from `xpGained === 0` alone, so a capped character's win showed "No
+  experience — the boss has to die for that" directly under a "Victory"
+  title. The message now also checks the outcome and says "already at the
+  level cap" for a win. Caught by Codex review on #9.
 
 - **The wipe screen now takes keyboard focus.** It carried `role="dialog"` and
   `aria-modal="true"`, but neither moves focus nor blocks Tab: measured at a

@@ -105,12 +105,15 @@ function tickHots(draft: GameState, dtMs: number): void {
 /**
  * Vanilla mana regeneration: one tick every 2 seconds, and the five-second rule
  * which fully suspends the spirit-based part for 5 s after any mana spend.
+ *
+ * The cadence and the 5 s window are the same at every level, so they stay
+ * constants; the amount comes from the healer's spirit and rides in the state.
  */
 function regenerateMana(draft: GameState, dtMs: number): void {
   draft.timers.manaTickMs -= dtMs;
   while (draft.timers.manaTickMs <= 0) {
     if (draft.msSinceLastCastStart >= MANA.fiveSecondRuleMs) {
-      draft.mana = Math.min(draft.manaMax, Math.max(0, draft.mana + MANA.perTick));
+      draft.mana = Math.min(draft.manaMax, Math.max(0, draft.mana + draft.manaRegenPerTick));
     }
     draft.timers.manaTickMs += MANA.tickMs;
   }

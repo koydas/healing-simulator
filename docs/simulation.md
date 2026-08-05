@@ -150,23 +150,32 @@ met. From that moment the player is a spectator:
 
 ## Mana — vanilla model
 
-- pool: 160 for a level 1 human priest, full at the start;
+- pool: 160 for a level 1 human priest (2956 at level 60), full at the start;
 - regeneration lands in **2-second ticks** (`timers.manaTickMs`), not
   continuously;
 - a tick only credits mana when `msSinceLastCastStart >= 5000`: that is the
   **five-second rule**, which fully suspends regeneration after any
   expenditure;
-- amount per tick: 18.5 (spirit 24);
+- amount per tick: `state.manaRegenPerTick`, 18.5 at level 1 (spirit 24) and
+  45.25 at level 60 — it is a state field so a step never has to look the
+  level up;
 - mana is clamped to `[0, manaMax]`.
 
 See [ADR-0009](./adr/0009-vanilla-mana-regen-five-second-rule.md).
 
 ## Level and spell availability
 
-The `GameState` carries `playerLevel` (1 by default). A spell whose
-`requiredLevel > playerLevel` is refused with the `level` reason. At level 1
-only Lesser Heal is available; the other buttons are visible but locked. See
-[ADR-0008](./adr/0008-classic-spellbook-level-gating.md).
+The `GameState` carries `playerLevel`, taken from the saved profile when the
+fight is created (1 without one, 60 at most). It does two things: a spell whose
+`requiredLevel > playerLevel` is refused with the `level` reason, and the whole
+party's health, mana and regeneration are built from the Classic tables at that
+level. At level 1 only Lesser Heal is available; the other buttons are visible
+but locked, and unlock at 8, 16, 20 and 30. See
+[ADR-0008](./adr/0008-classic-spellbook-level-gating.md) and
+[ADR-0019](./adr/0019-levelling-to-60-and-boss-experience.md).
+
+The level never changes **during** a fight: experience is granted when the
+fight ends, outside the engine, and applies from the next one.
 
 ## Renew
 

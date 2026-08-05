@@ -39,8 +39,15 @@ explains the gaps — beyond 20, each point is worth 10 health instead of 1. See
 ### A race/class combination throws
 
 `getAttributes` only knows the combinations present in
-`RACE_CLASS_ATTRIBUTES_LEVEL_1`. Add the matching row from the vanilla
+`RACE_CLASS_ATTRIBUTES`. Add the matching row from the vanilla
 `player_levelstats` table rather than improvising attributes.
+
+### A race/class combination throws only above level 1
+
+Same table, other axis: the five combinations the party uses carry every level
+up to 60, the twelve others only their level 1 row. `No attributes for
+gnome/mage at level 30` means that column has to be extended from the same SQL
+file — the error is deliberate, so nobody ships an interpolated character.
 
 ### A duration test is off by one step
 
@@ -162,10 +169,9 @@ cast in flight is interrupted. HoTs applied beforehand keep ticking.
 
 That is intended. At level 1 a WoW Classic priest only knows Lesser Heal; Renew
 comes at level 8, Heal at 16, Flash Heal at 20 and Prayer of Healing at 30. The
-locked buttons show their required level. To play with the full spell book,
-raise `PLAYER_LEVEL` in `src/config/gameConfig.ts` — keeping in mind that the
-stat tables currently only cover level 1 (see
-[classic-stats.md](./classic-stats.md#levelling-up-later)).
+locked buttons show their required level, and unlock as the character levels —
+three victories per level (see
+[classic-stats.md](./classic-stats.md#experience-and-levels)).
 
 ### "Mana is not coming back"
 
@@ -175,5 +181,30 @@ for 18.5 points.
 
 ### Replaying the exact same fight
 
-Add `?seed=<value>` to the URL. The current seed is displayed at the bottom of
-the end screen.
+Add `?seed=<value>` to the URL — the current one is displayed at the bottom of
+the end screen, and `?enemy=` / `?level=` are filled in automatically once the
+fight starts. All three matter: since the party's stats and spellbook come
+from the level, the same seed and enemy opened without `?level=` falls back to
+*your own* profile's level, not the one the link was generated from.
+
+### "My level and my record are gone"
+
+The profile lives in this browser only, under
+`healing-simulator.profile.v1` in `localStorage`. It is lost by clearing site
+data, by browsing in private mode (where storage is often refused outright —
+the game then plays normally but saves nothing), or by opening the game in
+another browser or on another device. There is no account and no sync, by
+design (ADR-0018).
+
+### "My level came back wrong after editing the save"
+
+`loadProfile` never trusts what it reads: the level is clamped to `[1, 60]`,
+experience is clipped below the current level's requirement, counters are
+floored at 0, and anything unparseable falls back to a fresh profile. Editing
+the JSON to grant yourself a level therefore does not work — and that is what
+stops a corrupt save from throwing inside the Classic tables mid-fight.
+
+### Deleting the save from the app
+
+`Options → Delete saved game`, then confirm. It removes the `localStorage` key
+and resets the character to level 1 with an empty record.

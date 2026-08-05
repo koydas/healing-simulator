@@ -120,8 +120,9 @@ export interface GameState {
   status: GameStatus;
   outcome: GameOutcome;
   /**
-   * Healer level: gates which spells are available.
-   * The stat tables currently only cover level 1.
+   * Level of the party for this fight, taken from the saved profile.
+   * It gates which spells are available and sizes health, mana and
+   * regeneration through the Classic tables (levels 1 to 60).
    */
   playerLevel: number;
   /** Simulated time elapsed, in milliseconds. */
@@ -138,6 +139,12 @@ export interface GameState {
   selectedTargetId: string | null;
   mana: number;
   manaMax: number;
+  /**
+   * Mana regenerated per 2 s tick outside the five-second rule. Carried in the
+   * state because it comes from the healer's spirit at `playerLevel`, and the
+   * engine must not have to look the level up to run a step.
+   */
+  manaRegenPerTick: number;
   gcdRemainingMs: number;
   /** Time elapsed since the last accepted cast started. */
   msSinceLastCastStart: number;

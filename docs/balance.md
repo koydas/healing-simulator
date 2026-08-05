@@ -19,33 +19,55 @@ No other layer holds a gameplay number.
 | `MAX_CATCHUP_MS` | 500 | maximum catch-up per frame (5 steps) |
 | `LONG_STALL_MS` | 1000 | beyond this, elapsed time is discarded |
 | `DEFAULT_SEED` | 1337 | seed used when `?seed=` is invalid |
-| `PLAYER_LEVEL` | 1 | level of the party and of the boss |
+| `STARTING_LEVEL` | 1 | level of a character with no saved profile |
+| `MAX_LEVEL` | 60 | vanilla level cap |
+| `ENEMY_LEVEL` | 1 | level of every encounter, whatever the party's |
 
 ## Party — derived from the vanilla formulas
 
-`PARTY_TEMPLATE` computes health and mana from race, class and level 1
-attributes. None of these values are hard-coded.
+`partyTemplateAtLevel(level)` computes health and mana from race, class and the
+attributes of that level; `PARTY_TEMPLATE` is the level 1 case. None of these
+values are hard-coded.
 
-| Member | Race / class | Health | Mana |
-| --- | --- | --- | --- |
-| Thorgrim (tank) | Dwarf warrior | 90 | — |
-| Elowen (healer) | Human priest | 51 | 160 |
-| Kaelan (DPS) | Human rogue | 55 | — |
-| Fizzwick (DPS) | Gnome mage | 50 | 210 |
-| Sylandra (DPS) | Night elf hunter | 46 | 83 |
+| Member | Race / class | Health lv. 1 | Mana lv. 1 | Health lv. 60 |
+| --- | --- | --- | --- | --- |
+| Thorgrim (tank) | Dwarf warrior | 90 | — | 2639 |
+| Elowen (healer) | Human priest | 51 | 160 | 1707 |
+| Kaelan (DPS) | Human rogue | 55 | — | 2093 |
+| Fizzwick (DPS) | Gnome mage | 50 | 210 | 1620 |
+| Sylandra (DPS) | Night elf hunter | 46 | 83 | 2177 |
 
 Changing a member's race or class is enough to recompute their health: you edit
-`PARTY_SLOTS`, never a number.
+`PARTY_SLOTS`, never a number. A race/class without a full 1 – 60 column in
+`RACE_CLASS_ATTRIBUTES` will throw above level 1 — extend the table first.
 
 ## Healer mana
 
-| Constant | Value | Origin |
+`manaProfileAtLevel(level)`; `MANA` is the level 1 case.
+
+| Constant | Level 1 | Level 60 | Origin |
+| --- | --- | --- | --- |
+| `MANA.max` | 160 | 2956 | class base + intellect bonus |
+| `MANA.tickMs` | 2000 | 2000 | vanilla regeneration tick |
+| `MANA.perTick` | 18.5 | 45.25 | `spirit / 4 + 12.5` |
+| `MANA.fiveSecondRuleMs` | 5000 | 5000 | five-second rule |
+| `GCD_MS` | 1500 | 1500 | vanilla global cooldown |
+
+The amount per tick travels in `GameState.manaRegenPerTick`, set when the fight
+is created: the engine reads it from the state rather than looking the level up.
+
+## Experience
+
+| Constant | Value | Nature |
 | --- | --- | --- |
-| `MANA.max` | 160 | 110 (priest base) + 50 (intellect 22) |
-| `MANA.tickMs` | 2000 | vanilla regeneration tick |
-| `MANA.perTick` | 18.5 | spirit 24 → `24 / 4 + 12.5` |
-| `MANA.fiveSecondRuleMs` | 5000 | five-second rule |
-| `GCD_MS` | 1500 | vanilla global cooldown |
+| `XP_TO_NEXT_LEVEL` | 400 at level 1 … 209 800 at level 59 (4 084 700 total) | sourced (`player_xp_for_level`) |
+| `BOSS_XP.victoryShare` | 0.34 — three victories per level | **designed** |
+| `BOSS_XP.wipeShare` | 0 — a wipe pays nothing | **designed** |
+
+`bossXpReward(level)` is `round(xpToNextLevel(level) × victoryShare)`: 136 at
+level 1, 7888 at level 20, 71 332 at level 59, 0 at the cap. Progression pacing
+is that one constant — see
+[ADR-0019](./adr/0019-levelling-to-60-and-boss-experience.md).
 
 ## Spells — rank 1, gated by level
 
@@ -58,7 +80,9 @@ Changing a member's race or class is enough to recompute their health: you edit
 | Prayer of Healing | 30 | 410 | 3.0 s | 312 – 333 on the party |
 
 At level 1 only Lesser Heal is castable; the others appear locked with their
-required level (ADR-0008). No per-spell cooldown, no haste, no spell queue.
+required level (ADR-0008) and unlock as the character levels. No per-spell
+cooldown, no haste, no spell queue — and **only rank 1 of each family exists**,
+at every level.
 
 ## Enemies — three selectable encounters
 
@@ -124,6 +148,22 @@ naive healer, twelve fixed seeds (ADR-0017):
 | Skarn | 7 | 5 |
 | Threx | 6 | 6 |
 
+### Above level 1, that balance no longer holds
+
+Every number in this section describes a **level 1** party, which is what the
+encounters were calibrated against — and they stay level 1 designs whatever the
+party's level (`ENEMY_LEVEL`). Since the party's health now grows by the
+Classic tables (×29 for the tank between level 1 and 60) while the spellbook
+stays rank 1, the fight gets easier every level: past roughly level 8 the party
+survives Gorvath with no healing at all, and the fight is only a question of
+how long the boss takes to die. `tests/gameStore.test.ts` asserts that outcome
+rather than leaving it implicit.
+
+Fixing it means sourcing the priest's spell ranks first, then scaling the
+encounters — in that order, since scaling the bosses against a rank 1 spellbook
+makes every fight unwinnable instead of easy. See
+[ADR-0019](./adr/0019-levelling-to-60-and-boss-experience.md).
+
 ## Feedback
 
 | Constant | Value |
@@ -143,9 +183,8 @@ the one you mean to retune.
   lengthen `RAMP.intervalMs` (shared by all three).
 - **Harder**: raise `spikeDamage.amount`, shorten `spikeDamage.minIntervalMs`,
   or lower `RAMP.intervalMs`.
-- **Change scale**: raise `PLAYER_LEVEL` — that unlocks spells, but the stat
-  tables currently only cover level 1 (see
-  [classic-stats.md](./classic-stats.md#levelling-up-later)).
+- **Change pacing**: `BOSS_XP.victoryShare` is how many victories a level
+  costs (0.34 → three); nothing else in the game depends on it.
 - **Easier to win**: lower an enemy's `hpMax`, or raise
   `PARTY_DAMAGE.perMemberAmount`.
 - **Harder to win**: raise `hpMax`, but re-run the win/wipe sweep (ADR-0017) —

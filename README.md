@@ -4,10 +4,14 @@ A **mobile-first** web game that simulates a party healer, inspired by WoW.
 The goal is not to kill the boss: it is to **keep the group alive as long as
 possible** against damage pressure that ramps up every 30 seconds.
 
-- **WoW Classic 1.12, level 1 stats**: health, mana, spells and regeneration are
-  computed with the game's own tables and formulas, not invented;
+- **WoW Classic 1.12 stats, levels 1 to 60**: health, mana, spells, experience
+  and regeneration are computed with the game's own tables and formulas, not
+  invented;
+- a **character sheet** on the home screen, with an experience bar, the record
+  against each boss, and progression saved in the browser;
 - React + TypeScript + Vite, **plain CSS**;
-- **no backend**, no database, no local persistence;
+- **no backend**, no database, no account — the only thing stored is your own
+  profile, in `localStorage`, deletable from the options menu;
 - **no UI or game-engine dependency**;
 - no CDN, no remote asset: everything is served by the container;
 - a **pure, deterministic** simulation engine, tested without a DOM.
@@ -49,23 +53,42 @@ The five vanilla priest healing families, at rank 1:
 | Flash Heal | 20 | 1.5 s | 125 | 193 – 237 |
 | Prayer of Healing | 30 | 3 s | 410 | 312 – 333 on the party |
 
-**Since the party is level 1, only Lesser Heal is available**: the other buttons
-show their training level. That is the real kit of a level 1 priest — the fight
-is an exercise in triage.
+**A level 1 party only has Lesser Heal**: the other buttons show their training
+level until the character reaches it. That is the real kit of a level 1
+priest — the fight is an exercise in triage.
 
-The party: Thorgrim (dwarf warrior, 90 HP), Elowen (human priest, 51 HP and
-160 mana), Kaelan (human rogue, 55 HP), Fizzwick (gnome mage, 50 HP) and
-Sylandra (night elf hunter, 46 HP).
+The party at level 1: Thorgrim (dwarf warrior, 90 HP), Elowen (human priest,
+51 HP and 160 mana), Kaelan (human rogue, 55 HP), Fizzwick (gnome mage, 50 HP)
+and Sylandra (night elf hunter, 46 HP). They all level with you, by the Classic
+tables — at 60 that is 2639 HP on the tank and 2956 mana on the priest.
 
-Mana follows the vanilla model: a 18.5 tick every 2 s, **suspended for 5 seconds
-after every expenditure** (the five-second rule).
+Mana follows the vanilla model: a 18.5 tick every 2 s at level 1 (45.25 at 60),
+**suspended for 5 seconds after every expenditure** (the five-second rule).
+
+## Progression
+
+Killing a boss grants experience; a wipe grants none. The thresholds are the
+game's own — 400 experience for level 2, 4,084,700 for the whole climb to 60 —
+and a victory is worth 34% of the current level, so three wins is a level at
+any point of the curve. Levelling unlocks the real priest kit: Renew at 8, Heal
+at 16, Flash Heal at 20, Prayer of Healing at 30.
+
+Level, experience and the win/loss record against each boss are stored in this
+browser only (`healing-simulator.profile.v1`) and can be erased from
+**Options → Delete saved game**.
+
+> The three encounters are still the level 1 designs, and the spellbook is
+> still rank 1 only, so fights get easier as you level — scaling both is the
+> next piece of work. See
+> [ADR-0019](./docs/adr/0019-levelling-to-60-and-boss-experience.md).
 
 Every accepted cast triggers a 1.5 s global cooldown. The fight ends when the
 tank dies or when three members are dead. Elowen can die too: from that point
 casting is refused and you watch the party fall.
 
-A fight is **exactly replayable**: `?seed=1337` in the URL fixes the seed of the
-pseudo-random generator (the current seed is shown on the end screen).
+A fight is **exactly replayable**: `?seed=1337&enemy=gorvath&level=1` in the
+URL fixes the seed, the enemy and the level the party is fought at (all three
+are shown, and filled in automatically once a fight starts).
 
 ## Layout
 
@@ -76,10 +99,14 @@ src/
   simulation/              pure engine (no React, no DOM)
     types.ts random.ts initialState.ts effects.ts
     feedback.ts simulation.ts actions.ts selectors.ts
+  profile/                 playerProfile.ts (pure level / XP / records),
+                           profileStorage.ts (localStorage, validated)
   store/gameStore.ts       engine ↔ React bridge (memoised snapshots)
   hooks/                   useGameLoop.ts (rAF), useGameStore.ts (subscriptions)
   components/              PartyFrame, PartyList, SpellButton, CastBar,
-                           ManaBar, CombatFeedback, GameOver, Header, Controls
+                           ManaBar, CombatFeedback, GameOver, Header, Controls,
+                           HomeScreen, CharacterSheet, BossRecords, EnemySelect,
+                           OptionsMenu
   App.tsx main.tsx styles.css
 tests/                     Vitest engine suite
 docs/                      architecture, engine, Classic stats, balance, tests,

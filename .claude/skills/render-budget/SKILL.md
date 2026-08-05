@@ -56,6 +56,18 @@ Clean up everything you subscribe: `useFrame` returns the store's unsubscribe
 function, `useGameLoop` cancels its `requestAnimationFrame` and removes its
 `visibilitychange` listener.
 
+### The home screen is not on the budget
+
+`HomeScreen`, `CharacterSheet`, `BossRecords`, `EnemySelect` and `OptionsMenu`
+run before any store exists, on a profile that changes at most once per fight.
+They take plain props, and the experience bar is a static inline width — do not
+route them through the store's snapshot machinery, and do not "optimise" them
+with `useFrame`, which needs a store that is not mounted yet.
+
+The rule is unchanged, only its answer differs: ask what the value's *cadence*
+is. Ten times a second → CSS variable. Once per step → snapshot. Once per
+fight → props.
+
 ### A modal has to take focus, not just claim to be modal
 
 `role="dialog"` and `aria-modal="true"` describe the intent; they move no
@@ -77,6 +89,12 @@ A dialog in this project therefore does three things itself:
 Set `inert` on siblings rather than wrapping the app in a new element: the
 `.app` flex layout has caused three separate regressions already, and a wrapper
 is a layout change disguised as an accessibility fix.
+
+Two dialogs follow this contract today — `GameOver` and `OptionsMenu` — and a
+third has to do the same three things, plus close on `Escape`. Whatever markup
+you choose, the dialog must stay a **direct sibling** of the content it hides:
+that is what makes the `inert` pass reachable. A destructive action inside one
+(deleting the save) asks for a second tap before it fires.
 
 ### Refusals stay clickable
 
@@ -104,12 +122,36 @@ message ("Not enough mana", "Level too low", …). Do not "fix" that into a real
   (`overflow-y: auto`), otherwise the content is drawn outside the visible area
   and becomes untappable. This already happened once: `overflow: hidden` on
   `.app__main` clipped 204 px of the party on a 320 × 568 phone and left the
-  bottom members unreachable.
+  bottom members unreachable. `.home` scrolls for the same reason — the
+  character sheet, the record table and three enemy cards do not fit a small
+  phone by design.
+- **Watch the horizontal axis too.** A single chip added to the header's stats
+  row pushed the grid's `1fr` column past the viewport at 320 px and the whole
+  page scrolled sideways. Measure
+  `documentElement.scrollWidth > clientWidth` after a header or toolbar change.
+- **Vertical space in the fight screen is the party's.** That same header chip
+  cost 57 px at 320 × 568 (195 px of header instead of 138) by making the boss
+  subtitle wrap — it was reverted rather than kept. Measure the header's height
+  before and after, and weigh it against what it pushes off screen.
 
 Check a layout change at three sizes, not one: 390 × 844 (reference), 320 × 568
 (small phone) and a landscape shape such as 667 × 375. `npm run preview` plus
 the browser's device toolbar is enough; what you are looking for is content
 below the fold in a container that does not scroll.
+
+Driving Chromium is faster and more honest than eyeballing it, and the browser
+is already installed:
+
+```js
+// playwright, launched with executablePath /opt/pw-browsers/chromium-*/chrome-linux/chrome
+await page.evaluate(() => ({
+  overflowX: document.documentElement.scrollWidth > document.documentElement.clientWidth,
+  scrolls: (el => el.scrollHeight > el.clientHeight)(document.querySelector('.home')),
+}));
+```
+
+Numbers like "204 px clipped" and "57 px of header" come from that, and they are
+what makes a layout claim checkable instead of a matter of taste.
 
 ## Constraints
 
@@ -128,3 +170,6 @@ below the fold in a container that does not scroll.
 - `src/store/gameStore.ts` — snapshot building and memoisation
 - `src/hooks/useGameStore.ts` — subscription hooks, including `useFrame`
 - `src/components/ManaBar.tsx` — the reference example of a frame-driven widget
+- `src/components/OptionsMenu.tsx` — the dialog contract, including `Escape`
+  and a confirmed destructive action
+- `src/components/CharacterSheet.tsx` — a props-driven screen outside the budget

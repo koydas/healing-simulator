@@ -2,9 +2,21 @@
 
 import { memo, useEffect, useRef } from 'react';
 import { useHeaderSnapshot, useSummarySnapshot } from '../hooks/useGameStore';
+import type { FightReward } from '../profile/playerProfile';
 import type { StatsSummary } from '../simulation/selectors';
 
 interface GameOverProps {
+  /**
+   * What the fight did to the profile — `null` until it has been recorded,
+   * and permanently `null` when `levelMismatch` is true.
+   */
+  reward: FightReward | null;
+  /**
+   * True when this fight was played at a level a replay URL pinned, different
+   * from the current profile: it is not credited (ADR-0005) — the numbers
+   * below still describe what actually happened in the fight itself.
+   */
+  levelMismatch: boolean;
   onRestart: () => void;
   onChangeEnemy: () => void;
 }
@@ -17,15 +29,30 @@ const decimal = new Intl.NumberFormat('en-US', { maximumFractionDigits: 2 });
  * focus effect runs on mount — which is exactly when the wipe happens — instead
  * of being skipped by an early `return null`.
  */
-export const GameOver = memo(function GameOver({ onRestart, onChangeEnemy }: GameOverProps) {
+export const GameOver = memo(function GameOver({
+  reward,
+  levelMismatch,
+  onRestart,
+  onChangeEnemy,
+}: GameOverProps) {
   const summary = useSummarySnapshot();
 
   if (!summary) return null;
-  return <GameOverDialog summary={summary} onRestart={onRestart} onChangeEnemy={onChangeEnemy} />;
+  return (
+    <GameOverDialog
+      summary={summary}
+      reward={reward}
+      levelMismatch={levelMismatch}
+      onRestart={onRestart}
+      onChangeEnemy={onChangeEnemy}
+    />
+  );
 });
 
 const GameOverDialog = memo(function GameOverDialog({
   summary,
+  reward,
+  levelMismatch,
   onRestart,
   onChangeEnemy,
 }: GameOverProps & { summary: StatsSummary }) {
@@ -83,6 +110,27 @@ const GameOverDialog = memo(function GameOverDialog({
         <p className="gameover__duration">
           {victory ? 'Boss defeated in' : 'Survived'}: <strong>{summary.durationLabel}</strong>
         </p>
+
+        {levelMismatch ? (
+          <p className="gameover__xp gameover__xp--mismatch">
+            Fought at a level your saved character isn't — not recorded, no
+            experience gained.
+          </p>
+        ) : reward ? (
+          <p className="gameover__xp">
+            {reward.xpGained > 0
+              ? `Experience gained: +${integer.format(reward.xpGained)}`
+              : victory
+                ? 'No experience — already at the level cap'
+                : 'No experience — the boss has to die for that'}
+            {reward.levelAfter > reward.levelBefore ? (
+              <strong className="gameover__levelup">
+                {' '}
+                Level {reward.levelBefore} → {reward.levelAfter}
+              </strong>
+            ) : null}
+          </p>
+        ) : null}
 
         <dl className="gameover__grid">
           <div className="gameover__row">

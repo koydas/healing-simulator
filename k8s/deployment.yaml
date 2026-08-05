@@ -25,7 +25,7 @@ spec:
         - name: web
           # Tag is rewritten to the built commit SHA by the docker-publish
           # workflow on every push to main; see docs/adr/0012.
-          image: ghcr.io/koydas/healing-simulator:4e36e10
+          image: ghcr.io/koydas/healing-simulator:382de06
           imagePullPolicy: IfNotPresent
           ports:
             - name: http

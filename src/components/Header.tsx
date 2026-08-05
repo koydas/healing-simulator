@@ -1,7 +1,24 @@
 /** Header: boss, timer, damage multiplier, pause / resume. */
 
-import { memo, useCallback } from 'react';
+import { memo, useCallback, type CSSProperties } from 'react';
 import { useHeaderSnapshot, useStore } from '../hooks/useGameStore';
+
+
+const BOSS_EMOJI: Record<string, string> = {
+  gorvath: '🪨',
+  skarn: '🪲',
+  threx: '🦏',
+};
+
+function bossAnimationClass(header: ReturnType<typeof useHeaderSnapshot>): string {
+  if (header.status !== 'active') return 'boss-portrait--idle';
+  const elapsedMs = header.elapsedMs;
+  const cycle = elapsedMs % 6000;
+  if (cycle < 520) return 'boss-portrait--attack';
+  if (cycle >= 2000 && cycle < 2500) return 'boss-portrait--hurt';
+  if (cycle >= 4300 && cycle < 5050) return `boss-portrait--${header.enemyId}-joke`;
+  return 'boss-portrait--idle';
+}
 
 export const Header = memo(function Header() {
   const store = useStore();
@@ -24,6 +41,24 @@ export const Header = memo(function Header() {
   return (
     <header className="header">
       <div className="header__top">
+        <div
+          className={`boss-portrait boss-portrait--${header.enemyId} ${bossAnimationClass(header)}`}
+          aria-hidden="true"
+          style={{ '--boss-hp': header.bossHpRatio } as CSSProperties}
+        >
+          <span className="boss-portrait__shadow" />
+          <span className="boss-portrait__body">
+            <span className="boss-portrait__horn boss-portrait__horn--left" />
+            <span className="boss-portrait__horn boss-portrait__horn--right" />
+            <span className="boss-portrait__eye boss-portrait__eye--left" />
+            <span className="boss-portrait__eye boss-portrait__eye--right" />
+            <span className="boss-portrait__mouth" />
+            <span className="boss-portrait__badge">{BOSS_EMOJI[header.enemyId]}</span>
+          </span>
+          <span className="boss-portrait__arm boss-portrait__arm--left" />
+          <span className="boss-portrait__arm boss-portrait__arm--right" />
+        </div>
+
         <div className="header__boss">
           <h1 className="header__name">
             {header.bossName} <span className="header__level">lv. {header.bossLevel}</span>

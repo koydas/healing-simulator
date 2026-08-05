@@ -68,6 +68,7 @@ export interface MemberSnapshot {
 }
 
 export interface HeaderSnapshot {
+  enemyId: EnemyId;
   bossName: string;
   bossSubtitle: string;
   bossLevel: number;
@@ -76,6 +77,7 @@ export interface HeaderSnapshot {
   bossHpRatio: number;
   bossHpPercent: number;
   playerLevel: number;
+  elapsedMs: number;
   status: GameStatus;
   timeLabel: string;
   damageMultiplier: number;
@@ -218,6 +220,7 @@ export function createGameStore(
     const seconds = totalSeconds % 60;
     const bossHpRatio = getBossHpRatio(state);
     return {
+      enemyId: state.encounter.id,
       bossName: state.encounter.name,
       bossSubtitle: state.encounter.subtitle,
       bossLevel: state.encounter.level,
@@ -226,6 +229,7 @@ export function createGameStore(
       bossHpRatio,
       bossHpPercent: Math.round(bossHpRatio * 100),
       playerLevel: state.playerLevel,
+      elapsedMs: state.elapsedMs,
       status: state.status,
       timeLabel: `${minutes}:${String(seconds).padStart(2, '0')}`,
       damageMultiplier: Math.round(state.damageMultiplier * 100) / 100,

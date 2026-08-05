@@ -58,6 +58,19 @@ the same `sanitizeName` the storage layer uses. The per-boss record is
 **shared** across every class: `records` is untouched by a switch, because it
 counts what the player has beaten, not what one class has.
 
+**The replay URL pins class too, alongside seed, enemy and level.** Class now
+sizes the healer's health and mana (`partyTemplateAtLevel`), so it is as much
+a part of a fight's exact identity as `?level=` already was — a shared link
+opened on a browser playing a different class would otherwise silently build
+a different party. `?class=` is read by `readInitialClassId()` and written by
+`syncFightUrl` next to the other three; absent or invalid, it falls back to
+the current profile's class. `App.handleFightEnd`'s existing level-mismatch
+credit refusal (ADR-0005/ADR-0019) gained the matching class check, and its
+`levelMismatch` flag is renamed `identityMismatch` to say so honestly. See the
+update note on [ADR-0005](./0005-no-persistence-url-seed.md) for the
+before/after — this half of the decision was caught by Codex review on this
+same PR (#18), one round after the rest of it.
+
 **Storage bumps to `healing-simulator.profile.v2`.** The v1 shape
 (`{ level, xp, records }`) has no `name` or `classId` to migrate from, so a
 browser holding a v1 save simply starts a fresh v2 profile — the same
@@ -120,6 +133,9 @@ intact.
 - ✅ No new spell content, no new balance surface: the priest spellbook and
   every existing balance number in `docs/balance.md` are untouched.
 - ✅ The avatar adds zero network requests and zero bundled assets.
+- ✅ `?class=` keeps replay URLs exact and keeps a mismatched replay from
+  crediting the wrong character — the same guarantee `?level=` already gave,
+  now extended to the variable this ADR added (ADR-0005 update note).
 - ⚠️ **Warrior and rogue remain unplayable as the healer's own class**,
   despite being two of the five race/class combinations the party itself
   uses. That is the direct, documented consequence of this game simulating

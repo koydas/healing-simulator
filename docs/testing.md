@@ -17,7 +17,7 @@ as a parameter, and the storage functions take their `Storage` as an argument.
 | `tests/helpers.ts` | helpers: `advance`, `patchMember`, `patchState`, `isolateTimers`, `unlockAllSpells` |
 | `tests/classicStats.test.ts` | vanilla formulas, party health and mana at levels 1 and 60, the experience table and cap, spells known per level, rank 1 spell values, and the editable player identity (ADR-0020): defaults unchanged, only the healer slot rebuilt, mana/attributes/sheet/fight all reflecting the chosen class |
 | `tests/profile.test.ts` | renaming and sanitizing a name, switching class (stash, restore, no-op on the active class, shared record), experience granted and carried across levels, the cap, the per-boss record, the designed reward, and the `localStorage` v2 layer (round-trip, corrupt save, clamping, an invalid/unplayable class, corrupt stashed per-class progress, a v1 save left unmigrated, delete, storage that throws) |
-| `tests/gameStore.test.ts` | the store builds a fight at the level it is given, threads the chosen name/class into the healer and keeps it across a restart, reports the end of a fight exactly once with the enemy fought, and a level 60 party wins with no healing (the balance consequence of ADR-0019) |
+| `tests/gameStore.test.ts` | the store builds a fight at the level it is given, threads the chosen name/class into the healer, reports the level and class the fight was *actually* built with (not an echo of what it was asked to build) on `onFightEnd`, lets a restart override either or keep both, reports the end of a fight exactly once with the enemy fought, and a level 60 party wins with no healing (the balance consequence of ADR-0019) |
 | `tests/random.test.ts` | PRNG purity, `nextRange` / `nextInt` bounds, seed normalisation |
 | `tests/determinism.test.ts` | seed + action replayability, non-mutation, time slicing |
 | `tests/damage.test.ts` | tank damage, AoE, spike selection and rescheduling, ramp (Gorvath, the default enemy) |
@@ -95,15 +95,15 @@ Tab cannot reach the screen behind, `Escape` closes it, "Delete saved game"
 asks twice then resets the sheet to level 1), the experience line on the end
 screen after a victory, a level 60 profile's victory saying "already at the
 level cap" rather than the wipe wording, and the sheet showing the new level
-once you come back. Then: `?seed=1&enemy=skarn&level=30` skipping straight to
-that fight, at the
-level the link pins rather than whatever the current profile is; opening the
-same kind of link at a level *different* from the current profile's and
-confirming the end screen shows the "not recorded" note instead of an
-experience line, and that the profile's level and record are unchanged
-afterwards; picking an enemy from the screen rewriting the URL to
-`?seed=…&enemy=…&level=…` afterwards, selecting a frame, the refusal message
-shown when tapping an unavailable
+once you come back. Then: `?seed=1&enemy=skarn&level=30&class=hunter` skipping
+straight to that fight, at the level and class the link pins rather than
+whatever the current profile is; opening the same kind of link at a level or
+class *different* from the current profile's and confirming the end screen
+shows the "not recorded" note instead of an experience line, and that the
+profile's level, class and record are unchanged afterwards; picking an enemy
+from the screen rewriting the URL to `?seed=…&enemy=…&level=…&class=…`
+afterwards, selecting a frame, the refusal message shown when tapping an
+unavailable
 spell, the cast bar and `Cancel` button, GCD progress across the five
 buttons, the boss health bar draining over the fight, the end screen titled
 "Victory" or "Wipe" depending on which happened, "New fight" (same enemy, new

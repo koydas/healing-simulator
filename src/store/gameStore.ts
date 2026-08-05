@@ -12,8 +12,10 @@
  * application.
  */
 
+import type { ClassId } from '../config/classicData';
 import {
   CLASS_LABELS,
+  PLAYER_MEMBER_ID,
   RACE_LABELS,
   ROLE_LABELS,
   SPELLS,
@@ -124,7 +126,7 @@ export interface GameStore {
   cast(spellId: SpellId): void;
   cancel(): void;
   toggle(): void;
-  restart(seed: number, enemyId: EnemyId, playerLevel?: number): void;
+  restart(seed: number, enemyId: EnemyId, playerLevel?: number, player?: PlayerIdentity): void;
   getMemberIds(): string[];
   getMemberSnapshot(memberId: string): MemberSnapshot;
   getHeaderSnapshot(): HeaderSnapshot;
@@ -197,12 +199,19 @@ export interface GameStoreOptions {
    * can be detected exactly once — a `useEffect` watching the summary would
    * fire again on every re-render of the end screen.
    *
-   * `playerLevel` is the level the party was actually built and fought at —
-   * `state.playerLevel`, not `options.playerLevel` — so the caller can tell a
-   * normal fight from a replay URL that pinned a level different from the
-   * current profile (ADR-0005) and refuse to credit the wrong character.
+   * `playerLevel` and `classId` are what the party was actually built and
+   * fought with — read from `state`/the healer's party member, not echoed
+   * from `options.playerLevel`/`options.player` — so the caller can tell a
+   * normal fight from a replay URL that pinned a level or class different
+   * from the current profile (ADR-0005, ADR-0020) and refuse to credit the
+   * wrong character.
    */
-  onFightEnd?: (outcome: GameOutcome, enemyId: EnemyId, playerLevel: number) => void;
+  onFightEnd?: (
+    outcome: GameOutcome,
+    enemyId: EnemyId,
+    playerLevel: number,
+    classId: ClassId,
+  ) => void;
 }
 
 export function createGameStore(
@@ -219,7 +228,11 @@ export function createGameStore(
   let currentEnemyId: EnemyId = enemyId;
   // Carried across `restart()`: a rematch is fought as the same character,
   // not the level 1 default `createInitialState` falls back to without one.
-  const currentPlayer: PlayerIdentity | undefined = options.player;
+  // `restart()`'s own `player` argument can override it, the same way its
+  // `playerLevel` argument already overrides the level — a rematch plays as
+  // whatever the profile currently is, not frozen at whatever a replay URL
+  // first pinned it to.
+  let currentPlayer: PlayerIdentity | undefined = options.player;
 
   const listeners = new Set<() => void>();
   const frameListeners = new Set<(state: GameState) => void>();
@@ -361,7 +374,11 @@ export function createGameStore(
       for (const listener of listeners) listener();
     }
     if (!wasOver && state.status === 'over') {
-      options.onFightEnd?.(state.outcome, currentEnemyId, state.playerLevel);
+      // Read from `state.party`, not `options.player`: the healer's actual
+      // class in this fight, the same reasoning `state.playerLevel` already
+      // gets over `options.playerLevel` in the comment above.
+      const fightClassId = state.party.find((member) => member.id === PLAYER_MEMBER_ID)!.classId;
+      options.onFightEnd?.(state.outcome, currentEnemyId, state.playerLevel, fightClassId);
     }
   }
 
@@ -410,7 +427,8 @@ export function createGameStore(
       setState(togglePause(state));
     },
 
-    restart(seed, enemyId, playerLevel) {
+    restart(seed, enemyId, playerLevel, player) {
+      currentPlayer = player ?? currentPlayer;
       const next = restartGame(seed, enemyId, playerLevel ?? state.playerLevel, currentPlayer);
       currentEnemyId = enemyId;
       memberIds = next.party.map((member) => member.id);

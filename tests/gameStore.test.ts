@@ -97,6 +97,34 @@ describe('createGameStore', () => {
     expect(levels).toEqual([45, 12]);
   });
 
+  /**
+   * `onFightEnd`'s fourth argument is the healer's actual class in
+   * `state.party` — not merely an echo of `options.player.classId` — for the
+   * same reason the level argument reads from `state`: `App` compares it
+   * against the current profile's class to refuse crediting a replay URL
+   * that pinned a different class (ADR-0020) — Codex finding on #18.
+   */
+  it('reports the class the fight was actually built with, on every restart', () => {
+    const classIds: string[] = [];
+    const store = createGameStore(1337, 'skarn', {
+      player: { name: 'Zed', classId: 'hunter' },
+      onFightEnd: (_outcome, _enemyId, _playerLevel, classId) => classIds.push(classId),
+    });
+
+    playOut(store);
+    expect(classIds).toEqual(['hunter']);
+
+    store.restart(99, 'skarn', undefined, { name: 'Zed', classId: 'mage' });
+    playOut(store);
+    expect(classIds).toEqual(['hunter', 'mage']);
+  });
+
+  it('keeps the current class when a rematch does not name one', () => {
+    const store = createGameStore(1, 'threx', { player: { name: 'Zed', classId: 'mage' } });
+    store.restart(2, 'threx');
+    expect(store.getMemberSnapshot('healer').classLabel).toBe('Gnome · Mage');
+  });
+
   it('reports the next fight too, at the level the rematch is started with', () => {
     const calls: GameOutcome[] = [];
     const store = createGameStore(1337, 'skarn', { onFightEnd: (outcome) => calls.push(outcome) });

@@ -8,15 +8,16 @@ import type { StatsSummary } from '../simulation/selectors';
 interface GameOverProps {
   /**
    * What the fight did to the profile — `null` until it has been recorded,
-   * and permanently `null` when `levelMismatch` is true.
+   * and permanently `null` when `identityMismatch` is true.
    */
   reward: FightReward | null;
   /**
-   * True when this fight was played at a level a replay URL pinned, different
-   * from the current profile: it is not credited (ADR-0005) — the numbers
-   * below still describe what actually happened in the fight itself.
+   * True when this fight was played at a level or class a replay URL pinned,
+   * different from the current profile: it is not credited (ADR-0005,
+   * ADR-0020) — the numbers below still describe what actually happened in
+   * the fight itself.
    */
-  levelMismatch: boolean;
+  identityMismatch: boolean;
   onRestart: () => void;
   onChangeEnemy: () => void;
 }
@@ -31,7 +32,7 @@ const decimal = new Intl.NumberFormat('en-US', { maximumFractionDigits: 2 });
  */
 export const GameOver = memo(function GameOver({
   reward,
-  levelMismatch,
+  identityMismatch,
   onRestart,
   onChangeEnemy,
 }: GameOverProps) {
@@ -42,7 +43,7 @@ export const GameOver = memo(function GameOver({
     <GameOverDialog
       summary={summary}
       reward={reward}
-      levelMismatch={levelMismatch}
+      identityMismatch={identityMismatch}
       onRestart={onRestart}
       onChangeEnemy={onChangeEnemy}
     />
@@ -52,7 +53,7 @@ export const GameOver = memo(function GameOver({
 const GameOverDialog = memo(function GameOverDialog({
   summary,
   reward,
-  levelMismatch,
+  identityMismatch,
   onRestart,
   onChangeEnemy,
 }: GameOverProps & { summary: StatsSummary }) {
@@ -111,10 +112,10 @@ const GameOverDialog = memo(function GameOverDialog({
           {victory ? 'Boss defeated in' : 'Survived'}: <strong>{summary.durationLabel}</strong>
         </p>
 
-        {levelMismatch ? (
+        {identityMismatch ? (
           <p className="gameover__xp gameover__xp--mismatch">
-            Fought at a level your saved character isn't — not recorded, no
-            experience gained.
+            Fought as a level or class your saved character isn't — not
+            recorded, no experience gained.
           </p>
         ) : reward ? (
           <p className="gameover__xp">

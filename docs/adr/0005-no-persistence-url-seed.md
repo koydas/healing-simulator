@@ -28,6 +28,23 @@
 > live profile's level and skips the reward and the record entirely on a
 > mismatch; the end screen says so instead of silently doing nothing.
 
+> Update (ADR-0020): editable class reopened the exact same problem `?level=`
+> already fixed once. Class now sizes the healer's health and mana too
+> (`partyTemplateAtLevel`), so `?seed=&enemy=&level=` alone stopped fully
+> identifying a fight the moment class became a variable — the same link
+> opened on a browser whose saved profile plays a different class built a
+> different party and could resolve to a different outcome. `?class=` now
+> pins it the same way `?level=` does: read by `readInitialClassId()`, written
+> by `syncFightUrl` alongside the other three, falling back to the current
+> profile's class exactly as before. The credit-refusal comparison in
+> `App.handleFightEnd` gained the matching half: a class mismatch skips the
+> reward and the record exactly like a level mismatch already did, and
+> `onFightEnd`'s new fourth argument reports the class the fight actually
+> built (from `state.party`, not an echo of what it was asked to build) for
+> the same reason its level argument already read from `state`. Caught by
+> Codex review on #18 — see
+> [ADR-0020](./0020-editable-character-identity.md).
+
 ## Context
 
 The brief forbids any backend, any database and any local persistence. Yet two

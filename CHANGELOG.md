@@ -16,7 +16,11 @@ All notable changes to this project are recorded here, following
   only a small procedurally-drawn avatar, name, race/class, level and the
   experience bar; a separate toggle expands the full stat block that used to
   always be visible. The chosen name and class now also apply to the healer
-  in the fight itself, not just the home screen. See ADR-0020.
+  in the fight itself, not just the home screen. A replay URL now pins
+  `?class=` alongside `?seed=`/`?enemy=`/`?level=`, and a fight fought as a
+  level or class your saved profile isn't is not credited, the same
+  exact-replay guarantee `?level=` already gave (ADR-0005, ADR-0020). See
+  ADR-0020.
   ⚠️ Only Priest, Mage and Hunter are selectable: Warrior and Rogue have 0
   mana at every level in Classic and could never cast the priest spellbook
   this game simulates. Saved progress moved to

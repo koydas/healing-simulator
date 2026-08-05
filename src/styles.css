@@ -55,6 +55,22 @@ body {
   -webkit-user-select: none;
 }
 
+/* Text read by assistive technology but not drawn: `position: absolute` keeps
+   it out of the flex flow too, so it adds no gap between the siblings it sits
+   with. `display: none` or `visibility: hidden` would hide it from screen
+   readers as well, which is the opposite of the point. */
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  border: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
 button {
   font: inherit;
   color: inherit;
@@ -756,35 +772,25 @@ button {
   color: var(--text-dim);
 }
 
-.records__table {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: 13px;
+.records__total {
+  margin: 0;
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  font-size: 15px;
+  font-weight: 700;
   font-variant-numeric: tabular-nums;
 }
 
-.records__table th,
-.records__table td {
-  padding: 6px 4px;
-  text-align: left;
-  border-bottom: 1px solid var(--border-soft);
-}
-
-.records__table thead th {
-  font-size: 10px;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  color: var(--text-dim);
-}
-
-.records__table tbody th,
-.records__table tfoot th {
+.records__unit {
+  font-size: 12px;
   font-weight: 600;
 }
 
-.records__table td {
-  width: 56px;
-  text-align: right;
+.records__empty {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-dim);
 }
 
 .records__wins {
@@ -793,12 +799,6 @@ button {
 
 .records__losses {
   color: var(--danger);
-}
-
-.records__table tfoot th,
-.records__table tfoot td {
-  border-bottom: none;
-  font-weight: 700;
 }
 
 /* ----------------------------------------------------------- Enemy select -- */
@@ -835,12 +835,46 @@ button {
   outline-offset: 2px;
 }
 
+/* Name and record share one row: the record costs no vertical space, which
+   matters on a 320 x 568 phone where the three cards, the sheet and the
+   record already fill the scrollable home screen. */
+.enemy-select__top {
+  width: 100%;
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+}
+
 .enemy-select__name {
   display: flex;
   align-items: baseline;
   gap: 8px;
   font-size: 15px;
   font-weight: 700;
+}
+
+.enemy-select__record {
+  display: flex;
+  align-items: baseline;
+  gap: 4px;
+  flex-shrink: 0;
+  font-size: 12px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.enemy-select__record-sep,
+.enemy-select__zero {
+  color: var(--text-dim);
+}
+
+.enemy-select__wins {
+  color: var(--hp-full);
+}
+
+.enemy-select__losses {
+  color: var(--danger);
 }
 
 .enemy-select__level {

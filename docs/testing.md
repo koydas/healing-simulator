@@ -83,7 +83,8 @@ npm run build && npm run preview
 ```
 
 Things to check: the home screen on load (character sheet with the experience
-bar, record table, three enemy cards), the options dialog (focus lands in it,
+bar, the overall record, three enemy cards each showing their own win/loss
+record), the options dialog (focus lands in it,
 Tab cannot reach the screen behind, `Escape` closes it, "Delete saved game"
 asks twice then resets the sheet to level 1), the experience line on the end
 screen after a victory, a level 60 profile's victory saying "already at the

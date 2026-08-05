@@ -1,6 +1,6 @@
 /**
- * Home screen: character sheet, record against each boss, enemy selection and
- * the options dialog.
+ * Home screen: character sheet, overall record, enemy selection — each card
+ * showing the record against that boss — and the options dialog.
  *
  * Rendered instead of the fight (no `GameStoreContext` yet, no engine state):
  * `App` only creates a store once an enemy is chosen. Everything here is
@@ -52,7 +52,7 @@ export const HomeScreen = memo(function HomeScreen({
 
         <CharacterSheet profile={profile} />
         <BossRecords profile={profile} />
-        <EnemySelect onSelect={onSelect} />
+        <EnemySelect records={profile.records} onSelect={onSelect} />
       </div>
 
       {optionsOpen ? (

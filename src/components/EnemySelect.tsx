@@ -61,19 +61,26 @@ export const EnemySelect = memo(function EnemySelect({ records, onSelect }: Enem
                     <span className="enemy-select__level">lv. {enemy.level}</span>
                   </span>
                   {/* The `W` / `L` glyphs read as initials to a screen reader,
-                      so the chip carries the spelled-out record as its label —
-                      it lands in the button's accessible name in place of the
-                      two digits. */}
-                  <span className="enemy-select__record" aria-label={recordLabel(record)}>
+                      so they are hidden from it and the spelled-out record is
+                      carried by real text instead. `aria-label` on this chip
+                      would be simpler, but the chip is a generic `span`, which
+                      ARIA does not allow to be named — text out of view is the
+                      portable way to put the record in the button's name. */}
+                  <span className="enemy-select__record">
+                    <span className="visually-hidden">{recordLabel(record)}</span>
                     {/* A boss never fought shows a dim 0W · 0L rather than a
                         green zero and a red zero, which read as results. */}
-                    <span className={record.wins > 0 ? 'enemy-select__wins' : 'enemy-select__zero'}>
+                    <span
+                      aria-hidden="true"
+                      className={record.wins > 0 ? 'enemy-select__wins' : 'enemy-select__zero'}
+                    >
                       {record.wins}W
                     </span>
                     <span className="enemy-select__record-sep" aria-hidden="true">
                       ·
                     </span>
                     <span
+                      aria-hidden="true"
                       className={record.losses > 0 ? 'enemy-select__losses' : 'enemy-select__zero'}
                     >
                       {record.losses}L

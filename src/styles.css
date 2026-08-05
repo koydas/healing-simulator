@@ -55,6 +55,22 @@ body {
   -webkit-user-select: none;
 }
 
+/* Text read by assistive technology but not drawn: `position: absolute` keeps
+   it out of the flex flow too, so it adds no gap between the siblings it sits
+   with. `display: none` or `visibility: hidden` would hide it from screen
+   readers as well, which is the opposite of the point. */
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  border: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
 button {
   font: inherit;
   color: inherit;

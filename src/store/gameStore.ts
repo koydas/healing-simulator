@@ -20,6 +20,7 @@ import {
   SPELL_ORDER,
   isSpellUnlocked,
   type CastRefusalReason,
+  type PlayerIdentity,
 } from '../config/gameConfig';
 import {
   cancelCast,
@@ -160,6 +161,12 @@ export interface GameStoreOptions {
   /** Level the fight is fought at — the saved profile's, 1 without one. */
   playerLevel?: number;
   /**
+   * Name and class the fight is fought as — the saved profile's identity
+   * (ADR-0020). Left out, the party builds Elowen the human priest, exactly
+   * as before the sheet became editable.
+   */
+  player?: PlayerIdentity;
+  /**
    * Called once, on the step that ends the fight. The store is the only place
    * that sees every state transition, so it is where "this fight is over"
    * can be detected exactly once — a `useEffect` watching the summary would
@@ -178,8 +185,16 @@ export function createGameStore(
   enemyId: EnemyId,
   options: GameStoreOptions = {},
 ): GameStore {
-  let state: GameState = createInitialState(initialSeed, options.playerLevel, enemyId);
+  let state: GameState = createInitialState(
+    initialSeed,
+    options.playerLevel,
+    enemyId,
+    options.player,
+  );
   let currentEnemyId: EnemyId = enemyId;
+  // Carried across `restart()`: a rematch is fought as the same character,
+  // not the level 1 default `createInitialState` falls back to without one.
+  const currentPlayer: PlayerIdentity | undefined = options.player;
 
   const listeners = new Set<() => void>();
   const frameListeners = new Set<(state: GameState) => void>();
@@ -369,7 +384,7 @@ export function createGameStore(
     },
 
     restart(seed, enemyId, playerLevel) {
-      const next = restartGame(seed, enemyId, playerLevel ?? state.playerLevel);
+      const next = restartGame(seed, enemyId, playerLevel ?? state.playerLevel, currentPlayer);
       currentEnemyId = enemyId;
       memberIds = next.party.map((member) => member.id);
       memberSnapshots = new Map();

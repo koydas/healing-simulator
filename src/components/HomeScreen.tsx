@@ -14,6 +14,7 @@ import { BossRecords } from './BossRecords';
 import { CharacterSheet } from './CharacterSheet';
 import { EnemySelect } from './EnemySelect';
 import { OptionsMenu } from './OptionsMenu';
+import type { PlayableClassId } from '../config/gameConfig';
 import type { PlayerProfile } from '../profile/playerProfile';
 import type { EnemyId } from '../simulation/types';
 
@@ -21,12 +22,16 @@ interface HomeScreenProps {
   profile: PlayerProfile;
   onSelect: (enemyId: EnemyId) => void;
   onResetProfile: () => void;
+  onRenameCharacter: (name: string) => void;
+  onSwitchClass: (classId: PlayableClassId) => void;
 }
 
 export const HomeScreen = memo(function HomeScreen({
   profile,
   onSelect,
   onResetProfile,
+  onRenameCharacter,
+  onSwitchClass,
 }: HomeScreenProps) {
   const [optionsOpen, setOptionsOpen] = useState(false);
   const closeOptions = useCallback(() => setOptionsOpen(false), []);
@@ -50,7 +55,11 @@ export const HomeScreen = memo(function HomeScreen({
           </button>
         </header>
 
-        <CharacterSheet profile={profile} />
+        <CharacterSheet
+          profile={profile}
+          onRenameCharacter={onRenameCharacter}
+          onSwitchClass={onSwitchClass}
+        />
         <BossRecords profile={profile} />
         <EnemySelect records={profile.records} onSelect={onSelect} />
       </div>

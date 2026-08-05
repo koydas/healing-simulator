@@ -16,12 +16,21 @@ import { Header } from './components/Header';
 import { HomeScreen } from './components/HomeScreen';
 import { MessageFeed } from './components/CombatFeedback';
 import { PartyList } from './components/PartyList';
-import { DEFAULT_SEED, ENEMY_ORDER, MAX_LEVEL, STARTING_LEVEL } from './config/gameConfig';
+import {
+  DEFAULT_SEED,
+  ENEMY_ORDER,
+  MAX_LEVEL,
+  STARTING_LEVEL,
+  type PlayableClassId,
+  type PlayerIdentity,
+} from './config/gameConfig';
 import { GameStoreContext } from './hooks/useGameStore';
 import { useGameLoop } from './hooks/useGameLoop';
 import {
   applyFightOutcome,
   createEmptyProfile,
+  renameCharacter,
+  switchClass,
   type FightReward,
   type PlayerProfile,
 } from './profile/playerProfile';
@@ -112,6 +121,8 @@ interface FightProps {
   enemyId: EnemyId;
   /** Level the fight is fought at, from the saved profile. */
   playerLevel: number;
+  /** Name and class the fight is fought as, from the saved profile. */
+  player: PlayerIdentity;
   /** Experience and level gained by the fight that just ended, if any. */
   reward: FightReward | null;
   /** True when the fight just ended was played at a level the URL pinned,
@@ -126,6 +137,7 @@ interface FightProps {
 function Fight({
   enemyId,
   playerLevel,
+  player,
   reward,
   levelMismatch,
   onChangeEnemy,
@@ -140,6 +152,7 @@ function Fight({
     const initialLevel = readInitialLevel() ?? playerLevel;
     storeRef.current = createGameStore(readInitialSeed(), enemyId, {
       playerLevel: initialLevel,
+      player,
       onFightEnd,
     });
   }
@@ -256,9 +269,29 @@ export default function App() {
     setLevelMismatch(false);
   }, []);
 
+  const handleRenameCharacter = useCallback(
+    (name: string) => {
+      persist(renameCharacter(profileRef.current, name));
+    },
+    [persist],
+  );
+
+  const handleSwitchClass = useCallback(
+    (classId: PlayableClassId) => {
+      persist(switchClass(profileRef.current, classId));
+    },
+    [persist],
+  );
+
   if (enemyId === null) {
     return (
-      <HomeScreen profile={profile} onSelect={setEnemyId} onResetProfile={handleResetProfile} />
+      <HomeScreen
+        profile={profile}
+        onSelect={setEnemyId}
+        onResetProfile={handleResetProfile}
+        onRenameCharacter={handleRenameCharacter}
+        onSwitchClass={handleSwitchClass}
+      />
     );
   }
 
@@ -267,6 +300,7 @@ export default function App() {
       key={enemyId}
       enemyId={enemyId}
       playerLevel={profile.level}
+      player={{ name: profile.name, classId: profile.classId }}
       reward={reward}
       levelMismatch={levelMismatch}
       onChangeEnemy={handleChangeEnemy}

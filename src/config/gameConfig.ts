@@ -87,19 +87,89 @@ const PARTY_SLOTS: readonly PartySlot[] = [
   { id: 'dps3', name: 'Sylandra', race: 'nightElf', classId: 'hunter', role: 'dps' },
 ] as const;
 
+/** The player controls this party member. */
+export const PLAYER_MEMBER_ID = 'healer';
+
+const PLAYER_SLOT = PARTY_SLOTS.find((slot) => slot.id === PLAYER_MEMBER_ID)!;
+
+/**
+ * Classes the player's own character may be edited to, from the character
+ * sheet (ADR-0020). Restricted to the three that both have a full 1 – 60
+ * `RACE_CLASS_ATTRIBUTES` column *and* spend mana: warrior and rogue are two
+ * of the five combinations the party is built from, but their base mana is 0
+ * at every level (see `CLASS_BASE_BY_LEVEL` in `classicData.ts`) — a warrior
+ * or rogue healer would have a 0 mana pool and could never cast the priest
+ * spellbook this game simulates. That spellbook itself does not change with
+ * the class: only the sheet's identity, and the health/mana it derives, do.
+ */
+export const PLAYABLE_CLASSES = ['priest', 'mage', 'hunter'] as const;
+export type PlayableClassId = (typeof PLAYABLE_CLASSES)[number];
+
+export function isPlayableClass(value: unknown): value is PlayableClassId {
+  return typeof value === 'string' && (PLAYABLE_CLASSES as readonly string[]).includes(value);
+}
+
+/**
+ * Race paired with each playable class — the same pairing `PARTY_SLOTS`
+ * already uses for it, the only one with a full attribute table. Changing
+ * class therefore changes race and every derived stat with it; it is not an
+ * independent choice (see `classic-data`: only five race/class combinations
+ * are sourced past level 1).
+ */
+const PLAYABLE_CLASS_RACE: Record<PlayableClassId, RaceId> = {
+  priest: 'human',
+  mage: 'gnome',
+  hunter: 'nightElf',
+};
+
+export function raceForPlayableClass(classId: PlayableClassId): RaceId {
+  return PLAYABLE_CLASS_RACE[classId];
+}
+
+/** Identity of the player's own character, as stored on the profile. */
+export interface PlayerIdentity {
+  name: string;
+  classId: PlayableClassId;
+}
+
+export const DEFAULT_PLAYER_NAME = PLAYER_SLOT.name;
+export const DEFAULT_PLAYER_CLASS: PlayableClassId = 'priest';
+/** Longest name the character sheet accepts (`sanitizeName` enforces it too). */
+export const PLAYER_NAME_MAX_LENGTH = 24;
+
+const DEFAULT_PLAYER_IDENTITY: PlayerIdentity = {
+  name: DEFAULT_PLAYER_NAME,
+  classId: DEFAULT_PLAYER_CLASS,
+};
+
 /**
  * Full party at a given level, health and mana computed by the vanilla
  * formulas. At level 1: Thorgrim 90 HP, Elowen 51 HP / 160 mana, Kaelan 55 HP,
  * Fizzwick 50 HP, Sylandra 46 HP. At level 60: 2639 / 1707 / 2093 / 1620 /
  * 2177 HP — the whole party levels with the player, not the healer alone.
+ *
+ * `player` overrides the healer slot's name, race and class with the saved
+ * profile's identity (ADR-0020); defaulted to Elowen the human priest so
+ * every other call site — the level 1 constants below, the tests — keeps
+ * behaving exactly as it did before that identity was editable.
  */
-export function partyTemplateAtLevel(level: number): readonly PartyMemberTemplate[] {
+export function partyTemplateAtLevel(
+  level: number,
+  player: PlayerIdentity = DEFAULT_PLAYER_IDENTITY,
+): readonly PartyMemberTemplate[] {
   return PARTY_SLOTS.map((slot) => {
-    const attributes = getAttributes(slot.race, slot.classId, level);
+    const isPlayer = slot.id === PLAYER_MEMBER_ID;
+    const name = isPlayer ? player.name : slot.name;
+    const race = isPlayer ? raceForPlayableClass(player.classId) : slot.race;
+    const classId: ClassId = isPlayer ? player.classId : slot.classId;
+    const attributes = getAttributes(race, classId, level);
     return {
       ...slot,
-      hpMax: maxHealthAtLevel(slot.classId, attributes, level),
-      manaMax: maxManaAtLevel(slot.classId, attributes, level),
+      name,
+      race,
+      classId,
+      hpMax: maxHealthAtLevel(classId, attributes, level),
+      manaMax: maxManaAtLevel(classId, attributes, level),
     };
   });
 }
@@ -107,14 +177,12 @@ export function partyTemplateAtLevel(level: number): readonly PartyMemberTemplat
 /** The party as it starts out, at level 1. */
 export const PARTY_TEMPLATE: readonly PartyMemberTemplate[] = partyTemplateAtLevel(STARTING_LEVEL);
 
-/** The player controls this party member. */
-export const PLAYER_MEMBER_ID = 'healer';
-
-const PLAYER_SLOT = PARTY_SLOTS.find((slot) => slot.id === PLAYER_MEMBER_ID)!;
-
 /** Attributes of the player's character at the given level. */
-export function playerAttributesAtLevel(level: number): Attributes {
-  return getAttributes(PLAYER_SLOT.race, PLAYER_SLOT.classId, level);
+export function playerAttributesAtLevel(
+  level: number,
+  player: PlayerIdentity = DEFAULT_PLAYER_IDENTITY,
+): Attributes {
+  return getAttributes(raceForPlayableClass(player.classId), player.classId, level);
 }
 
 export const ROLE_LABELS: Record<Role, string> = {
@@ -155,13 +223,18 @@ export interface ManaProfile {
  * Priest pool and regeneration at a given level, derived from that level's
  * attributes (level 1: intellect 22 → 160 mana, spirit 24 → 18.5 mana per 2s
  * tick; level 60: intellect 120 → 2956 mana, spirit 131 → 45.25 per tick).
+ * Other playable classes get their own pool the same way — a mage or hunter
+ * still casts the priest spellbook (ADR-0020), just with a different pool.
  *
  * The behaviour is vanilla's: regeneration lands in 2-second ticks and the
  * **five-second rule** fully suspends it for 5 s after every mana expenditure.
  */
-export function manaProfileAtLevel(level: number): ManaProfile {
-  const attributes = playerAttributesAtLevel(level);
-  const max = maxManaAtLevel(PLAYER_SLOT.classId, attributes, level);
+export function manaProfileAtLevel(
+  level: number,
+  player: PlayerIdentity = DEFAULT_PLAYER_IDENTITY,
+): ManaProfile {
+  const attributes = playerAttributesAtLevel(level, player);
+  const max = maxManaAtLevel(player.classId, attributes, level);
   return {
     max,
     initial: max,
@@ -453,6 +526,7 @@ export function bossXpReward(level: number): number {
 
 export interface CharacterSheet {
   name: string;
+  classId: PlayableClassId;
   raceLabel: string;
   classLabel: string;
   level: number;
@@ -467,18 +541,25 @@ export interface CharacterSheet {
 
 /**
  * Everything the home screen shows about the player's character, derived from
- * the Classic tables at that level — nothing here is stored or written by hand.
+ * the Classic tables at that level — nothing here is stored or written by
+ * hand. `player` is the profile's editable identity (ADR-0020); defaulted to
+ * Elowen the human priest so a caller that does not pass one sees exactly
+ * what this returned before the sheet became editable.
  */
-export function playerCharacterAtLevel(level: number): CharacterSheet {
-  const attributes = playerAttributesAtLevel(level);
-  const mana = manaProfileAtLevel(level);
+export function playerCharacterAtLevel(
+  level: number,
+  player: PlayerIdentity = DEFAULT_PLAYER_IDENTITY,
+): CharacterSheet {
+  const attributes = playerAttributesAtLevel(level, player);
+  const mana = manaProfileAtLevel(level, player);
   return {
-    name: PLAYER_SLOT.name,
-    raceLabel: RACE_LABELS[PLAYER_SLOT.race],
-    classLabel: CLASS_LABELS[PLAYER_SLOT.classId],
+    name: player.name,
+    classId: player.classId,
+    raceLabel: RACE_LABELS[raceForPlayableClass(player.classId)],
+    classLabel: CLASS_LABELS[player.classId],
     level,
     attributes,
-    hpMax: maxHealthAtLevel(PLAYER_SLOT.classId, attributes, level),
+    hpMax: maxHealthAtLevel(player.classId, attributes, level),
     manaMax: mana.max,
     manaPerTick: mana.perTick,
     spellsKnown: spellsKnownAtLevel(level),

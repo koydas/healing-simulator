@@ -41,6 +41,13 @@ Changing a member's race or class is enough to recompute their health: you edit
 `PARTY_SLOTS`, never a number. A race/class without a full 1 – 60 column in
 `RACE_CLASS_ATTRIBUTES` will throw above level 1 — extend the table first.
 
+The healer row is also the player's own character, and its name/race/class
+are editable from the sheet (ADR-0020): `partyTemplateAtLevel(level, player)`
+overrides just that slot when a `PlayerIdentity` is passed, leaving the other
+four untouched. `player` is restricted to `PLAYABLE_CLASSES` — Priest, Mage,
+Hunter — because Warrior and Rogue have 0 mana at every level and this game
+only simulates a mana-costed spellbook.
+
 ## Healer mana
 
 `manaProfileAtLevel(level)`; `MANA` is the level 1 case.

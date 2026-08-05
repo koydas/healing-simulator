@@ -7,6 +7,23 @@ All notable changes to this project are recorded here, following
 
 ### Added
 
+- **The character sheet is now editable, and minimized by default.** A
+  pencil opens a name field and a three-way class picker (Priest, Mage,
+  Hunter — the sourced combinations with a mana pool the priest spellbook can
+  actually spend); switching class restarts at level 1 but keeps the class
+  being left's progress, restored if you switch back to it later. The
+  win/loss record stays shared across classes. Collapsed, the sheet shows
+  only a small procedurally-drawn avatar, name, race/class, level and the
+  experience bar; a separate toggle expands the full stat block that used to
+  always be visible. The chosen name and class now also apply to the healer
+  in the fight itself, not just the home screen. See ADR-0020.
+  ⚠️ Only Priest, Mage and Hunter are selectable: Warrior and Rogue have 0
+  mana at every level in Classic and could never cast the priest spellbook
+  this game simulates. Saved progress moved to
+  `healing-simulator.profile.v2` — a save from before this change is not
+  migrated, the same documented trade-off ADR-0018 already called out for a
+  future incompatible shape.
+
 - **A character sheet on the home screen, with levels and an experience bar up
   to 60.** The healer's health, mana, regeneration, attributes and known spells
   are read from the WoW Classic tables at the current level — the full

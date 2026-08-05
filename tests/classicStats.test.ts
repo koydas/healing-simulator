@@ -22,11 +22,14 @@ import {
 import {
   MANA,
   PARTY_TEMPLATE,
+  PLAYER_MEMBER_ID,
   STARTING_LEVEL,
   SPELLS,
   manaProfileAtLevel,
   partyTemplateAtLevel,
+  playerAttributesAtLevel,
   playerCharacterAtLevel,
+  raceForPlayableClass,
 } from '../src/config/gameConfig';
 import { rollHealAmount } from '../src/simulation/effects';
 import { createInitialState } from '../src/simulation/initialState';
@@ -140,6 +143,71 @@ describe('levels 1 to 60', () => {
     expect(playerCharacterAtLevel(29).spellsLocked.map((spell) => spell.id)).toEqual([
       'prayerOfHealing',
     ]);
+  });
+});
+
+describe('editable player identity (ADR-0020)', () => {
+  it('defaults to Elowen the human priest, unchanged from before the sheet was editable', () => {
+    expect(playerAttributesAtLevel(1)).toEqual(getAttributes('human', 'priest', 1));
+    expect(manaProfileAtLevel(1)).toEqual(MANA);
+    expect(partyTemplateAtLevel(1)).toEqual(PARTY_TEMPLATE);
+  });
+
+  it('rebuilds only the healer slot when a class is chosen', () => {
+    const party = partyTemplateAtLevel(1, { name: 'Zed', classId: 'hunter' });
+    const byId = new Map(party.map((member) => [member.id, member]));
+    const healer = byId.get(PLAYER_MEMBER_ID)!;
+
+    expect(healer.name).toBe('Zed');
+    expect(healer.race).toBe('nightElf');
+    expect(healer.classId).toBe('hunter');
+    expect(healer.hpMax).toBe(maxHealthAtLevel1('hunter', getAttributes('nightElf', 'hunter')));
+
+    // Nobody else in the party changes.
+    expect(byId.get('tank')).toEqual(PARTY_TEMPLATE.find((member) => member.id === 'tank'));
+    expect(byId.get('dps3')).toEqual(PARTY_TEMPLATE.find((member) => member.id === 'dps3'));
+  });
+
+  it('derives a pool and regeneration from the chosen class, not always the priest', () => {
+    const mage = manaProfileAtLevel(60, { name: 'Fizz', classId: 'mage' });
+    const attributes = getAttributes('gnome', 'mage', 60);
+    expect(mage.max).toBe(maxManaAtLevel('mage', attributes, 60));
+    expect(mage.perTick).toBe(manaPerTickFromSpirit(attributes.spirit));
+    expect(mage.max).not.toBe(manaProfileAtLevel(60).max); // different from the priest default
+  });
+
+  it('reports the chosen identity on the character sheet', () => {
+    const sheet = playerCharacterAtLevel(30, { name: 'Zed', classId: 'hunter' });
+    expect(sheet.name).toBe('Zed');
+    expect(sheet.classId).toBe('hunter');
+    expect(sheet.raceLabel).toBe('Night Elf');
+    expect(sheet.classLabel).toBe('Hunter');
+    // The spellbook stays the priest's regardless of class (ADR-0020): the
+    // sheet is a stats/flavor choice, not a second set of abilities.
+    expect(sheet.spellsKnown.map((spell) => spell.id)).toEqual(
+      playerCharacterAtLevel(30).spellsKnown.map((spell) => spell.id),
+    );
+  });
+
+  it('maps every playable class to the race with a full attribute table', () => {
+    expect(raceForPlayableClass('priest')).toBe('human');
+    expect(raceForPlayableClass('mage')).toBe('gnome');
+    expect(raceForPlayableClass('hunter')).toBe('nightElf');
+    // Every mapping resolves at every level — would throw otherwise.
+    for (const classId of ['priest', 'mage', 'hunter'] as const) {
+      expect(() => getAttributes(raceForPlayableClass(classId), classId, 60)).not.toThrow();
+    }
+  });
+
+  it('fights the chosen identity: the healer in GameState matches the sheet', () => {
+    const state = createInitialState(1, 40, 'gorvath', { name: 'Zed', classId: 'hunter' });
+    const healer = memberOf(state, PLAYER_MEMBER_ID);
+    expect(healer.name).toBe('Zed');
+    expect(healer.classId).toBe('hunter');
+    expect(healer.hpMax).toBe(
+      maxHealthAtLevel('hunter', getAttributes('nightElf', 'hunter', 40), 40),
+    );
+    expect(state.manaMax).toBe(maxManaAtLevel('hunter', getAttributes('nightElf', 'hunter', 40), 40));
   });
 });
 

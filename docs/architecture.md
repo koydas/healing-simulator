@@ -27,9 +27,11 @@ engine never learns where it came from.
 
 `App` renders `HomeScreen` until the player picks an enemy: the character
 sheet (`CharacterSheet`, derived from the saved profile by
-`playerCharacterAtLevel`), the per-boss record (`BossRecords`), the three
-enemy cards (`EnemySelect`, built from `ENEMIES` / `ENEMY_ORDER`) and the
-options dialog (`OptionsMenu`, which deletes the save). None of it touches the
+`playerCharacterAtLevel`), the overall record (`BossRecords`), the three
+enemy cards (`EnemySelect`, built from `ENEMIES` / `ENEMY_ORDER`, each card
+carrying the win/loss record against that boss, read from
+`profile.records`) and the options dialog (`OptionsMenu`, which deletes the
+save). None of it touches the
 store — no `GameStoreContext` exists at that point.
 
 `App` only mounts `Fight` (the store, the game loop, the layout) once a choice
@@ -109,9 +111,9 @@ handle it:
 `MessageFeed`), and callbacks passed as props are stabilised with `useCallback`.
 
 The home screen is outside all of this on purpose: the profile changes at most
-once per fight, so `CharacterSheet`, `BossRecords` and the experience bar are
-plain memoised components fed by props — no snapshot, no `useFrame`, and a
-static inline width for the bar.
+once per fight, so `CharacterSheet`, `BossRecords`, `EnemySelect` and the
+experience bar are plain memoised components fed by props — no snapshot, no
+`useFrame`, and a static inline width for the bar.
 
 ## Dialogs
 

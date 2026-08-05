@@ -25,8 +25,9 @@ All notable changes to this project are recorded here, following
   ⚠️ The encounters are still level 1 designs and the spellbook is still rank 1
   only, so fights get easier as you level.
 
-- **A win/loss counter per boss**, shown on the home screen with a total row,
-  counted the moment a fight ends.
+- **A win/loss counter per boss**, shown on each enemy card of the home screen
+  (`3W · 1L`, dimmed while a boss has never been fought) with the overall total
+  above the list, counted the moment a fight ends.
 
 - **Progress is saved in the browser, and can be deleted.** Level, experience
   and records live in `localStorage` under `healing-simulator.profile.v1`;

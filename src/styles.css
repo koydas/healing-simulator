@@ -225,7 +225,9 @@ button {
 .frame {
   position: relative;
   display: grid;
-  grid-template-rows: auto auto auto;
+  /* Two rows since the health values moved inside the bar; the bar takes the
+     slack up to the 64 px minimum instead of leaving it as empty padding. */
+  grid-template-rows: auto 1fr;
   gap: 4px;
   min-height: 64px;
   padding: 8px 10px;
@@ -297,7 +299,7 @@ button {
 .frame__bar {
   position: relative;
   display: block;
-  height: 14px;
+  min-height: 22px;
   border-radius: 4px;
   background: #0a0d13;
   overflow: hidden;
@@ -332,12 +334,23 @@ button {
   background: rgba(229, 72, 77, 0.15);
 }
 
-.frame__footer {
+.frame__values {
+  /* Overlaid on the fill, so the text needs its own contrast: full-strength
+     colour plus a shadow, rather than the dimmed grey of the old footer.
+     Both values stay on the left: the right side of the frame is where the
+     floating feedback lands, and it would sit on top of the percentage —
+     measured on the tank, hit every 2 s, so the overlap was near-permanent. */
+  position: absolute;
+  inset: 0;
   display: flex;
-  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  padding: 0 8px;
   font-size: 11px;
-  color: var(--text-dim);
+  font-weight: 700;
   font-variant-numeric: tabular-nums;
+  color: var(--text);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.75);
 }
 
 /* ------------------------------------------------------------- Feedback -- */
@@ -360,6 +373,9 @@ button {
   font-size: 13px;
   font-weight: 700;
   font-variant-numeric: tabular-nums;
+  /* The bar is taller now, so these numbers float over the fill rather than
+     over the panel: they need the same shadow as the values inside it. */
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.75);
   animation: feedback-float 1.2s ease-out forwards;
 }
 
@@ -485,7 +501,7 @@ button {
 .manabar__track {
   position: relative;
   flex: 1 1 auto;
-  height: 12px;
+  height: 16px;
   border-radius: 6px;
   background: var(--bg-panel-alt);
   overflow: hidden;
@@ -498,11 +514,18 @@ button {
 }
 
 .manabar__value {
-  min-width: 96px;
-  text-align: right;
-  font-size: 12px;
+  /* Inside the track like the boss and party bars: the 96 px reserved on the
+     right went back to the bar itself. */
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  font-weight: 700;
   font-variant-numeric: tabular-nums;
-  color: var(--text-dim);
+  color: var(--text);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.75);
 }
 
 .controls__spells {

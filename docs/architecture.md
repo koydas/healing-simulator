@@ -27,31 +27,42 @@ engine never learns where it came from.
 
 `App` renders `HomeScreen` until the player picks an enemy: the character
 sheet (`CharacterSheet`, derived from the saved profile by
-`playerCharacterAtLevel`), the overall record (`BossRecords`), the three
-enemy cards (`EnemySelect`, built from `ENEMIES` / `ENEMY_ORDER`, each card
-carrying the win/loss record against that boss, read from
-`profile.records`) and the options dialog (`OptionsMenu`, which deletes the
-save). None of it touches the
-store — no `GameStoreContext` exists at that point.
+`playerCharacterAtLevel`; minimized by default, an expand toggle reveals the
+full stat block, an edit toggle reveals a name field and a class picker —
+`CharacterAvatar` draws its small procedural bust — see
+[ADR-0020](./adr/0020-editable-character-identity.md)), the overall record
+(`BossRecords`), the three enemy cards (`EnemySelect`, built from `ENEMIES` /
+`ENEMY_ORDER`, each card carrying the win/loss record against that boss, read
+from `profile.records`) and the options dialog (`OptionsMenu`, which deletes
+the save). None of it touches the store — no `GameStoreContext` exists at
+that point, and the sheet's own expand/edit toggles are plain `useState`,
+same as everything else on this screen (see "The home screen is not on the
+render budget" below).
 
 `App` only mounts `Fight` (the store, the game loop, the layout) once a choice
-is made, passing the chosen `EnemyId` and the profile's level into
-`createGameStore(seed, enemyId, { playerLevel, onFightEnd })`. The game-over
-screen's "Choose another enemy" button unmounts `Fight`, tearing the store
-down, and returns to the home screen. See
+is made, passing the chosen `EnemyId`, the profile's level and its identity
+(`{ name, classId }`) into
+`createGameStore(seed, enemyId, { playerLevel, player, onFightEnd })` — the
+healer in the fight is built from that identity, so a renamed or reclassed
+character shows up in the party frames too, not just on the home screen. The
+game-over screen's "Choose another enemy" button unmounts `Fight`, tearing the
+store down, and returns to the home screen. See
 [ADR-0016](./adr/0016-selectable-enemy-encounters.md).
 
 ## The profile
 
-`App` owns the profile — level, experience, per-boss record — because it
-outlives every fight. The store reports the end of a fight exactly once
-through `onFightEnd(outcome, enemyId)`, detected on the state transition into
-`status === 'over'`; `App` then applies `applyFightOutcome`, writes the result
-to `localStorage` and passes the experience gained down to the end screen.
-`App` therefore re-renders once per finished fight (never during one), which
-is also when the game-over dialog appears. See
-[ADR-0018](./adr/0018-persistent-player-profile-localstorage.md) and
-[ADR-0019](./adr/0019-levelling-to-60-and-boss-experience.md).
+`App` owns the profile — name, class, level, experience, per-boss record —
+because it outlives every fight. The store reports the end of a fight exactly
+once through `onFightEnd(outcome, enemyId)`, detected on the state transition
+into `status === 'over'`; `App` then applies `applyFightOutcome`, writes the
+result to `localStorage` and passes the experience gained down to the end
+screen. `App` therefore re-renders once per finished fight (never during
+one), which is also when the game-over dialog appears. Renaming and
+switching class go through the same `persist` path, from
+`CharacterSheet`'s own callbacks (`onRenameCharacter`, `onSwitchClass`) —
+see [ADR-0018](./adr/0018-persistent-player-profile-localstorage.md),
+[ADR-0019](./adr/0019-levelling-to-60-and-boss-experience.md) and
+[ADR-0020](./adr/0020-editable-character-identity.md).
 
 `classicData.ts` is the bottom layer: it depends on nothing and holds only
 sourced values plus the game's official formulas. `gameConfig.ts` derives every
@@ -63,7 +74,7 @@ balance constant from it (see [classic-stats.md](./classic-stats.md)).
 | --- | --- |
 | `types.ts` | shape of the `GameState` data (no logic) |
 | `random.ts` | pure mulberry32 generator: `nextRandom`, `nextRange`, `nextInt` |
-| `initialState.ts` | `createInitialState(seed, level, enemyId)` and `cloneState` |
+| `initialState.ts` | `createInitialState(seed, level, enemyId, player?)` and `cloneState` |
 | `effects.ts` | applies healing, damage, HoTs and spell effects |
 | `feedback.ts` | pushes and prunes combat feedback |
 | `simulation.ts` | `stepSimulation(state, dtMs)` — one simulation step |
@@ -111,9 +122,12 @@ handle it:
 `MessageFeed`), and callbacks passed as props are stabilised with `useCallback`.
 
 The home screen is outside all of this on purpose: the profile changes at most
-once per fight, so `CharacterSheet`, `BossRecords`, `EnemySelect` and the
-experience bar are plain memoised components fed by props — no snapshot, no
-`useFrame`, and a static inline width for the bar.
+once per fight, so `CharacterSheet`, `CharacterAvatar`, `BossRecords`,
+`EnemySelect` and the experience bar are plain memoised components fed by
+props — no snapshot, no `useFrame`, and a static inline width for the bar.
+`CharacterSheet`'s expand/edit toggles are ordinary `useState`: they change on
+a tap, not on a simulation step, so they need none of the store's machinery
+either.
 
 ## Dialogs
 

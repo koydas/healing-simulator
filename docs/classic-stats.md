@@ -89,6 +89,19 @@ extending its column from the same SQL file first — `getAttributes` throws for
 a level it has no row for, rather than interpolating a character that never
 existed.
 
+### The player's own class is editable, among three of those five
+
+Since [ADR-0020](./adr/0020-editable-character-identity.md) the character
+sheet's name and class can be edited; the healer party member is rebuilt from
+whichever is chosen, the same way it was always rebuilt from Elowen the human
+priest. Class is restricted to `PLAYABLE_CLASSES = ['priest', 'mage', 'hunter']`
+— three of the five combinations above, each paired with the race the party
+already uses for it. Warrior and rogue are the other two, and both are
+excluded on purpose: their base mana is **0 at every level**
+(`CLASS_BASE_BY_LEVEL`), and every spell this game simulates costs mana. The
+spellbook itself never changes with class — only the identity, and the
+health/mana/attributes it derives, do.
+
 The tank has 1.96 times the hunter's health — the original "the tank has twice
 the health of the others" rule is no longer imposed, it **emerges** from picking
 a dwarf warrior (stamina 25, the highest in the game at level 1).
@@ -155,8 +168,11 @@ wipe grants nothing. That constant, `BOSS_XP.victoryShare`, is the single knob
 for progression pacing. See
 [ADR-0019](./adr/0019-levelling-to-60-and-boss-experience.md).
 
-The level, the experience inside it and the win/loss record per boss are saved
-in `localStorage` ([ADR-0018](./adr/0018-persistent-player-profile-localstorage.md)).
+The name, the class, the level, the experience inside it, the level and
+experience stashed for every other class ever played, and the win/loss record
+per boss (shared across classes) are saved in `localStorage`
+([ADR-0018](./adr/0018-persistent-player-profile-localstorage.md),
+[ADR-0020](./adr/0020-editable-character-identity.md)).
 
 ## The enemies
 
@@ -258,6 +274,11 @@ This is the section to read before quoting any number from this project.
   sourced; the share is a pacing choice (ADR-0019).
 - **Party composition**, character names, and the three enemies' names and
   selection-screen descriptions.
+- **Which classes the player's own character can be**: Priest, Mage or
+  Hunter. All three are sourced race/class pairs with a full attribute table;
+  the restriction to exactly these three is designed, because Warrior and
+  Rogue have no mana in Classic and this game only simulates a mana-costed
+  spellbook (ADR-0020).
 
 ## Resulting balance
 
@@ -319,4 +340,5 @@ level 1 and 60 while rank 1 healing does not move at all. See
 - [ADR-0017](./adr/0017-boss-health-and-victory.md) — boss health, party damage output, and the victory condition
 - [ADR-0018](./adr/0018-persistent-player-profile-localstorage.md) — the saved profile
 - [ADR-0019](./adr/0019-levelling-to-60-and-boss-experience.md) — levels 1 to 60 and the experience reward
+- [ADR-0020](./adr/0020-editable-character-identity.md) — editable name/class and per-class progress
 - [balance.md](./balance.md) — constant reference

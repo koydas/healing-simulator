@@ -14,6 +14,7 @@ import {
   STARTING_LEVEL,
   isSpellUnlocked,
   type CastRefusalReason,
+  type PlayerIdentity,
 } from '../config/gameConfig';
 import { applySpellEffect, findMember } from './effects';
 import { pushFeedback } from './feedback';
@@ -148,12 +149,15 @@ export function togglePause(state: GameState): GameState {
 /**
  * Starts a new fight with the given seed, enemy and level. The level comes
  * from the saved profile, so a rematch played after a level-up is fought with
- * the new character, not the one that won the previous fight.
+ * the new character, not the one that won the previous fight. `player` is the
+ * same identity (name, class — ADR-0020) the fight was originally created
+ * with; left out, the rematch builds Elowen the human priest.
  */
 export function restartGame(
   seed: number,
   enemyId: EnemyId,
   playerLevel: number = STARTING_LEVEL,
+  player?: PlayerIdentity,
 ): GameState {
-  return createInitialState(seed, playerLevel, enemyId);
+  return createInitialState(seed, playerLevel, enemyId, player);
 }

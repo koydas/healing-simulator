@@ -14,16 +14,19 @@ import {
   STARTING_LEVEL,
   manaProfileAtLevel,
   partyTemplateAtLevel,
+  type PlayerIdentity,
 } from '../config/gameConfig';
 import { nextRange, normalizeSeed } from './random';
 import type { EnemyId, GameStats, GameState, PartyMember } from './types';
 
 /**
  * Starting party at the given level: health comes from the vanilla formulas
- * (see `classicData.ts`), never written by hand.
+ * (see `classicData.ts`), never written by hand. `player` overrides the
+ * healer slot's name/race/class with the saved profile's identity — see
+ * `partyTemplateAtLevel`.
  */
-function createParty(level: number): PartyMember[] {
-  return partyTemplateAtLevel(level).map((template) => ({
+function createParty(level: number, player?: PlayerIdentity): PartyMember[] {
+  return partyTemplateAtLevel(level, player).map((template) => ({
     id: template.id,
     name: template.name,
     role: template.role,
@@ -61,11 +64,17 @@ export function createEmptyStats(): GameStats {
  *
  * The first spike is scheduled straight from the seed: it is the only random
  * draw performed before the first simulation step.
+ *
+ * `player` carries the saved profile's editable identity (name, class —
+ * ADR-0020) so the healer in this fight's party matches the character sheet.
+ * Left out, the party builds Elowen the human priest, exactly as before that
+ * identity was editable.
  */
 export function createInitialState(
   seed: number = DEFAULT_SEED,
   playerLevel: number = STARTING_LEVEL,
   enemyId: EnemyId = DEFAULT_ENEMY_ID,
+  player?: PlayerIdentity,
 ): GameState {
   const encounter = ENEMIES[enemyId];
   const initialSeed = normalizeSeed(seed);
@@ -74,8 +83,8 @@ export function createInitialState(
     encounter.spikeDamage.minIntervalMs,
     encounter.spikeDamage.maxIntervalMs,
   );
-  const party = partyTemplateAtLevel(playerLevel);
-  const mana = manaProfileAtLevel(playerLevel);
+  const party = partyTemplateAtLevel(playerLevel, player);
+  const mana = manaProfileAtLevel(playerLevel, player);
 
   return {
     status: 'active',
@@ -86,7 +95,7 @@ export function createInitialState(
     initialSeed,
     encounter,
     bossHp: encounter.hpMax,
-    party: createParty(playerLevel),
+    party: createParty(playerLevel, player),
     selectedTargetId: party[0].id,
     mana: mana.initial,
     manaMax: mana.max,
